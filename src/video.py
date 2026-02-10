@@ -1,11 +1,13 @@
 """
 Video generation module - creates presentation videos with TTS voiceovers.
-Supports multiple languages, fade transitions, and improved error handling.
+Supports multiple languages, fade transitions, TTS retry logic,
+and improved error handling.
 """
 import asyncio
 import logging
 import os
 import shutil
+import time
 from typing import List, Optional
 
 import edge_tts
@@ -17,6 +19,9 @@ from src.config import (
 )
 
 logger = logging.getLogger(__name__)
+
+# TTS retry settings
+_TTS_MAX_RETRIES = 3
 
 
 async def _generate_audio_async(text: str, output_path: str, voice: str) -> bool:
@@ -32,33 +37,40 @@ async def _generate_audio_async(text: str, output_path: str, voice: str) -> bool
 
 def generate_voiceover(text: str, output_path: str, voice: str = "en-US-JennyNeural") -> Optional[str]:
     """
-    Generate a TTS audio file from text.
+    Generate a TTS audio file from text with retry logic.
     Returns the output path on success, None on failure.
     """
     if not text or not text.strip():
         logger.debug("Empty text, skipping TTS generation")
         return None
 
-    try:
+    for attempt in range(_TTS_MAX_RETRIES):
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                raise RuntimeError("closed loop")
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    raise RuntimeError("closed loop")
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-        success = loop.run_until_complete(_generate_audio_async(text, output_path, voice))
+            success = loop.run_until_complete(_generate_audio_async(text, output_path, voice))
 
-        if success and os.path.exists(output_path) and os.path.getsize(output_path) > MIN_AUDIO_SIZE:
-            return output_path
+            if success and os.path.exists(output_path) and os.path.getsize(output_path) > MIN_AUDIO_SIZE:
+                return output_path
 
-        logger.warning("TTS output missing or too small: %s", output_path)
-        return None
+            logger.warning("TTS attempt %d: output missing or too small", attempt + 1)
 
-    except Exception as e:
-        logger.error("TTS generation failed: %s", e)
-        return None
+        except Exception as e:
+            logger.warning("TTS attempt %d failed: %s", attempt + 1, e)
+
+        if attempt < _TTS_MAX_RETRIES - 1:
+            wait = 2 ** attempt
+            logger.info("Retrying TTS in %ds...", wait)
+            time.sleep(wait)
+
+    logger.error("All %d TTS attempts failed for: %s...", _TTS_MAX_RETRIES, text[:50])
+    return None
 
 
 def _apply_fade_effects(clip, index: int, total: int, fade_duration: float = CROSSFADE_DURATION):

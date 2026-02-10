@@ -105,6 +105,7 @@ class PresentationConfig:
     base_url: Optional[str] = None
     model: str = "gpt-3.5-turbo"
     custom_prompt: str = ""
+    overlay_opacity: int = 130  # 0=transparent, 255=opaque
     export_formats: List[ExportFormat] = field(
         default_factory=lambda: [ExportFormat.PPTX, ExportFormat.PDF, ExportFormat.VIDEO]
     )

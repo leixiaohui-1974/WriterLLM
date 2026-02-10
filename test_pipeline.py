@@ -12,9 +12,13 @@ from src.renderer import (
     create_pptx_file, create_slide_images, create_pdf_from_images,
     _prepare_background, _get_font, _is_cjk_char, _contains_cjk,
     _wrap_text, _text_pixel_width, _draw_text,
+    _compute_content_font_size, _estimate_content_lines, _cover_crop,
+    CONTENT_MAX_WIDTH, CONTENT_FONT_SIZE, FOOTER_AREA, CONTENT_START_Y,
+    SLIDE_HEIGHT,
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES
+from src.generator import mock_generate_content
 
 
 OUTPUT_DIR = "test_output"
@@ -478,6 +482,189 @@ class TestPdfGeneration:
     def test_empty_image_list_raises(self):
         with pytest.raises(ValueError, match="No images"):
             create_pdf_from_images([], os.path.join(OUTPUT_DIR, "empty.pdf"))
+
+
+class TestResponsiveFontSizing:
+    """Tests for responsive font sizing when content overflows."""
+
+    def test_compute_font_size_short_content(self):
+        """Short content should use the base font size."""
+        content = ["Point 1", "Point 2"]
+        available_h = SLIDE_HEIGHT - CONTENT_START_Y - FOOTER_AREA
+        size = _compute_content_font_size(content, Language.ENGLISH, CONTENT_MAX_WIDTH, available_h)
+        assert size == CONTENT_FONT_SIZE
+
+    def test_compute_font_size_long_content_shrinks(self):
+        """Many bullet points should trigger font shrinking."""
+        content = [f"This is bullet point number {i} with enough text to be meaningful" for i in range(15)]
+        available_h = SLIDE_HEIGHT - CONTENT_START_Y - FOOTER_AREA
+        size = _compute_content_font_size(content, Language.ENGLISH, CONTENT_MAX_WIDTH, available_h)
+        assert size < CONTENT_FONT_SIZE
+        assert size >= 24  # Should not go below minimum
+
+    def test_compute_font_size_minimum_bound(self):
+        """Even very long content should not go below minimum font size."""
+        content = [f"Very long line {i}" for i in range(50)]
+        available_h = 200  # Very limited height
+        size = _compute_content_font_size(content, Language.ENGLISH, CONTENT_MAX_WIDTH, available_h)
+        assert size >= 24
+
+    def test_estimate_content_lines(self):
+        """Verify line estimation works for simple content."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.ENGLISH)
+        lines = _estimate_content_lines(["Short", "Also short"], font, CONTENT_MAX_WIDTH)
+        assert lines == 2
+
+    def test_estimate_content_lines_wrapping(self):
+        """Long text should produce more estimated lines."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.ENGLISH)
+        long_text = "This is a very long sentence that should definitely wrap around multiple times " * 3
+        lines = _estimate_content_lines([long_text], font, CONTENT_MAX_WIDTH)
+        assert lines >= 2
+
+    def test_responsive_rendering_many_bullets(self):
+        """Verify slide with many bullets renders without error using smaller font."""
+        slides_data = [
+            SlideData(
+                title="Dense Content",
+                content=[f"Bullet point {i}: description of item" for i in range(12)],
+                layout=SlideLayout.CONTENT,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_responsive")
+        image_paths = create_slide_images(slides_data, images_dir)
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_responsive_two_column_rendering(self):
+        """Verify two-column layout with many items uses responsive sizing."""
+        slides_data = [
+            SlideData(
+                title="Dense Two Column",
+                content=[f"Item {i}" for i in range(14)],
+                layout=SlideLayout.TWO_COLUMN,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_responsive_2col")
+        image_paths = create_slide_images(slides_data, images_dir)
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+
+class TestCoverCrop:
+    """Tests for aspect-ratio-preserving background image resizing."""
+
+    def test_cover_crop_landscape(self):
+        from PIL import Image
+        img = Image.new("RGBA", (2000, 1000), (100, 100, 100, 255))
+        cropped = _cover_crop(img, 1920, 1080)
+        assert cropped.size == (1920, 1080)
+
+    def test_cover_crop_portrait(self):
+        from PIL import Image
+        img = Image.new("RGBA", (800, 1200), (100, 100, 100, 255))
+        cropped = _cover_crop(img, 1920, 1080)
+        assert cropped.size == (1920, 1080)
+
+    def test_cover_crop_square(self):
+        from PIL import Image
+        img = Image.new("RGBA", (1000, 1000), (100, 100, 100, 255))
+        cropped = _cover_crop(img, 1920, 1080)
+        assert cropped.size == (1920, 1080)
+
+
+class TestConfigurableOverlay:
+    """Tests for configurable background overlay opacity."""
+
+    def test_overlay_opacity_default(self):
+        """Default overlay opacity should work."""
+        bg_path = os.path.join(OUTPUT_DIR, "bg_opacity.png")
+        _create_test_bg_image(bg_path)
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        img = _prepare_background(0, colors, {0: bg_path})
+        assert img.size == (1920, 1080)
+
+    def test_overlay_opacity_transparent(self):
+        """Fully transparent overlay should show more of the original image."""
+        bg_path = os.path.join(OUTPUT_DIR, "bg_transparent.png")
+        _create_test_bg_image(bg_path)
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        img_transparent = _prepare_background(0, colors, {0: bg_path}, overlay_opacity=0)
+        img_opaque = _prepare_background(0, colors, {0: bg_path}, overlay_opacity=200)
+        # Both should be valid images
+        assert img_transparent.size == (1920, 1080)
+        assert img_opaque.size == (1920, 1080)
+        # Transparent should be closer to original BG color (100,150,200)
+        px_t = img_transparent.getpixel((500, 500))
+        px_o = img_opaque.getpixel((500, 500))
+        # More opaque = closer to theme background (255,255,255 for Professional)
+        assert px_o[0] > px_t[0] or px_o[1] > px_t[1]
+
+    def test_overlay_opacity_in_slide_images(self):
+        """Verify overlay_opacity parameter works in create_slide_images."""
+        slides_data = [
+            SlideData(title="Opacity Test", content=["Test"], layout=SlideLayout.CONTENT),
+        ]
+        bg_path = os.path.join(OUTPUT_DIR, "bg_slide_opacity.png")
+        _create_test_bg_image(bg_path)
+        images_dir = os.path.join(OUTPUT_DIR, "images_opacity")
+        image_paths = create_slide_images(
+            slides_data, images_dir,
+            background_images={0: bg_path},
+            overlay_opacity=100,
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+
+class TestMockSummarySlide:
+    """Tests for improved mock mode with summary slide generation."""
+
+    def test_mock_generates_summary_slide(self):
+        """Mock mode with 5+ slides should produce a summary slide."""
+        text = "AI is transforming healthcare. Machine learning improves diagnostics. " * 20
+        slides = mock_generate_content(text, num_slides=5)
+        assert len(slides) == 5
+        last = slides[-1]
+        assert last.title == "Key Takeaways"
+
+    def test_mock_summary_chinese(self):
+        """Chinese mock mode should produce Chinese summary title."""
+        text = "人工智能正在改变世界。机器学习改善诊断。" * 10
+        slides = mock_generate_content(text, num_slides=5, language=Language.CHINESE)
+        last = slides[-1]
+        assert last.title == "\u6838\u5fc3\u8981\u70b9"
+
+    def test_mock_no_summary_for_few_slides(self):
+        """2 slides should not have a separate summary."""
+        text = "Short content for testing."
+        slides = mock_generate_content(text, num_slides=2)
+        assert len(slides) == 2
+
+    def test_mock_summary_has_content(self):
+        """Summary slide should have content points from other slides."""
+        text = "First topic is important. Second topic matters too. Third point is key. " * 10
+        slides = mock_generate_content(text, num_slides=5)
+        last = slides[-1]
+        assert len(last.content) >= 1
+
+    def test_mock_improved_sentence_splitting(self):
+        """Verify new separators like semicolons and ellipses are handled."""
+        text = "Point one; Point two\u2026 Point three\uff01"
+        slides = mock_generate_content(text, num_slides=2)
+        assert len(slides) == 2
+
+
+class TestPresentationConfigOverlay:
+    """Tests for PresentationConfig overlay_opacity field."""
+
+    def test_config_default_overlay(self):
+        config = PresentationConfig()
+        assert config.overlay_opacity == 130
+
+    def test_config_custom_overlay(self):
+        config = PresentationConfig(overlay_opacity=200)
+        assert config.overlay_opacity == 200
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 """
 Slide rendering module - generates PPTX, slide images, and PDF output.
 Supports multiple visual themes, slide layouts, themed PPTX output,
-AI background image compositing, CJK text wrapping, and text shadows.
+AI background image compositing, CJK text wrapping, text shadows,
+and responsive font sizing.
 """
 import os
 import logging
@@ -29,6 +30,7 @@ HEADER_HEIGHT = 200
 CONTENT_START_Y = 280
 LINE_SPACING = 75
 BULLET_INDENT = 30
+FOOTER_AREA = 80  # reserved space at bottom for footer
 
 # Available pixel widths for text content
 CONTENT_MAX_WIDTH = SLIDE_WIDTH - 2 * MARGIN_X       # ~1720px for full-width content
@@ -37,6 +39,10 @@ COLUMN_MAX_WIDTH = SLIDE_WIDTH // 2 - MARGIN_X - 40  # ~820px per column
 # Text shadow settings
 _SHADOW_OFFSET = 2
 _SHADOW_COLOR = (0, 0, 0)
+
+# Responsive font sizing bounds
+_MIN_CONTENT_FONT_SIZE = 24
+_FONT_SIZE_STEP = 3
 
 # CJK language set and font paths
 _CJK_LANGUAGES = {Language.CHINESE, Language.JAPANESE, Language.KOREAN}
@@ -121,6 +127,41 @@ def _wrap_text(text: str, font, max_width: int) -> list:
     return lines
 
 
+# ---- Responsive Font Sizing ----
+
+def _estimate_content_lines(content: list, font, max_width: int) -> int:
+    """Estimate total rendered lines for a list of bullet points."""
+    total = 0
+    for point in content:
+        wrapped = _wrap_text(point, font, max_width)
+        total += max(len(wrapped), 1)
+    return total
+
+
+def _compute_content_font_size(
+    content: list,
+    language: Language,
+    max_width: int,
+    available_height: int,
+    base_size: int = CONTENT_FONT_SIZE,
+) -> int:
+    """
+    Compute the largest font size that fits all content within available_height.
+    Shrinks from base_size down to _MIN_CONTENT_FONT_SIZE in steps.
+    """
+    size = base_size
+    while size >= _MIN_CONTENT_FONT_SIZE:
+        font = _get_font("DejaVuSans.ttf", size, language)
+        line_h = int(size * 1.67)  # LINE_SPACING scales with font size
+        total_lines = _estimate_content_lines(content, font, max_width)
+        # Add ~10px gap per bullet
+        needed = total_lines * line_h + len(content) * 10
+        if needed <= available_height:
+            return size
+        size -= _FONT_SIZE_STEP
+    return _MIN_CONTENT_FONT_SIZE
+
+
 # ---- Font Loading ----
 
 def _get_font(
@@ -195,6 +236,7 @@ def _prepare_background(
     slide_index: int,
     colors: ThemeColors,
     background_images: Optional[dict] = None,
+    overlay_opacity: int = BG_OVERLAY_OPACITY,
 ) -> Image.Image:
     """
     Create the slide background image.
@@ -205,14 +247,14 @@ def _prepare_background(
     if background_images and slide_index in background_images:
         bg_path = background_images[slide_index]
         try:
-            bg_img = Image.open(bg_path).resize(
-                (SLIDE_WIDTH, SLIDE_HEIGHT), Image.LANCZOS
-            ).convert("RGBA")
+            bg_img = Image.open(bg_path).convert("RGBA")
+            # Preserve aspect ratio by cover-cropping
+            bg_img = _cover_crop(bg_img, SLIDE_WIDTH, SLIDE_HEIGHT)
             # Semi-transparent overlay matching theme for readability
             overlay = Image.new(
                 "RGBA",
                 (SLIDE_WIDTH, SLIDE_HEIGHT),
-                (*colors.background, BG_OVERLAY_OPACITY),
+                (*colors.background, overlay_opacity),
             )
             img = Image.alpha_composite(bg_img, overlay).convert("RGB")
             logger.debug("Applied AI background for slide %d", slide_index)
@@ -221,6 +263,19 @@ def _prepare_background(
             logger.warning("Could not load background for slide %d: %s", slide_index, e)
 
     return Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), color=colors.background)
+
+
+def _cover_crop(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
+    """Resize image to cover target size while preserving aspect ratio, then center-crop."""
+    src_w, src_h = img.size
+    scale = max(target_w / src_w, target_h / src_h)
+    new_w = int(src_w * scale)
+    new_h = int(src_h * scale)
+    img = img.resize((new_w, new_h), Image.LANCZOS)
+    # Center crop
+    left = (new_w - target_w) // 2
+    top = (new_h - target_h) // 2
+    return img.crop((left, top, left + target_w, top + target_h))
 
 
 def _add_pptx_background(slide, bg_path: str, prs: Presentation):
@@ -538,9 +593,20 @@ def _render_two_column_layout(
     left_items = content[:mid]
     right_items = content[mid:]
 
+    # Responsive font sizing for columns
+    available_h = SLIDE_HEIGHT - CONTENT_START_Y - FOOTER_AREA
+    all_items = max(len(left_items), len(right_items))
+    longest_col = left_items if len(left_items) >= len(right_items) else right_items
+    font_size = _compute_content_font_size(
+        longest_col, language, COLUMN_MAX_WIDTH, available_h,
+    )
+    if font_size < CONTENT_FONT_SIZE:
+        content_font = _get_font("DejaVuSans.ttf", font_size, language)
+    line_spacing = int(font_size * 1.67)
+
     for col_idx, (items, start_x) in enumerate([(left_items, MARGIN_X), (right_items, mid_x + 40)]):
         y = CONTENT_START_Y
-        max_y = SLIDE_HEIGHT - 80
+        max_y = SLIDE_HEIGHT - FOOTER_AREA
         for point in items:
             if y >= max_y:
                 break
@@ -550,7 +616,7 @@ def _render_two_column_layout(
                     break
                 prefix = "\u2022 " if j == 0 else "  "
                 _draw_text(draw, (start_x, y), f"{prefix}{line}", content_font, colors.text, shadow=shadow)
-                y += LINE_SPACING
+                y += line_spacing
             y += 10
 
     # Footer
@@ -576,7 +642,7 @@ def _render_content_layout(
     has_bg_image: bool = False,
     language: Language = Language.ENGLISH,
 ):
-    """Render a standard content slide."""
+    """Render a standard content slide with responsive font sizing."""
     shadow = has_bg_image
 
     # Header bar
@@ -590,12 +656,20 @@ def _render_content_layout(
     title_y = (HEADER_HEIGHT - title_h) // 2
     _draw_text(draw, (MARGIN_X, title_y), title, title_font, colors.title, shadow=False)
 
+    # Responsive font sizing: shrink font if content won't fit
+    available_h = SLIDE_HEIGHT - CONTENT_START_Y - FOOTER_AREA
+    font_size = _compute_content_font_size(
+        slide_data.content, language, CONTENT_MAX_WIDTH, available_h,
+    )
+    if font_size < CONTENT_FONT_SIZE:
+        content_font = _get_font("DejaVuSans.ttf", font_size, language)
+    line_spacing = int(font_size * 1.67)
+
     # Content with CJK-aware wrapping
     y = CONTENT_START_Y
-    max_y = SLIDE_HEIGHT - 80
+    max_y = SLIDE_HEIGHT - FOOTER_AREA
     for point in slide_data.content:
         if y >= max_y:
-            _draw_text(draw, (MARGIN_X, y), "...", content_font, colors.footer, shadow=shadow)
             break
         wrapped = _wrap_text(point, content_font, CONTENT_MAX_WIDTH)
         for j, line in enumerate(wrapped):
@@ -604,7 +678,7 @@ def _render_content_layout(
             prefix = "\u2022 " if j == 0 else "  "
             x = MARGIN_X if j == 0 else MARGIN_X + BULLET_INDENT
             _draw_text(draw, (x, y), f"{prefix}{line}", content_font, colors.text, shadow=shadow)
-            y += LINE_SPACING
+            y += line_spacing
         y += 10
 
     # Footer
@@ -633,10 +707,12 @@ def create_slide_images(
     theme: SlideTheme = SlideTheme.PROFESSIONAL,
     background_images: Optional[dict] = None,
     language: Language = Language.ENGLISH,
+    overlay_opacity: int = BG_OVERLAY_OPACITY,
 ) -> List[str]:
     """
     Render high-quality slide images using Pillow.
-    Supports themes, layouts, AI background images, CJK fonts, and text shadows.
+    Supports themes, layouts, AI background images, CJK fonts, text shadows,
+    and responsive font sizing.
     """
     os.makedirs(output_dir, exist_ok=True)
     colors = THEMES.get(theme, THEMES[SlideTheme.PROFESSIONAL])
@@ -649,7 +725,7 @@ def create_slide_images(
     total_slides = len(slides_data)
 
     for i, slide_data in enumerate(slides_data):
-        img = _prepare_background(i, colors, background_images)
+        img = _prepare_background(i, colors, background_images, overlay_opacity=overlay_opacity)
         draw = ImageDraw.Draw(img)
 
         has_bg = background_images is not None and i in background_images

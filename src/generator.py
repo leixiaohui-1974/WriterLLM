@@ -213,11 +213,12 @@ def mock_generate_content(text: str, num_slides: int, language: Language = Langu
     """
     Generate slide content without an LLM by splitting text intelligently.
     Used as fallback or for testing without API keys.
+    Produces a summary/key takeaways slide as the last slide.
     """
     lines = [line.strip() for line in text.replace("\r\n", "\n").split("\n") if line.strip()]
     sentences = []
     for line in lines:
-        for sep in ["\u3002", ".", "!", "\uff1f", "?"]:
+        for sep in ["\u3002", ".", "!", "\uff1f", "?", "\uff01", ";", "\uff1b", "\u2026"]:
             line = line.replace(sep, sep + "||SPLIT||")
         parts = [s.strip() for s in line.split("||SPLIT||") if s.strip()]
         sentences.extend(parts)
@@ -225,10 +226,12 @@ def mock_generate_content(text: str, num_slides: int, language: Language = Langu
     if not sentences:
         sentences = ["Content placeholder"] * (num_slides * 3)
 
+    # Reserve last slide for summary
+    content_slides = max(1, num_slides - 1) if num_slides > 2 else num_slides
     slides = []
-    chunk_size = max(1, len(sentences) // num_slides)
+    chunk_size = max(1, len(sentences) // content_slides)
 
-    for i in range(num_slides):
+    for i in range(content_slides):
         start = i * chunk_size
         end = min(len(sentences), start + chunk_size)
 
@@ -246,7 +249,34 @@ def mock_generate_content(text: str, num_slides: int, language: Language = Langu
             title=title,
             content=content,
             speaker_notes=notes,
-            image_prompt=f"Professional presentation visual: {title}",
+            image_prompt=f"Professional presentation slide background, modern design, {title}",
+        ))
+
+    # Add summary/key takeaways slide
+    if num_slides > 2:
+        _SUMMARY_TITLES = {
+            Language.ENGLISH: "Key Takeaways",
+            Language.CHINESE: "\u6838\u5fc3\u8981\u70b9",
+            Language.JAPANESE: "\u307e\u3068\u3081",
+            Language.KOREAN: "\ud575\uc2ec \uc694\uc810",
+            Language.FRENCH: "Points cl\u00e9s",
+            Language.GERMAN: "Kernpunkte",
+            Language.SPANISH: "Puntos clave",
+        }
+        summary_title = _SUMMARY_TITLES.get(language, "Key Takeaways")
+        # Collect first sentence from each content slide as summary points
+        summary_points = []
+        for s in slides[1:]:  # skip title slide
+            if s.content and s.content[0] != "Content placeholder":
+                point = s.content[0][:80]
+                summary_points.append(point)
+        if not summary_points:
+            summary_points = ["Review the key concepts discussed in this presentation"]
+        slides.append(SlideData(
+            title=summary_title,
+            content=summary_points[:5],
+            speaker_notes=f"In summary, these are the key points covered in this presentation.",
+            image_prompt="Professional conclusion slide, abstract summary concept, clean modern design",
         ))
 
     slides = _assign_layouts(slides)

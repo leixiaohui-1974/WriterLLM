@@ -132,6 +132,11 @@ with st.sidebar.expander("Advanced Options"):
         value="dall-e-3",
         help="Model for AI image generation (dall-e-3, dall-e-2, etc.).",
     )
+    overlay_opacity = st.slider(
+        "Background Overlay Opacity",
+        min_value=0, max_value=255, value=130,
+        help="Controls how much the theme overlay covers AI background images (0=transparent, 255=opaque).",
+    )
 
 # -- Main Content --
 st.title("AutoPresentation AI")
@@ -174,6 +179,7 @@ if uploaded_file:
         base_url=base_url if base_url else None,
         model=model_name,
         custom_prompt=custom_prompt if custom_prompt else "",
+        overlay_opacity=overlay_opacity,
         export_formats=export_formats,
     )
 
@@ -391,6 +397,7 @@ if uploaded_file:
                     slides, images_dir, theme=config.theme,
                     background_images=ai_bg_images if ai_bg_images else None,
                     language=config.language,
+                    overlay_opacity=config.overlay_opacity,
                 )
 
                 # PDF
@@ -455,16 +462,18 @@ if uploaded_file:
                 st.divider()
                 st.header("Results")
 
-                # Slide preview
+                # Slide preview - show all slides in rows of 3
                 if image_paths:
                     st.subheader("Slide Preview")
-                    preview_count = min(len(image_paths), 6)
-                    cols = st.columns(min(preview_count, 3))
-                    for idx in range(preview_count):
-                        with cols[idx % 3]:
-                            st.image(image_paths[idx], caption=f"Slide {idx + 1}", use_container_width=True)
-                    if len(image_paths) > preview_count:
-                        st.caption(f"... and {len(image_paths) - preview_count} more slides")
+                    for row_start in range(0, len(image_paths), 3):
+                        row_end = min(row_start + 3, len(image_paths))
+                        cols = st.columns(3)
+                        for idx in range(row_start, row_end):
+                            with cols[idx - row_start]:
+                                st.image(image_paths[idx], caption=f"Slide {idx + 1}", use_container_width=True)
+                                # Show speaker notes below each slide thumbnail
+                                if idx < len(slides) and slides[idx].speaker_notes:
+                                    st.caption(slides[idx].speaker_notes[:150])
 
                 # AI-generated background previews
                 if ai_bg_images:
@@ -518,6 +527,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v3.0")
+st.sidebar.caption("AutoPresentation AI v5.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")
