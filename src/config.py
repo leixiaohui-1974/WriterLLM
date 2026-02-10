@@ -51,6 +51,11 @@ VIDEO_FPS = 24
 DEFAULT_SLIDE_DURATION = 5.0
 AUDIO_PADDING = 0.5
 MIN_AUDIO_SIZE = 1024  # bytes
+CROSSFADE_DURATION = 0.4  # seconds for fade transitions between slides
+
+# Background image overlay opacity (0=transparent, 255=opaque)
+# Controls how much the theme overlay covers the AI background image
+BG_OVERLAY_OPACITY = 130
 
 # Text processing
 MAX_LLM_INPUT_LENGTH = 6000

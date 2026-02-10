@@ -8,8 +8,12 @@ import docx
 from src.parser import parse_document
 from src.generator import generate_slides
 from src.models import SlideData, SlideLayout, SlideTheme, Language, ExportFormat, PresentationConfig
-from src.renderer import create_pptx_file, create_slide_images, create_pdf_from_images
+from src.renderer import (
+    create_pptx_file, create_slide_images, create_pdf_from_images,
+    _prepare_background, _get_font,
+)
 from src.image_gen import generate_slide_image, generate_slide_images_batch
+from src.models import ThemeColors, THEMES
 
 
 OUTPUT_DIR = "test_output"
@@ -40,6 +44,15 @@ def _create_test_docx():
     buf.seek(0)
     buf.name = "test_doc.docx"
     return buf
+
+
+def _create_test_bg_image(path):
+    """Create a test background image."""
+    from PIL import Image
+    img = Image.new("RGB", (1920, 1080), color=(100, 150, 200))
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    img.save(path, "PNG")
+    return path
 
 
 class TestFullPipeline:
@@ -128,6 +141,139 @@ class TestLayoutRendering:
         create_pptx_file(slides_data, pptx_path)
         assert os.path.exists(pptx_path)
         assert os.path.getsize(pptx_path) > 0
+
+
+class TestBackgroundImageCompositing:
+    """Tests for AI background image compositing into slides."""
+
+    def test_slide_images_with_background(self):
+        """Verify that background images are composited into slide images."""
+        slides_data = [
+            SlideData(title="Slide 1", content=["Content A"], layout=SlideLayout.CONTENT),
+            SlideData(title="Slide 2", content=["Content B"], layout=SlideLayout.TITLE),
+        ]
+        # Create a fake background image
+        bg_path = os.path.join(OUTPUT_DIR, "bg_000.png")
+        _create_test_bg_image(bg_path)
+
+        background_images = {0: bg_path}  # Only slide 0 has a background
+
+        images_dir = os.path.join(OUTPUT_DIR, "images_bg")
+        image_paths = create_slide_images(
+            slides_data, images_dir, background_images=background_images,
+        )
+        assert len(image_paths) == 2
+        for p in image_paths:
+            assert os.path.exists(p)
+            # Files with bg should have content
+            assert os.path.getsize(p) > 0
+
+    def test_pptx_with_background(self):
+        """Verify PPTX generation with background images."""
+        slides_data = [
+            SlideData(title="BG Slide", content=["Test"], layout=SlideLayout.CONTENT),
+        ]
+        bg_path = os.path.join(OUTPUT_DIR, "bg_pptx.png")
+        _create_test_bg_image(bg_path)
+
+        pptx_path = os.path.join(OUTPUT_DIR, "bg_test.pptx")
+        create_pptx_file(
+            slides_data, pptx_path,
+            background_images={0: bg_path},
+        )
+        assert os.path.exists(pptx_path)
+        assert os.path.getsize(pptx_path) > 0
+
+    def test_prepare_background_with_image(self):
+        """Test _prepare_background composites correctly."""
+        bg_path = os.path.join(OUTPUT_DIR, "bg_prep.png")
+        _create_test_bg_image(bg_path)
+
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        img = _prepare_background(0, colors, background_images={0: bg_path})
+        assert img.size == (1920, 1080)
+        assert img.mode == "RGB"
+
+    def test_prepare_background_without_image(self):
+        """Test _prepare_background returns solid color without image."""
+        colors = THEMES[SlideTheme.DARK]
+        img = _prepare_background(0, colors, background_images=None)
+        assert img.size == (1920, 1080)
+        # Should be the dark theme background color
+        pixel = img.getpixel((100, 100))
+        assert pixel == colors.background
+
+    def test_all_layouts_with_background(self):
+        """Verify all layout types render correctly with background images."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A", "B"], layout=SlideLayout.CONTENT),
+            SlideData(title="Section", content=[], layout=SlideLayout.SECTION),
+            SlideData(title="Two Col", content=["L1", "L2", "R1", "R2"], layout=SlideLayout.TWO_COLUMN),
+        ]
+        bg_dir = os.path.join(OUTPUT_DIR, "bgs")
+        os.makedirs(bg_dir, exist_ok=True)
+        bg_images = {}
+        for i in range(4):
+            bg_path = os.path.join(bg_dir, f"bg_{i}.png")
+            _create_test_bg_image(bg_path)
+            bg_images[i] = bg_path
+
+        images_dir = os.path.join(OUTPUT_DIR, "images_all_bg")
+        image_paths = create_slide_images(
+            slides_data, images_dir, background_images=bg_images,
+        )
+        assert len(image_paths) == 4
+        for p in image_paths:
+            assert os.path.exists(p)
+
+
+class TestCJKFontSupport:
+    """Tests for CJK font loading and rendering."""
+
+    def test_cjk_font_loading_chinese(self):
+        """Verify CJK font loads for Chinese language."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.CHINESE)
+        assert font is not None
+
+    def test_cjk_font_loading_japanese(self):
+        """Verify CJK font loads for Japanese language."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.JAPANESE)
+        assert font is not None
+
+    def test_cjk_font_loading_korean(self):
+        """Verify CJK font loads for Korean language."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.KOREAN)
+        assert font is not None
+
+    def test_english_font_loading(self):
+        """Verify English font loads (non-CJK path)."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.ENGLISH)
+        assert font is not None
+
+    def test_chinese_slide_rendering(self):
+        """Verify Chinese text renders without error."""
+        slides_data = [
+            SlideData(title="人工智能", content=["机器学习", "深度学习"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_zh")
+        image_paths = create_slide_images(
+            slides_data, images_dir, language=Language.CHINESE,
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_japanese_slide_rendering(self):
+        """Verify Japanese text renders without error."""
+        slides_data = [
+            SlideData(title="プレゼンテーション", content=["ポイント1", "ポイント2"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_ja")
+        image_paths = create_slide_images(
+            slides_data, images_dir, language=Language.JAPANESE,
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
 
 
 class TestMultiLanguage:

@@ -1,6 +1,6 @@
 """
 Video generation module - creates presentation videos with TTS voiceovers.
-Supports multiple languages and improved error handling.
+Supports multiple languages, fade transitions, and improved error handling.
 """
 import asyncio
 import logging
@@ -9,9 +9,12 @@ import shutil
 from typing import List, Optional
 
 import edge_tts
-from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
+from moviepy import ImageClip, AudioFileClip, concatenate_videoclips, vfx
 
-from src.config import VIDEO_FPS, DEFAULT_SLIDE_DURATION, AUDIO_PADDING, MIN_AUDIO_SIZE
+from src.config import (
+    VIDEO_FPS, DEFAULT_SLIDE_DURATION, AUDIO_PADDING, MIN_AUDIO_SIZE,
+    CROSSFADE_DURATION,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +61,30 @@ def generate_voiceover(text: str, output_path: str, voice: str = "en-US-JennyNeu
         return None
 
 
+def _apply_fade_effects(clip, index: int, total: int, fade_duration: float = CROSSFADE_DURATION):
+    """Apply fade-in/fade-out transitions to a video clip."""
+    effects = []
+    # Fade in for first clip, fade out for last clip, both for middle clips
+    if index == 0:
+        effects.append(vfx.FadeIn(fade_duration))
+    elif index == total - 1:
+        effects.append(vfx.FadeOut(fade_duration))
+    else:
+        effects.append(vfx.FadeIn(fade_duration))
+        effects.append(vfx.FadeOut(fade_duration))
+
+    if effects:
+        return clip.with_effects(effects)
+    return clip
+
+
 def create_video_presentation(
     image_paths: List[str],
     text_scripts: List[str],
     output_path: str,
     voice: str = "en-US-JennyNeural",
     progress_callback=None,
+    enable_transitions: bool = True,
 ) -> Optional[str]:
     """
     Create a video presentation from slide images and text scripts.
@@ -74,6 +95,7 @@ def create_video_presentation(
         output_path: Where to save the output MP4.
         voice: Edge TTS voice name.
         progress_callback: Optional callable(current, total) for progress updates.
+        enable_transitions: Whether to add fade transitions between slides.
 
     Returns:
         Output path on success, None on failure.
@@ -87,7 +109,7 @@ def create_video_presentation(
     os.makedirs(temp_audio_dir, exist_ok=True)
 
     total = len(image_paths)
-    logger.info("Creating video from %d slides (voice: %s)", total, voice)
+    logger.info("Creating video from %d slides (voice: %s, transitions: %s)", total, voice, enable_transitions)
 
     try:
         for i, img_path in enumerate(image_paths):
@@ -116,6 +138,10 @@ def create_video_presentation(
         if not clips:
             logger.error("No video clips created")
             return None
+
+        # Apply fade transitions
+        if enable_transitions and len(clips) > 1:
+            clips = [_apply_fade_effects(clip, i, len(clips)) for i, clip in enumerate(clips)]
 
         if progress_callback:
             progress_callback(total, total)
