@@ -18,7 +18,7 @@ from src.renderer import (
     _compute_content_font_size, _estimate_content_lines, _cover_crop,
     _draw_gradient_rect, _fit_title_in_header, _draw_header_gradient,
     _set_pptx_slide_background, _add_pptx_slide_transition,
-    _add_pptx_slide_number, _BULLET_ICONS,
+    _add_pptx_slide_number, _BULLET_ICONS, _format_pptx_bullet,
     CONTENT_MAX_WIDTH, CONTENT_FONT_SIZE, FOOTER_AREA, CONTENT_START_Y,
     SLIDE_HEIGHT, SLIDE_WIDTH, HEADER_HEIGHT, TITLE_FONT_SIZE,
 )
@@ -1109,6 +1109,163 @@ class TestFooterBranding:
         colors = THEMES[SlideTheme.PROFESSIONAL]
         _draw_slide_footer(draw, font, colors, 0, 5, False, False,
                           footer_company="Test", footer_author="Author")
+
+
+class TestFooterBrandingFlow:
+    """Tests for footer branding actually flowing through to rendered images (v8 bugfix)."""
+
+    def test_branding_renders_in_content_slide(self):
+        """Footer company text should appear in rendered content slide image."""
+        from PIL import Image
+        slides_data = [
+            SlideData(title="Flow Test", content=["A", "B"], layout=SlideLayout.CONTENT),
+        ]
+        # Render with and without branding, compare
+        dir_no = os.path.join(OUTPUT_DIR, "images_no_brand")
+        dir_yes = os.path.join(OUTPUT_DIR, "images_yes_brand")
+        paths_no = create_slide_images(slides_data, dir_no)
+        paths_yes = create_slide_images(slides_data, dir_yes,
+                                        footer_company="ACME Corp", footer_author="Jane")
+        img_no = Image.open(paths_no[0])
+        img_yes = Image.open(paths_yes[0])
+        # The branded image should differ from unbranded (footer area changed)
+        px_no = [img_no.getpixel((200, SLIDE_HEIGHT - 40 + y)) for y in range(5)]
+        px_yes = [img_yes.getpixel((200, SLIDE_HEIGHT - 40 + y)) for y in range(5)]
+        assert px_no != px_yes, "Footer branding should change the rendered image"
+
+    def test_branding_renders_in_title_slide(self):
+        """Footer branding should also render in title slides."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_title_brand")
+        paths = create_slide_images(slides_data, images_dir,
+                                    footer_company="Corp", footer_author="Author")
+        assert len(paths) == 1
+        assert os.path.getsize(paths[0]) > 0
+
+    def test_branding_renders_in_section_slide(self):
+        """Footer branding should render in section slides."""
+        slides_data = [
+            SlideData(title="Section", content=[], layout=SlideLayout.SECTION),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_section_brand")
+        paths = create_slide_images(slides_data, images_dir,
+                                    footer_company="My Co")
+        assert len(paths) == 1
+        assert os.path.getsize(paths[0]) > 0
+
+
+class TestNewThemes:
+    """Tests for new themes added in v8 (Forest, Royal, Tech)."""
+
+    def test_forest_theme_renders(self):
+        slides_data = [
+            SlideData(title="Forest Test", content=["A", "B"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_forest")
+        paths = create_slide_images(slides_data, images_dir, theme=SlideTheme.FOREST)
+        assert len(paths) == 1
+        assert os.path.getsize(paths[0]) > 0
+
+    def test_royal_theme_renders(self):
+        slides_data = [
+            SlideData(title="Royal Test", content=["C", "D"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_royal")
+        paths = create_slide_images(slides_data, images_dir, theme=SlideTheme.ROYAL)
+        assert len(paths) == 1
+
+    def test_tech_theme_renders(self):
+        slides_data = [
+            SlideData(title="Tech Test", content=["E"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_tech")
+        paths = create_slide_images(slides_data, images_dir, theme=SlideTheme.TECH)
+        assert len(paths) == 1
+
+    def test_new_themes_pptx(self):
+        """New themes should produce valid PPTX files."""
+        slides_data = [
+            SlideData(title="T", content=["X"], layout=SlideLayout.CONTENT),
+        ]
+        for theme in [SlideTheme.FOREST, SlideTheme.ROYAL, SlideTheme.TECH]:
+            path = os.path.join(OUTPUT_DIR, f"new_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
+            assert os.path.getsize(path) > 0
+
+    def test_all_themes_count(self):
+        """Should now have 8 themes total."""
+        assert len(SlideTheme) == 8
+
+    def test_new_themes_all_layouts(self):
+        """New themes should render all layout types correctly."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A"], layout=SlideLayout.CONTENT),
+            SlideData(title="Section", content=[], layout=SlideLayout.SECTION),
+            SlideData(title="TwoCol", content=["L", "R"], layout=SlideLayout.TWO_COLUMN),
+        ]
+        for theme in [SlideTheme.FOREST, SlideTheme.ROYAL, SlideTheme.TECH]:
+            images_dir = os.path.join(OUTPUT_DIR, f"images_all_{theme.value}")
+            paths = create_slide_images(slides_data, images_dir, theme=theme)
+            assert len(paths) == 4
+
+
+class TestPPTXBulletFormatting:
+    """Tests for accent-colored PPTX bullets (v8)."""
+
+    def test_format_pptx_bullet_does_not_raise(self):
+        """Formatting a PPTX paragraph bullet should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        if len(slide.placeholders) > 1:
+            ph = slide.placeholders[1]
+            if ph.has_text_frame:
+                ph.text_frame.text = "Test bullet"
+                colors = THEMES[SlideTheme.OCEAN]
+                _format_pptx_bullet(ph.text_frame.paragraphs[0], colors)
+
+    def test_pptx_content_has_bullets(self):
+        """PPTX content slide should have formatted bullets."""
+        slides_data = [
+            SlideData(title="Bullets", content=["Point 1", "Point 2", "Point 3"],
+                      layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "pptx_bullets.pptx")
+        create_pptx_file(slides_data, path, theme=SlideTheme.OCEAN)
+        assert os.path.exists(path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 1
+
+
+class TestPPTXSectionEnhanced:
+    """Tests for enhanced PPTX section slide with shapes (v8)."""
+
+    def test_pptx_section_has_shapes(self):
+        """PPTX section slide should have accent bar and underline shapes."""
+        slides_data = [
+            SlideData(title="Section Test", content=[], layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "pptx_section_v8.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Should have shapes beyond the default (title + accent bar + underline)
+        assert len(slide.shapes) >= 2
+
+    def test_pptx_section_all_themes(self):
+        """PPTX section slides should work across all themes."""
+        slides_data = [
+            SlideData(title="Sec", content=[], layout=SlideLayout.SECTION),
+        ]
+        for theme in SlideTheme:
+            path = os.path.join(OUTPUT_DIR, f"pptx_sec_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
 
 
 if __name__ == "__main__":

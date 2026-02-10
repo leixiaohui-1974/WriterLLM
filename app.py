@@ -73,6 +73,9 @@ theme_labels = {
     "ocean": "Ocean",
     "sunset": "Sunset",
     "minimal": "Minimal",
+    "forest": "Forest (Green)",
+    "royal": "Royal (Purple)",
+    "tech": "Tech (Cyan)",
 }
 selected_theme = st.sidebar.selectbox(
     "Slide Theme",

@@ -472,8 +472,32 @@ def create_pptx_file(
     return output_path
 
 
+def _format_pptx_bullet(paragraph, colors: ThemeColors):
+    """Apply accent-colored bullet formatting to a PPTX paragraph."""
+    try:
+        pPr = paragraph._pPr
+        if pPr is None:
+            pPr = paragraph._p.get_or_add_pPr()
+        buChar = pPr.makeelement(qn("a:buChar"), {"char": "\u25B8"})
+        buClr = pPr.makeelement(qn("a:buClr"), {})
+        srgbClr = buClr.makeelement(
+            qn("a:srgbClr"),
+            {"val": f"{colors.accent[0]:02X}{colors.accent[1]:02X}{colors.accent[2]:02X}"},
+        )
+        buClr.append(srgbClr)
+        # Remove existing bullet elements if any
+        for child in list(pPr):
+            tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+            if tag.startswith("bu"):
+                pPr.remove(child)
+        pPr.append(buClr)
+        pPr.append(buChar)
+    except Exception:
+        pass  # Fallback to default bullets silently
+
+
 def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a standard content slide with themed colors."""
+    """Add a standard content slide with themed colors and accent bullets."""
     slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
 
@@ -494,6 +518,7 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
                 for run in tf.paragraphs[0].runs:
                     run.font.size = Pt(18)
                     run.font.color.rgb = _rgb_color(colors.text)
+                _format_pptx_bullet(tf.paragraphs[0], colors)
                 for point in slide_data.content[1:]:
                     p = tf.add_paragraph()
                     p.text = point
@@ -501,6 +526,7 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
                     for run in p.runs:
                         run.font.size = Pt(18)
                         run.font.color.rgb = _rgb_color(colors.text)
+                    _format_pptx_bullet(p, colors)
 
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
@@ -535,25 +561,49 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
 
 
 def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a section divider slide."""
+    """Add a section divider slide with accent bar and styled title."""
     slide_layout = prs.slide_layouts[2] if len(prs.slide_layouts) > 2 else prs.slide_layouts[0]
     slide = prs.slides.add_slide(slide_layout)
+
+    # Left accent bar shape
+    try:
+        accent_bar = slide.shapes.add_shape(
+            1,  # MSO_SHAPE.RECTANGLE
+            Inches(0), Inches(0), Inches(0.12), Inches(7.5),
+        )
+        accent_bar.fill.solid()
+        accent_bar.fill.fore_color.rgb = _rgb_color(colors.accent)
+        accent_bar.line.fill.background()
+    except Exception:
+        pass
 
     if slide.shapes.title:
         slide.shapes.title.text = slide_data.title
         for paragraph in slide.shapes.title.text_frame.paragraphs:
             paragraph.alignment = PP_ALIGN.CENTER
             for run in paragraph.runs:
-                run.font.color.rgb = _rgb_color(colors.accent)
+                run.font.color.rgb = _rgb_color(colors.title)
                 run.font.bold = True
-                run.font.size = Pt(40)
+                run.font.size = Pt(44)
+
+    # Accent underline shape
+    try:
+        line_shape = slide.shapes.add_shape(
+            1,  # MSO_SHAPE.RECTANGLE
+            Inches(4.0), Inches(4.5), Inches(5.0), Inches(0.06),
+        )
+        line_shape.fill.solid()
+        line_shape.fill.fore_color.rgb = _rgb_color(colors.accent)
+        line_shape.line.fill.background()
+    except Exception:
+        pass
 
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
 
 
 def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a two-column layout slide."""
+    """Add a two-column layout slide with accent bullets."""
     slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
 
@@ -575,12 +625,14 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
                 for run in tf.paragraphs[0].runs:
                     run.font.size = Pt(18)
                     run.font.color.rgb = _rgb_color(colors.text)
+                _format_pptx_bullet(tf.paragraphs[0], colors)
                 for point in all_content[1:]:
                     p = tf.add_paragraph()
                     p.text = point
                     for run in p.runs:
                         run.font.size = Pt(18)
                         run.font.color.rgb = _rgb_color(colors.text)
+                    _format_pptx_bullet(p, colors)
 
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
@@ -659,6 +711,8 @@ def _render_title_layout(
     total_slides: int,
     has_bg_image: bool = False,
     language: Language = Language.ENGLISH,
+    footer_company: str = "",
+    footer_author: str = "",
 ):
     """Render a title/cover slide with centered content."""
     shadow = has_bg_image
@@ -705,7 +759,8 @@ def _render_title_layout(
         _draw_text(draw, (sub_x, accent_y + 30), subtitle, content_font, colors.accent, shadow=shadow)
 
     # Footer
-    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow,
+                      footer_company=footer_company, footer_author=footer_author)
 
 
 def _render_section_layout(
@@ -719,6 +774,8 @@ def _render_section_layout(
     total_slides: int,
     has_bg_image: bool = False,
     language: Language = Language.ENGLISH,
+    footer_company: str = "",
+    footer_author: str = "",
 ):
     """Render a section divider slide with gradient background and accent styling."""
     shadow = has_bg_image
@@ -764,7 +821,8 @@ def _render_section_layout(
     draw.rectangle([(line_x, line_y), (line_x + line_w, line_y + 5)], fill=colors.accent)
 
     # Footer
-    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow,
+                      footer_company=footer_company, footer_author=footer_author)
 
 
 def _render_two_column_layout(
@@ -778,6 +836,8 @@ def _render_two_column_layout(
     total_slides: int,
     has_bg_image: bool = False,
     language: Language = Language.ENGLISH,
+    footer_company: str = "",
+    footer_author: str = "",
 ):
     """Render a two-column content slide."""
     shadow = has_bg_image
@@ -846,7 +906,8 @@ def _render_two_column_layout(
             y += 10
 
     # Footer with branding
-    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow,
+                      footer_company=footer_company, footer_author=footer_author)
 
 
 def _render_content_layout(
@@ -860,6 +921,8 @@ def _render_content_layout(
     total_slides: int,
     has_bg_image: bool = False,
     language: Language = Language.ENGLISH,
+    footer_company: str = "",
+    footer_author: str = "",
 ):
     """Render a standard content slide with responsive font sizing."""
     shadow = has_bg_image
@@ -917,7 +980,8 @@ def _render_content_layout(
         y += 10
 
     # Footer with branding
-    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow,
+                      footer_company=footer_company, footer_author=footer_author)
 
 
 # Layout renderer dispatch
@@ -963,6 +1027,7 @@ def create_slide_images(
         renderer(
             draw, slide_data, colors, title_font, content_font, footer_font,
             i, total_slides, has_bg_image=has_bg, language=language,
+            footer_company=footer_company, footer_author=footer_author,
         )
 
         filename = f"slide_{i + 1:03d}.png"

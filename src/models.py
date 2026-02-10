@@ -13,6 +13,9 @@ class SlideTheme(Enum):
     OCEAN = "ocean"
     SUNSET = "sunset"
     MINIMAL = "minimal"
+    FOREST = "forest"
+    ROYAL = "royal"
+    TECH = "tech"
 
 
 class SlideLayout(Enum):
@@ -172,6 +175,30 @@ THEMES = {
         title=(30, 30, 30),
         accent=(80, 80, 80),
         footer=(170, 170, 170),
+    ),
+    SlideTheme.FOREST: ThemeColors(
+        background=(245, 248, 243),
+        header=(39, 78, 19),
+        text=(45, 55, 40),
+        title=(255, 255, 255),
+        accent=(76, 175, 80),
+        footer=(140, 160, 130),
+    ),
+    SlideTheme.ROYAL: ThemeColors(
+        background=(240, 238, 248),
+        header=(63, 25, 118),
+        text=(50, 40, 70),
+        title=(255, 255, 255),
+        accent=(156, 39, 176),
+        footer=(140, 130, 160),
+    ),
+    SlideTheme.TECH: ThemeColors(
+        background=(18, 18, 28),
+        header=(10, 10, 20),
+        text=(200, 210, 220),
+        title=(255, 255, 255),
+        accent=(0, 188, 212),
+        footer=(80, 90, 100),
     ),
 }
 
