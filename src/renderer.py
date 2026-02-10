@@ -450,7 +450,6 @@ def create_pptx_file(
             _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.header)
         elif layout == SlideLayout.SECTION:
             _add_section_slide(prs, slide_data, colors)
-            _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.background)
         elif layout == SlideLayout.TWO_COLUMN:
             _add_two_column_slide(prs, slide_data, colors)
             _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.background)
@@ -717,6 +716,7 @@ def _populate_pptx_bullets(text_frame, items: list, colors: ThemeColors, font_si
     if not items:
         return
     text_frame.text = items[0]
+    text_frame.paragraphs[0].space_before = Pt(6)
     for run in text_frame.paragraphs[0].runs:
         run.font.size = Pt(font_size)
         run.font.color.rgb = _rgb_color(colors.text)
@@ -834,15 +834,50 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
 
 
 def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a section divider slide with accent bar and styled title."""
-    slide_layout = prs.slide_layouts[2] if len(prs.slide_layouts) > 2 else prs.slide_layouts[0]
+    """Add an enhanced section divider slide with gradient background, accent bar, and large title."""
+    slide_layout = prs.slide_layouts[5]  # blank layout for full control
     slide = prs.slides.add_slide(slide_layout)
+
+    # Full-slide gradient background (header -> lighter shade)
+    try:
+        from lxml import etree
+        bg_rect = slide.shapes.add_shape(
+            1, Inches(0), Inches(0), Inches(13.333), Inches(7.5),
+        )
+        bg_rect.line.fill.background()
+        r, g, b = colors.header
+        r2 = min(r + 50, 255)
+        g2 = min(g + 50, 255)
+        b2 = min(b + 50, 255)
+        sp_pr = bg_rect._element.find(qn("p:spPr"))
+        if sp_pr is None:
+            sp_pr = bg_rect._element.find(qn("a:spPr"))
+        if sp_pr is not None:
+            for child in list(sp_pr):
+                tag_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                if tag_local in ("solidFill", "gradFill", "noFill"):
+                    sp_pr.remove(child)
+            grad_xml = (
+                f'<a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                f'<a:gsLst>'
+                f'<a:gs pos="0"><a:srgbClr val="{r:02X}{g:02X}{b:02X}"/></a:gs>'
+                f'<a:gs pos="100000"><a:srgbClr val="{r2:02X}{g2:02X}{b2:02X}"/></a:gs>'
+                f'</a:gsLst>'
+                f'<a:lin ang="5400000" scaled="1"/>'
+                f'</a:gradFill>'
+            )
+            sp_pr.append(etree.fromstring(grad_xml))
+        # Move background to back
+        sp = bg_rect._element
+        sp.getparent().remove(sp)
+        slide.shapes._spTree.insert(2, sp)
+    except Exception:
+        _set_pptx_slide_background(slide, colors.header)
 
     # Left accent bar shape
     try:
         accent_bar = slide.shapes.add_shape(
-            1,  # MSO_SHAPE.RECTANGLE
-            Inches(0), Inches(0), Inches(0.12), Inches(7.5),
+            1, Inches(0), Inches(0), Inches(0.12), Inches(7.5),
         )
         accent_bar.fill.solid()
         accent_bar.fill.fore_color.rgb = _rgb_color(colors.accent)
@@ -850,20 +885,23 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
     except Exception:
         pass
 
-    if slide.shapes.title:
-        slide.shapes.title.text = slide_data.title
-        for paragraph in slide.shapes.title.text_frame.paragraphs:
-            paragraph.alignment = PP_ALIGN.CENTER
-            for run in paragraph.runs:
-                run.font.color.rgb = _rgb_color(colors.title)
-                run.font.bold = True
-                run.font.size = Pt(44)
+    # Large centered title text box
+    title_box = slide.shapes.add_textbox(
+        Inches(1.0), Inches(2.5), Inches(11.3), Inches(2.0),
+    )
+    title_box.text_frame.word_wrap = True
+    title_box.text_frame.text = slide_data.title
+    for paragraph in title_box.text_frame.paragraphs:
+        paragraph.alignment = PP_ALIGN.CENTER
+        for run in paragraph.runs:
+            run.font.color.rgb = _rgb_color(colors.title)
+            run.font.bold = True
+            run.font.size = Pt(54)
 
-    # Accent underline shape
+    # Accent underline shape (centered below title)
     try:
         line_shape = slide.shapes.add_shape(
-            1,  # MSO_SHAPE.RECTANGLE
-            Inches(4.0), Inches(4.5), Inches(5.0), Inches(0.06),
+            1, Inches(4.0), Inches(4.7), Inches(5.0), Inches(0.06),
         )
         line_shape.fill.solid()
         line_shape.fill.fore_color.rgb = _rgb_color(colors.accent)

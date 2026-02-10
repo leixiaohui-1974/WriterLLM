@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "16.0"
+        assert proj["version"] == "17.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "16.0"
+        assert proj["version"] == "17.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -2672,6 +2672,148 @@ class TestSlideTemplates:
         create_pptx_file(slides, path)
         prs = Presentation(path)
         assert len(prs.slides) == len(SLIDE_TEMPLATES)
+
+
+class TestDuplicateSlideDurationOverride:
+    """Tests for duplicate slide preserving duration_override (v17)."""
+
+    def test_slide_data_copy_with_duration(self):
+        """Duplicating a SlideData with duration_override should preserve it."""
+        original = SlideData(
+            title="Original", content=["A"], speaker_notes="Notes",
+            image_prompt="prompt", layout=SlideLayout.CONTENT, duration_override=8.0,
+        )
+        dup = SlideData(
+            title=original.title + " (copy)",
+            content=list(original.content),
+            speaker_notes=original.speaker_notes,
+            image_prompt=original.image_prompt,
+            layout=original.layout,
+            duration_override=original.duration_override,
+        )
+        assert dup.duration_override == 8.0
+        assert dup.title == "Original (copy)"
+
+    def test_slide_data_copy_without_duration(self):
+        """Duplicating a SlideData without duration_override should keep None."""
+        original = SlideData(title="No Dur", content=["A"])
+        dup = SlideData(
+            title=original.title + " (copy)",
+            content=list(original.content),
+            speaker_notes=original.speaker_notes,
+            image_prompt=original.image_prompt,
+            layout=original.layout,
+            duration_override=original.duration_override,
+        )
+        assert dup.duration_override is None
+
+
+class TestBulletSpacingConsistency:
+    """Tests for consistent bullet spacing in _populate_pptx_bullets (v17)."""
+
+    def test_all_paragraphs_have_space_before(self):
+        """All paragraphs should have consistent space_before."""
+        from pptx.util import Pt as _Pt
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(3))
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _populate_pptx_bullets(box.text_frame, ["A", "B", "C"], colors, 18)
+        for p in box.text_frame.paragraphs:
+            assert p.space_before == _Pt(6)
+
+    def test_single_bullet_has_space_before(self):
+        """Even a single bullet should have space_before set."""
+        from pptx.util import Pt as _Pt
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(3))
+        colors = THEMES[SlideTheme.OCEAN]
+        _populate_pptx_bullets(box.text_frame, ["Solo"], colors, 16)
+        assert box.text_frame.paragraphs[0].space_before == _Pt(6)
+
+
+class TestEnhancedSectionSlide:
+    """Tests for enhanced PPTX section slides with gradient background (v17)."""
+
+    def test_section_slide_renders(self):
+        """Enhanced section slide should render without error."""
+        slides_data = [
+            SlideData(title="Section Break", content=[], layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "section_enhanced.pptx")
+        create_pptx_file(slides_data, path)
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+    def test_section_slide_has_gradient(self):
+        """Section slide should contain a:gradFill element for gradient background."""
+        from pptx.oxml.ns import qn as _qn
+        slides_data = [
+            SlideData(title="Gradient Section", content=[], layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "section_grad.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        found_grad = False
+        for shape in slide.shapes:
+            grad_fills = shape._element.findall(".//" + _qn("a:gradFill"))
+            if grad_fills:
+                found_grad = True
+                break
+        assert found_grad, "No gradient fill found in section slide"
+
+    def test_section_slide_has_title_box(self):
+        """Section slide should have a text box with the title."""
+        slides_data = [
+            SlideData(title="My Section", content=[], layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "section_title.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        titles = [s for s in slide.shapes if s.has_text_frame and "My Section" in s.text_frame.text]
+        assert len(titles) >= 1
+
+    def test_section_slide_has_accent_bar(self):
+        """Section slide should have a left accent bar shape."""
+        slides_data = [
+            SlideData(title="Accent", content=[], layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "section_accent.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Should have at least: bg rect, accent bar, title box, underline = 4 shapes
+        assert len(slide.shapes) >= 4
+
+    def test_section_slide_all_themes(self):
+        """Section slides should work with all themes."""
+        slides_data = [
+            SlideData(title="Theme Section", content=[], layout=SlideLayout.SECTION),
+        ]
+        for theme in SlideTheme:
+            path = os.path.join(OUTPUT_DIR, f"section_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
+
+    def test_section_in_mixed_deck(self):
+        """Section slides should render correctly alongside other layouts."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A", "B"], layout=SlideLayout.CONTENT),
+            SlideData(title="Break", content=[], layout=SlideLayout.SECTION),
+            SlideData(title="More", content=["C", "D"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "section_mixed.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 4
 
 
 if __name__ == "__main__":

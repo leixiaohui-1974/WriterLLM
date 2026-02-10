@@ -473,6 +473,7 @@ if uploaded_file:
                             speaker_notes=slide.speaker_notes,
                             image_prompt=slide.image_prompt,
                             layout=slide.layout,
+                            duration_override=slide.duration_override,
                         )
                         slides.insert(i + 1, dup)
                         st.session_state.slides_data = slides
@@ -794,6 +795,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v16.0")
+st.sidebar.caption("AutoPresentation AI v17.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")
