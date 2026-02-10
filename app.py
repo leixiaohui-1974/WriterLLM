@@ -432,12 +432,23 @@ if uploaded_file:
                 )
                 slides[i].speaker_notes = new_notes
 
-                # Image prompt
-                new_img_prompt = st.text_input(
-                    "Image Prompt (for AI background)",
-                    value=slide.image_prompt, key=f"img_prompt_{i}",
-                )
-                slides[i].image_prompt = new_img_prompt
+                # Image prompt and duration
+                prompt_dur = st.columns([3, 1])
+                with prompt_dur[0]:
+                    new_img_prompt = st.text_input(
+                        "Image Prompt (for AI background)",
+                        value=slide.image_prompt, key=f"img_prompt_{i}",
+                    )
+                    slides[i].image_prompt = new_img_prompt
+                with prompt_dur[1]:
+                    cur_dur = slide.duration_override if slide.duration_override else 0
+                    new_dur = st.number_input(
+                        "Min Duration (s)",
+                        min_value=0, max_value=60, value=int(cur_dur), step=1,
+                        key=f"dur_{i}",
+                        help="Minimum slide duration in video (0 = auto from audio).",
+                    )
+                    slides[i].duration_override = float(new_dur) if new_dur > 0 else None
 
                 # Actions row
                 action_cols = st.columns(4)
@@ -573,10 +584,12 @@ if uploaded_file:
                         progress_bar.progress(min(pct, 95), text=f"Processing slide {current + 1}/{total}...")
 
                     try:
+                        dur_overrides = [s.duration_override for s in slides]
                         create_video_presentation(
                             image_paths, scripts, video_path,
                             voice=voice, progress_callback=video_progress,
                             speaking_rate=config.speaking_rate,
+                            duration_overrides=dur_overrides,
                         )
                     except Exception as e:
                         logger.error("Video generation failed: %s", e)
@@ -767,6 +780,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v12.0")
+st.sidebar.caption("AutoPresentation AI v13.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

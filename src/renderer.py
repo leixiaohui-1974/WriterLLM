@@ -720,36 +720,80 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
 
 
 def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a two-column layout slide with accent bullets."""
-    slide_layout = prs.slide_layouts[1]
+    """Add a two-column layout slide with dual text boxes and divider."""
+    slide_layout = prs.slide_layouts[5]  # blank layout
     slide = prs.slides.add_slide(slide_layout)
 
-    if slide.shapes.title:
-        slide.shapes.title.text = slide_data.title
-        for paragraph in slide.shapes.title.text_frame.paragraphs:
-            for run in paragraph.runs:
-                run.font.color.rgb = _rgb_color(colors.header)
-                run.font.bold = True
-                run.font.size = Pt(32)
+    _set_pptx_slide_background(slide, colors.background)
 
-    if len(slide.placeholders) > 1:
-        ph = slide.placeholders[1]
-        if ph.has_text_frame:
-            tf = ph.text_frame
-            all_content = slide_data.content
-            if all_content:
-                tf.text = all_content[0]
-                for run in tf.paragraphs[0].runs:
-                    run.font.size = Pt(18)
-                    run.font.color.rgb = _rgb_color(colors.text)
-                _format_pptx_bullet(tf.paragraphs[0], colors)
-                for point in all_content[1:]:
-                    p = tf.add_paragraph()
-                    p.text = point
-                    for run in p.runs:
-                        run.font.size = Pt(18)
-                        run.font.color.rgb = _rgb_color(colors.text)
-                    _format_pptx_bullet(p, colors)
+    # Title text box
+    from pptx.util import Inches, Pt, Emu
+    title_box = slide.shapes.add_textbox(
+        Inches(0.5), Inches(0.3), Inches(12.3), Inches(1.0),
+    )
+    title_box.text_frame.word_wrap = True
+    title_box.text_frame.text = slide_data.title
+    for paragraph in title_box.text_frame.paragraphs:
+        for run in paragraph.runs:
+            run.font.color.rgb = _rgb_color(colors.header)
+            run.font.bold = True
+            run.font.size = Pt(32)
+
+    # Vertical divider line
+    try:
+        divider = slide.shapes.add_shape(
+            1,  # MSO_SHAPE.RECTANGLE
+            Inches(6.55), Inches(1.6), Inches(0.03), Inches(5.0),
+        )
+        divider.fill.solid()
+        divider.fill.fore_color.rgb = _rgb_color(colors.accent)
+        divider.line.fill.background()
+    except Exception:
+        pass
+
+    # Split content into two columns
+    content = slide_data.content
+    mid = max(1, len(content) // 2)
+    left_items = content[:mid]
+    right_items = content[mid:]
+
+    # Left column text box
+    left_box = slide.shapes.add_textbox(
+        Inches(0.5), Inches(1.6), Inches(5.9), Inches(5.0),
+    )
+    left_box.text_frame.word_wrap = True
+    if left_items:
+        left_box.text_frame.text = left_items[0]
+        _format_pptx_bullet(left_box.text_frame.paragraphs[0], colors)
+        for run in left_box.text_frame.paragraphs[0].runs:
+            run.font.size = Pt(16)
+            run.font.color.rgb = _rgb_color(colors.text)
+        for point in left_items[1:]:
+            p = left_box.text_frame.add_paragraph()
+            p.text = point
+            _format_pptx_bullet(p, colors)
+            for run in p.runs:
+                run.font.size = Pt(16)
+                run.font.color.rgb = _rgb_color(colors.text)
+
+    # Right column text box
+    right_box = slide.shapes.add_textbox(
+        Inches(6.8), Inches(1.6), Inches(5.9), Inches(5.0),
+    )
+    right_box.text_frame.word_wrap = True
+    if right_items:
+        right_box.text_frame.text = right_items[0]
+        _format_pptx_bullet(right_box.text_frame.paragraphs[0], colors)
+        for run in right_box.text_frame.paragraphs[0].runs:
+            run.font.size = Pt(16)
+            run.font.color.rgb = _rgb_color(colors.text)
+        for point in right_items[1:]:
+            p = right_box.text_frame.add_paragraph()
+            p.text = point
+            _format_pptx_bullet(p, colors)
+            for run in p.runs:
+                run.font.size = Pt(16)
+                run.font.color.rgb = _rgb_color(colors.text)
 
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes

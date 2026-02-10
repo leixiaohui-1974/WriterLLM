@@ -4,6 +4,7 @@ Supports OpenAI-compatible APIs with retry logic, multi-language prompts, and la
 """
 import json
 import logging
+import re
 import time
 from typing import List, Optional
 
@@ -16,6 +17,49 @@ try:
 except ImportError:
     OpenAI = None
     logger.warning("openai package not installed; LLM generation unavailable.")
+
+
+def _extract_json(text: str) -> dict:
+    """Extract JSON from a response that may contain markdown code fences or extra text.
+
+    Tries, in order:
+    1. Direct ``json.loads`` on the full text.
+    2. Extract content inside ```json ... ``` code fences.
+    3. Find the first ``{`` ... ``}`` block and parse it.
+
+    Raises ``json.JSONDecodeError`` if all strategies fail.
+    """
+    # Strategy 1: direct parse
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Strategy 2: markdown code fence
+    fence_match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+    if fence_match:
+        try:
+            return json.loads(fence_match.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # Strategy 3: first { ... } block
+    brace_start = text.find("{")
+    if brace_start != -1:
+        depth = 0
+        for idx in range(brace_start, len(text)):
+            if text[idx] == "{":
+                depth += 1
+            elif text[idx] == "}":
+                depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[brace_start:idx + 1])
+                except json.JSONDecodeError:
+                    break
+
+    raise json.JSONDecodeError("No valid JSON found in response", text, 0)
 
 
 # Language-specific system prompts
@@ -507,7 +551,7 @@ def llm_generate_content(
                 temperature=0.7,
             )
             content = response.choices[0].message.content
-            data = json.loads(content)
+            data = _extract_json(content)
 
             slides_raw = None
             if "slides" in data:

@@ -64,15 +64,19 @@ class SlideData:
     speaker_notes: str = ""
     image_prompt: str = ""
     layout: SlideLayout = SlideLayout.CONTENT
+    duration_override: Optional[float] = None  # Min seconds for video (None = auto)
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "title": self.title,
             "content": self.content,
             "speaker_notes": self.speaker_notes,
             "image_prompt": self.image_prompt,
             "layout": self.layout.value,
         }
+        if self.duration_override is not None:
+            d["duration_override"] = self.duration_override
+        return d
 
     @classmethod
     def from_dict(cls, data: dict) -> "SlideData":
@@ -81,12 +85,14 @@ class SlideData:
             layout = SlideLayout(layout_str)
         except ValueError:
             layout = SlideLayout.CONTENT
+        dur = data.get("duration_override")
         return cls(
             title=data.get("title", "Untitled"),
             content=data.get("content", []),
             speaker_notes=data.get("speaker_notes", ""),
             image_prompt=data.get("image_prompt", ""),
             layout=layout,
+            duration_override=float(dur) if dur is not None else None,
         )
 
 

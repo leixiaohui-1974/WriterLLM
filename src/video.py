@@ -182,6 +182,7 @@ def create_video_presentation(
     enable_transitions: bool = True,
     speaking_rate: str = "+0%",
     generate_subtitles: bool = True,
+    duration_overrides: Optional[List[Optional[float]]] = None,
 ) -> Optional[str]:
     """
     Create a video presentation from slide images and text scripts.
@@ -195,6 +196,7 @@ def create_video_presentation(
         enable_transitions: Whether to add fade transitions between slides.
         speaking_rate: TTS speaking rate (e.g., "+0%", "+20%", "-10%").
         generate_subtitles: Whether to generate an SRT subtitle file alongside the video.
+        duration_overrides: Optional list of minimum durations (seconds) per slide.
 
     Returns:
         Output path on success, None on failure.
@@ -223,22 +225,32 @@ def create_video_presentation(
             audio_path = os.path.join(temp_audio_dir, f"audio_{i:03d}.mp3")
             generated_audio = generate_voiceover(script, audio_path, voice, rate=speaking_rate)
 
+            # Per-slide minimum duration override
+            min_dur = None
+            if duration_overrides and i < len(duration_overrides):
+                min_dur = duration_overrides[i]
+
             if generated_audio:
                 try:
                     audio_clip = AudioFileClip(generated_audio)
                     duration = audio_clip.duration + AUDIO_PADDING
+                    # Apply minimum duration override
+                    if min_dur is not None and min_dur > duration:
+                        duration = min_dur
                     img_clip = ImageClip(img_path).with_duration(duration).with_audio(audio_clip)
                     clips.append(img_clip)
                     slide_durations.append(duration)
                     logger.debug("Slide %d: %.1fs with audio", i + 1, duration)
                 except Exception as e:
                     logger.warning("Slide %d: audio clip error (%s), using default duration", i + 1, e)
-                    clips.append(ImageClip(img_path).with_duration(DEFAULT_SLIDE_DURATION))
-                    slide_durations.append(DEFAULT_SLIDE_DURATION)
+                    fallback = max(DEFAULT_SLIDE_DURATION, min_dur or 0)
+                    clips.append(ImageClip(img_path).with_duration(fallback))
+                    slide_durations.append(fallback)
             else:
-                logger.info("Slide %d: no audio, using default %ss duration", i + 1, DEFAULT_SLIDE_DURATION)
-                clips.append(ImageClip(img_path).with_duration(DEFAULT_SLIDE_DURATION))
-                slide_durations.append(DEFAULT_SLIDE_DURATION)
+                fallback = max(DEFAULT_SLIDE_DURATION, min_dur or 0)
+                logger.info("Slide %d: no audio, using %.1fs duration", i + 1, fallback)
+                clips.append(ImageClip(img_path).with_duration(fallback))
+                slide_durations.append(fallback)
 
         if not clips:
             logger.error("No video clips created")

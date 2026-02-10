@@ -24,7 +24,7 @@ from src.renderer import (
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES, serialize_project, deserialize_project
-from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content
+from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
 from src.renderer import _add_pptx_entrance_animations, PPTX_TRANSITION_TYPES
 
@@ -2015,6 +2015,176 @@ class TestPresenterNotesExport:
             notes_lines.append("")
         notes_text = "\n".join(notes_lines)
         assert "\u6b22\u8fce\u5927\u5bb6" in notes_text
+
+
+class TestPPTXTwoColumnDualBoxes:
+    """Tests for PPTX two-column with dual text boxes (v13)."""
+
+    def test_two_column_pptx_has_divider(self):
+        """Two-column PPTX should have a divider shape."""
+        slides_data = [
+            SlideData(title="Compare", content=["Left A", "Left B", "Right C", "Right D"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "two_col_dual.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Should have shapes: title box, divider, left box, right box = at least 4
+        assert len(slide.shapes) >= 4
+
+    def test_two_column_pptx_content_split(self):
+        """Content should be split between two text boxes."""
+        slides_data = [
+            SlideData(title="Split", content=["A", "B", "C", "D"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "two_col_split.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Count text boxes with actual content
+        text_shapes = [s for s in slide.shapes if s.has_text_frame and s.text_frame.text.strip()]
+        # Should have title + left + right = 3 text-containing shapes
+        assert len(text_shapes) >= 3
+
+    def test_two_column_pptx_single_item(self):
+        """Single-item two-column should still render."""
+        slides_data = [
+            SlideData(title="Solo", content=["Only one item"], layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "two_col_solo.pptx")
+        create_pptx_file(slides_data, path)
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+    def test_two_column_pptx_many_items(self):
+        """Many items in two-column should not crash."""
+        slides_data = [
+            SlideData(title="Many", content=[f"Item {i}" for i in range(12)],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "two_col_many.pptx")
+        create_pptx_file(slides_data, path)
+        assert os.path.exists(path)
+
+    def test_two_column_all_themes(self):
+        """Two-column dual boxes should work across themes."""
+        slides_data = [
+            SlideData(title="Theme Test", content=["A", "B", "C", "D"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        for theme in [SlideTheme.DARK, SlideTheme.OCEAN, SlideTheme.TECH]:
+            path = os.path.join(OUTPUT_DIR, f"two_col_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
+
+
+class TestExtractJson:
+    """Tests for _extract_json helper (v13)."""
+
+    def test_plain_json(self):
+        """Plain JSON string should parse directly."""
+        data = _extract_json('{"slides": [{"title": "A"}]}')
+        assert data["slides"][0]["title"] == "A"
+
+    def test_json_in_code_fence(self):
+        """JSON inside markdown code fence should be extracted."""
+        text = 'Here is the result:\n```json\n{"slides": [{"title": "B"}]}\n```\nDone.'
+        data = _extract_json(text)
+        assert data["slides"][0]["title"] == "B"
+
+    def test_json_in_plain_fence(self):
+        """JSON inside ``` fence without json tag should work."""
+        text = '```\n{"key": "value"}\n```'
+        data = _extract_json(text)
+        assert data["key"] == "value"
+
+    def test_json_with_leading_text(self):
+        """JSON preceded by non-JSON text should be extracted."""
+        text = 'The response is: {"slides": [{"title": "C"}]}'
+        data = _extract_json(text)
+        assert data["slides"][0]["title"] == "C"
+
+    def test_json_with_trailing_text(self):
+        """JSON followed by non-JSON text should be extracted."""
+        text = '{"answer": 42} hope this helps!'
+        data = _extract_json(text)
+        assert data["answer"] == 42
+
+    def test_nested_json_extraction(self):
+        """Nested JSON objects should parse correctly."""
+        text = 'Output: {"outer": {"inner": [1, 2, 3]}} end'
+        data = _extract_json(text)
+        assert data["outer"]["inner"] == [1, 2, 3]
+
+    def test_invalid_json_raises(self):
+        """Completely invalid text should raise JSONDecodeError."""
+        import json
+        with pytest.raises(json.JSONDecodeError):
+            _extract_json("This is not JSON at all")
+
+    def test_empty_string_raises(self):
+        """Empty string should raise JSONDecodeError."""
+        import json
+        with pytest.raises(json.JSONDecodeError):
+            _extract_json("")
+
+
+class TestSlideDurationOverride:
+    """Tests for per-slide duration override (v13)."""
+
+    def test_duration_override_default_none(self):
+        """SlideData should default to None duration_override."""
+        s = SlideData(title="T", content=["A"])
+        assert s.duration_override is None
+
+    def test_duration_override_set(self):
+        """duration_override should be settable."""
+        s = SlideData(title="T", content=["A"], duration_override=5.0)
+        assert s.duration_override == 5.0
+
+    def test_duration_override_to_dict(self):
+        """to_dict should include duration_override when set."""
+        s = SlideData(title="T", content=["A"], duration_override=10.0)
+        d = s.to_dict()
+        assert d["duration_override"] == 10.0
+
+    def test_duration_override_to_dict_none(self):
+        """to_dict should omit duration_override when None."""
+        s = SlideData(title="T", content=["A"])
+        d = s.to_dict()
+        assert "duration_override" not in d
+
+    def test_duration_override_from_dict(self):
+        """from_dict should restore duration_override."""
+        d = {"title": "T", "content": ["A"], "duration_override": 7.5}
+        s = SlideData.from_dict(d)
+        assert s.duration_override == 7.5
+
+    def test_duration_override_from_dict_missing(self):
+        """from_dict without duration_override should default to None."""
+        d = {"title": "T", "content": ["A"]}
+        s = SlideData.from_dict(d)
+        assert s.duration_override is None
+
+    def test_duration_override_roundtrip(self):
+        """Serialize then deserialize should preserve duration."""
+        original = SlideData(title="T", content=["A"], duration_override=15.0)
+        d = original.to_dict()
+        loaded = SlideData.from_dict(d)
+        assert loaded.duration_override == original.duration_override
+
+    def test_duration_override_project_roundtrip(self):
+        """Project save/load should preserve duration_override."""
+        slides = [
+            SlideData(title="S1", content=["A"], duration_override=5.0),
+            SlideData(title="S2", content=["B"]),
+        ]
+        proj = serialize_project(slides, language="en")
+        loaded_slides, _ = deserialize_project(proj)
+        assert loaded_slides[0].duration_override == 5.0
+        assert loaded_slides[1].duration_override is None
 
 
 if __name__ == "__main__":
