@@ -16,7 +16,7 @@ from src.models import (
     MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES,
 )
 from src.parser import parse_document, SUPPORTED_EXTENSIONS
-from src.generator import generate_slides
+from src.generator import generate_slides, validate_content
 from src.renderer import create_pptx_file, create_slide_images, create_pdf_from_images
 from src.video import create_video_presentation
 from src.image_gen import generate_slide_images_batch
@@ -43,6 +43,7 @@ _SESSION_DEFAULTS = {
     "pdf_path": None,
     "video_path": None,
     "image_paths": [],
+    "srt_path": None,
 }
 for key, default in _SESSION_DEFAULTS.items():
     if key not in st.session_state:
@@ -160,6 +161,16 @@ with st.sidebar.expander("Advanced Options"):
         min_value=0, max_value=255, value=130,
         help="Controls how much the theme overlay covers AI background images (0=transparent, 255=opaque).",
     )
+    enable_animations = st.checkbox(
+        "Bullet Animations (PPTX)",
+        value=True,
+        help="Enable click-to-appear entrance animations for bullet points in PowerPoint.",
+    )
+    transition_duration_ms = st.slider(
+        "Transition Duration (ms)",
+        min_value=200, max_value=2000, value=700, step=100,
+        help="Duration of fade transitions between slides in PPTX.",
+    )
 
 # -- Main Content --
 st.title("AutoPresentation AI")
@@ -206,6 +217,8 @@ if uploaded_file:
         speaking_rate=speaking_rate,
         footer_company=footer_company,
         footer_author=footer_author,
+        enable_animations=enable_animations,
+        transition_duration_ms=transition_duration_ms,
         export_formats=export_formats,
     )
 
@@ -277,6 +290,13 @@ if uploaded_file:
                 st.text(text[:preview_len])
                 if len(text) > preview_len:
                     st.caption(f"... ({len(text) - preview_len} more characters)")
+
+        # Content validation warnings
+        content_warnings = validate_content(slides)
+        if content_warnings:
+            with st.expander(f"Content Warnings ({len(content_warnings)})", expanded=False):
+                for w in content_warnings:
+                    st.warning(w)
 
         st.subheader("Slide Editor")
         st.caption("Edit slide content below, then click 'Create Presentation' to render.")
@@ -415,6 +435,8 @@ if uploaded_file:
                         background_images=ai_bg_images if ai_bg_images else None,
                         footer_company=config.footer_company,
                         footer_author=config.footer_author,
+                        enable_animations=config.enable_animations,
+                        transition_duration_ms=config.transition_duration_ms,
                     )
 
                 # Slide Images (needed for PDF and video)
@@ -469,6 +491,9 @@ if uploaded_file:
                 st.session_state.pdf_path = pdf_path
                 st.session_state.video_path = video_path
                 st.session_state.image_paths = image_paths
+                # SRT subtitle file is auto-generated alongside video
+                srt_path = os.path.join(output_dir, "presentation.srt")
+                st.session_state.srt_path = srt_path if os.path.exists(srt_path) else None
                 st.session_state.render_complete = True
                 st.session_state.phase = "render"
 
@@ -551,6 +576,17 @@ if uploaded_file:
                                 use_container_width=True,
                             )
 
+                # SRT subtitle download
+                srt_path = st.session_state.srt_path
+                if srt_path and os.path.exists(srt_path):
+                    with open(srt_path, "r", encoding="utf-8") as f:
+                        st.download_button(
+                            "Download Subtitles (SRT)",
+                            f.read(),
+                            file_name="presentation.srt",
+                            mime="text/plain",
+                        )
+
                 # Video player
                 if video_path and os.path.exists(video_path):
                     st.subheader("Video Preview")
@@ -558,6 +594,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v7.0")
+st.sidebar.caption("AutoPresentation AI v9.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

@@ -428,6 +428,8 @@ def create_pptx_file(
     background_images: Optional[dict] = None,
     footer_company: str = "",
     footer_author: str = "",
+    enable_animations: bool = True,
+    transition_duration_ms: int = 700,
 ) -> str:
     """Create a themed PowerPoint file from slide data with optional AI backgrounds."""
     prs = Presentation()
@@ -461,15 +463,128 @@ def create_pptx_file(
 
         # Add slide transition and footer
         current_slide = prs.slides[len(prs.slides) - 1]
-        _add_pptx_slide_transition(current_slide)
+        _add_pptx_slide_transition(current_slide, duration_ms=transition_duration_ms)
         _add_pptx_slide_number(
             current_slide, i, total_slides, colors,
             footer_company=footer_company, footer_author=footer_author,
         )
 
+        # Add bullet-by-bullet entrance animations for content slides
+        if enable_animations and layout in (SlideLayout.CONTENT, SlideLayout.TWO_COLUMN):
+            if len(current_slide.placeholders) > 1:
+                ph = current_slide.placeholders[1]
+                if ph.has_text_frame:
+                    num_paras = len(ph.text_frame.paragraphs)
+                    if num_paras > 0:
+                        _add_pptx_entrance_animations(
+                            current_slide, ph.shape_id, num_paras,
+                        )
+
     prs.save(output_path)
     logger.info("PPTX saved: %s (%d slides, theme: %s)", output_path, len(slides_data), theme.value)
     return output_path
+
+
+def _add_pptx_entrance_animations(slide, content_shape_id: int, num_paragraphs: int):
+    """Add click-to-appear entrance animations for each bullet paragraph in a shape."""
+    if num_paragraphs <= 0:
+        return
+    try:
+        from lxml import etree
+
+        # Build p:timing > p:tnLst > p:par (root) > p:cTn (tmRoot)
+        timing = etree.SubElement(slide._element, qn("p:timing"))
+        tnLst = etree.SubElement(timing, qn("p:tnLst"))
+        par_root = etree.SubElement(tnLst, qn("p:par"))
+        cTn_root = etree.SubElement(par_root, qn("p:cTn"), attrib={
+            "id": "1", "dur": "indefinite", "restart": "never", "nodeType": "tmRoot",
+        })
+        childTnLst_root = etree.SubElement(cTn_root, qn("p:childTnLst"))
+
+        # Main sequence
+        seq = etree.SubElement(childTnLst_root, qn("p:seq"), attrib={
+            "concurrent": "1", "nextAc": "seek",
+        })
+        cTn_seq = etree.SubElement(seq, qn("p:cTn"), attrib={
+            "id": "2", "dur": "indefinite", "nodeType": "mainSeq",
+        })
+        childTnLst_seq = etree.SubElement(cTn_seq, qn("p:childTnLst"))
+
+        anim_id = 3
+        for para_idx in range(num_paragraphs):
+            # Each paragraph: par > cTn > childTnLst > par > cTn > childTnLst > par > cTn (clickEffect)
+            par1 = etree.SubElement(childTnLst_seq, qn("p:par"))
+            cTn1 = etree.SubElement(par1, qn("p:cTn"), attrib={
+                "id": str(anim_id), "fill": "hold",
+            })
+            anim_id += 1
+            stCond1 = etree.SubElement(cTn1, qn("p:stCondLst"))
+            etree.SubElement(stCond1, qn("p:cond"), attrib={"delay": "0"})
+
+            child1 = etree.SubElement(cTn1, qn("p:childTnLst"))
+            par2 = etree.SubElement(child1, qn("p:par"))
+            cTn2 = etree.SubElement(par2, qn("p:cTn"), attrib={
+                "id": str(anim_id), "fill": "hold",
+            })
+            anim_id += 1
+            stCond2 = etree.SubElement(cTn2, qn("p:stCondLst"))
+            etree.SubElement(stCond2, qn("p:cond"), attrib={"delay": "0"})
+
+            child2 = etree.SubElement(cTn2, qn("p:childTnLst"))
+            par3 = etree.SubElement(child2, qn("p:par"))
+            cTn3 = etree.SubElement(par3, qn("p:cTn"), attrib={
+                "id": str(anim_id), "presetID": "1", "presetClass": "entr",
+                "presetSubtype": "0", "fill": "hold", "nodeType": "clickEffect",
+            })
+            anim_id += 1
+            stCond3 = etree.SubElement(cTn3, qn("p:stCondLst"))
+            etree.SubElement(stCond3, qn("p:cond"), attrib={"delay": "0"})
+
+            # Set visibility to visible
+            child3 = etree.SubElement(cTn3, qn("p:childTnLst"))
+            set_elem = etree.SubElement(child3, qn("p:set"))
+            cBhvr = etree.SubElement(set_elem, qn("p:cBhvr"))
+            cTn4 = etree.SubElement(cBhvr, qn("p:cTn"), attrib={
+                "id": str(anim_id), "dur": "1", "fill": "hold",
+            })
+            anim_id += 1
+            stCond4 = etree.SubElement(cTn4, qn("p:stCondLst"))
+            etree.SubElement(stCond4, qn("p:cond"), attrib={"delay": "0"})
+
+            # Target element: specific paragraph in the shape
+            tgtEl = etree.SubElement(cBhvr, qn("p:tgtEl"))
+            spTgt = etree.SubElement(tgtEl, qn("p:spTgt"), attrib={
+                "spid": str(content_shape_id),
+            })
+            txEl = etree.SubElement(spTgt, qn("p:txEl"))
+            etree.SubElement(txEl, qn("p:pRg"), attrib={
+                "st": str(para_idx), "end": str(para_idx),
+            })
+
+            attrNameLst = etree.SubElement(cBhvr, qn("p:attrNameLst"))
+            attrName = etree.SubElement(attrNameLst, qn("p:attrName"))
+            attrName.text = "style.visibility"
+
+            to_elem = etree.SubElement(set_elem, qn("p:to"))
+            etree.SubElement(to_elem, qn("p:strVal"), attrib={"val": "visible"})
+
+        # Navigation conditions for the sequence
+        prevCondLst = etree.SubElement(seq, qn("p:prevCondLst"))
+        prevCond = etree.SubElement(prevCondLst, qn("p:cond"), attrib={
+            "evt": "onPrev", "delay": "0",
+        })
+        prevTgt = etree.SubElement(prevCond, qn("p:tgtEl"))
+        etree.SubElement(prevTgt, qn("p:sldTgt"))
+
+        nextCondLst = etree.SubElement(seq, qn("p:nextCondLst"))
+        nextCond = etree.SubElement(nextCondLst, qn("p:cond"), attrib={
+            "evt": "onNext", "delay": "0",
+        })
+        nextTgt = etree.SubElement(nextCond, qn("p:tgtEl"))
+        etree.SubElement(nextTgt, qn("p:sldTgt"))
+
+    except Exception as e:
+        logger.debug("Could not add entrance animations: %s", e)
 
 
 def _format_pptx_bullet(paragraph, colors: ThemeColors):

@@ -24,7 +24,9 @@ from src.renderer import (
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES
-from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _build_speaker_notes, _TRANSITION_PHRASES
+from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, validate_content
+from src.video import generate_srt_subtitles, _format_srt_timestamp
+from src.renderer import _add_pptx_entrance_animations
 
 
 OUTPUT_DIR = "test_output"
@@ -1266,6 +1268,252 @@ class TestPPTXSectionEnhanced:
             path = os.path.join(OUTPUT_DIR, f"pptx_sec_{theme.value}.pptx")
             create_pptx_file(slides_data, path, theme=theme)
             assert os.path.exists(path)
+
+
+class TestPPTXEntranceAnimations:
+    """Tests for PPTX bullet-by-bullet entrance animations (v9)."""
+
+    def test_animation_does_not_raise(self):
+        """Adding entrance animations to a slide should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        if len(slide.placeholders) > 1:
+            ph = slide.placeholders[1]
+            if ph.has_text_frame:
+                ph.text_frame.text = "First"
+                ph.text_frame.add_paragraph().text = "Second"
+                _add_pptx_entrance_animations(slide, ph.shape_id, 2)
+
+    def test_animation_zero_paragraphs(self):
+        """Zero paragraphs should be a no-op."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        _add_pptx_entrance_animations(slide, 99, 0)  # should not raise
+
+    def test_pptx_with_animations_enabled(self):
+        """PPTX with animations enabled should produce a valid file."""
+        slides_data = [
+            SlideData(title="Animated", content=["A", "B", "C"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "animated.pptx")
+        create_pptx_file(slides_data, path, enable_animations=True)
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+    def test_pptx_with_animations_disabled(self):
+        """PPTX with animations disabled should also produce a valid file."""
+        slides_data = [
+            SlideData(title="No Anim", content=["X", "Y"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "no_anim.pptx")
+        create_pptx_file(slides_data, path, enable_animations=False)
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+    def test_pptx_animations_all_themes(self):
+        """Animations should work across all themes."""
+        slides_data = [
+            SlideData(title="Theme Anim", content=["P1", "P2"], layout=SlideLayout.CONTENT),
+        ]
+        for theme in SlideTheme:
+            path = os.path.join(OUTPUT_DIR, f"anim_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme, enable_animations=True)
+            assert os.path.exists(path)
+
+
+class TestSRTSubtitles:
+    """Tests for SRT subtitle generation (v9)."""
+
+    def test_format_srt_timestamp(self):
+        """SRT timestamp formatting should produce correct format."""
+        assert _format_srt_timestamp(0.0) == "00:00:00,000"
+        assert _format_srt_timestamp(1.5) == "00:00:01,500"
+        assert _format_srt_timestamp(65.25) == "00:01:05,250"
+        assert _format_srt_timestamp(3661.0) == "01:01:01,000"
+
+    def test_generate_srt_basic(self):
+        """SRT generation with scripts and durations should produce valid file."""
+        scripts = ["Hello world", "Second slide", "Conclusion"]
+        durations = [5.0, 8.0, 4.0]
+        srt_path = os.path.join(OUTPUT_DIR, "test.srt")
+        result = generate_srt_subtitles(scripts, durations, srt_path)
+        assert result == srt_path
+        assert os.path.exists(srt_path)
+        with open(srt_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert "Hello world" in content
+        assert "Second slide" in content
+        assert "00:00:00,000" in content  # First subtitle starts at 0
+
+    def test_generate_srt_empty_scripts(self):
+        """Empty scripts should skip entries but not crash."""
+        scripts = ["Hello", "", "End"]
+        durations = [3.0, 2.0, 4.0]
+        srt_path = os.path.join(OUTPUT_DIR, "sparse.srt")
+        result = generate_srt_subtitles(scripts, durations, srt_path)
+        assert result == srt_path
+        with open(srt_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert "Hello" in content
+        assert "End" in content
+        # Should have 2 entries (empty script skipped)
+        assert content.count("-->") == 2
+
+    def test_generate_srt_no_scripts(self):
+        """No scripts should return None."""
+        assert generate_srt_subtitles([], [], os.path.join(OUTPUT_DIR, "empty.srt")) is None
+
+    def test_generate_srt_cjk(self):
+        """SRT should handle CJK text correctly."""
+        scripts = ["\u4eba\u5de5\u667a\u80fd\u6982\u8ff0", "\u673a\u5668\u5b66\u4e60\u5e94\u7528"]
+        durations = [5.0, 5.0]
+        srt_path = os.path.join(OUTPUT_DIR, "cjk.srt")
+        result = generate_srt_subtitles(scripts, durations, srt_path)
+        assert result == srt_path
+        with open(srt_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert "\u4eba\u5de5\u667a\u80fd" in content
+
+
+class TestConfigurableTransitions:
+    """Tests for configurable transition duration (v9)."""
+
+    def test_config_default_animation(self):
+        config = PresentationConfig()
+        assert config.enable_animations is True
+        assert config.transition_duration_ms == 700
+
+    def test_config_custom_animation(self):
+        config = PresentationConfig(enable_animations=False, transition_duration_ms=1200)
+        assert config.enable_animations is False
+        assert config.transition_duration_ms == 1200
+
+    def test_pptx_custom_transition_duration(self):
+        """PPTX with custom transition duration should produce valid file."""
+        slides_data = [
+            SlideData(title="Slow Fade", content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "slow_transition.pptx")
+        create_pptx_file(slides_data, path, transition_duration_ms=1500)
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+
+class TestTransitionPhrasesComplete:
+    """Tests for complete transition phrases in all 7 languages (v9)."""
+
+    def test_all_languages_have_phrases(self):
+        """Every Language enum value should have transition phrases."""
+        for lang in Language:
+            assert lang in _TRANSITION_PHRASES, f"Missing phrases for {lang}"
+            assert len(_TRANSITION_PHRASES[lang]) >= 3, f"Too few phrases for {lang}"
+
+    def test_korean_phrases(self):
+        assert Language.KOREAN in _TRANSITION_PHRASES
+        assert len(_TRANSITION_PHRASES[Language.KOREAN]) >= 5
+
+    def test_french_phrases(self):
+        assert Language.FRENCH in _TRANSITION_PHRASES
+        assert len(_TRANSITION_PHRASES[Language.FRENCH]) >= 5
+
+    def test_german_phrases(self):
+        assert Language.GERMAN in _TRANSITION_PHRASES
+        assert len(_TRANSITION_PHRASES[Language.GERMAN]) >= 5
+
+    def test_spanish_phrases(self):
+        assert Language.SPANISH in _TRANSITION_PHRASES
+        assert len(_TRANSITION_PHRASES[Language.SPANISH]) >= 5
+
+    def test_speaker_notes_korean(self):
+        """Korean speaker notes should use Korean phrases."""
+        notes = _build_speaker_notes("AI \uac1c\uc694", ["\ub370\uc774\ud130"], 0, 5, Language.KOREAN)
+        assert len(notes) > 0
+
+    def test_speaker_notes_french(self):
+        """French speaker notes should use French phrases."""
+        notes = _build_speaker_notes("Introduction", ["Donn\u00e9es"], 1, 5, Language.FRENCH)
+        assert len(notes) > 0
+
+
+class TestContentValidation:
+    """Tests for content validation warnings (v9)."""
+
+    def test_validate_empty_slides(self):
+        """Empty slide list should return a warning."""
+        warnings = validate_content([])
+        assert len(warnings) == 1
+
+    def test_validate_duplicate_titles(self):
+        """Duplicate titles should trigger a warning."""
+        slides = [
+            SlideData(title="Introduction", content=["A"], layout=SlideLayout.CONTENT),
+            SlideData(title="Introduction", content=["B"], layout=SlideLayout.CONTENT),
+        ]
+        warnings = validate_content(slides)
+        assert any("Duplicate title" in w for w in warnings)
+
+    def test_validate_empty_content(self):
+        """Content slides with no bullets should trigger a warning."""
+        slides = [
+            SlideData(title="Empty", content=[], layout=SlideLayout.CONTENT),
+        ]
+        warnings = validate_content(slides)
+        assert any("no content" in w for w in warnings)
+
+    def test_validate_too_many_bullets(self):
+        """Slides with >8 bullets should trigger a warning."""
+        slides = [
+            SlideData(title="Dense", content=[f"Point {i}" for i in range(10)],
+                      layout=SlideLayout.CONTENT),
+        ]
+        warnings = validate_content(slides)
+        assert any("10 bullets" in w for w in warnings)
+
+    def test_validate_missing_notes(self):
+        """Slides without speaker notes should trigger a warning."""
+        slides = [
+            SlideData(title="No Notes", content=["A"], speaker_notes="",
+                      layout=SlideLayout.CONTENT),
+        ]
+        warnings = validate_content(slides)
+        assert any("missing speaker notes" in w for w in warnings)
+
+    def test_validate_long_bullet(self):
+        """Very long bullet points should trigger a warning."""
+        long_point = "X" * 150
+        slides = [
+            SlideData(title="Long", content=[long_point], speaker_notes="notes",
+                      layout=SlideLayout.CONTENT),
+        ]
+        warnings = validate_content(slides)
+        assert any("too long" in w for w in warnings)
+
+    def test_validate_good_content(self):
+        """Well-structured slides should have minimal warnings."""
+        slides = [
+            SlideData(title="Title", content=["Sub"], speaker_notes="Welcome",
+                      layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A", "B", "C"], speaker_notes="Points",
+                      layout=SlideLayout.CONTENT),
+            SlideData(title="Summary", content=["Key point"], speaker_notes="Wrap up",
+                      layout=SlideLayout.CONTENT),
+        ]
+        warnings = validate_content(slides)
+        # Title slide has empty content but that's ok (not CONTENT layout)
+        assert not any("no content" in w for w in warnings)
+
+    def test_validate_section_no_content_ok(self):
+        """Section slides should not warn about missing content."""
+        slides = [
+            SlideData(title="Section", content=[], speaker_notes="Divider",
+                      layout=SlideLayout.SECTION),
+        ]
+        warnings = validate_content(slides)
+        assert not any("no content" in w for w in warnings)
 
 
 if __name__ == "__main__":

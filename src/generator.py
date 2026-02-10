@@ -260,6 +260,36 @@ _TRANSITION_PHRASES = {
         "\u307e\u305a\u3001\u898b\u3066\u307f\u307e\u3057\u3087\u3046",
         "\u6b21\u306b\u3001\u8a71\u3057\u5408\u3044\u307e\u3057\u3087\u3046",
         "\u7d9a\u3044\u3066\u3001\u63a2\u3063\u3066\u307f\u307e\u3057\u3087\u3046",
+        "\u3053\u3053\u3067\u306f\u3001\u78ba\u8a8d\u3057\u307e\u3057\u3087\u3046",
+        "\u305d\u308c\u3067\u306f\u3001\u898b\u3066\u3044\u304d\u307e\u3057\u3087\u3046",
+    ],
+    Language.KOREAN: [
+        "\uba3c\uc800 \uc0b4\ud3b4\ubcf4\uaca0\uc2b5\ub2c8\ub2e4",
+        "\ub2e4\uc74c\uc73c\ub85c \ub118\uc5b4\uac00\uaca0\uc2b5\ub2c8\ub2e4",
+        "\uc774\uc81c \ub2e4\uc74c \uc8fc\uc81c\ub97c \ub2e4\ub8e8\uaca0\uc2b5\ub2c8\ub2e4",
+        "\uacc4\uc18d\ud574\uc11c \uc0b4\ud3b4\ubcf4\uaca0\uc2b5\ub2c8\ub2e4",
+        "\uc774\uc5b4\uc11c \uc54c\uc544\ubcf4\uaca0\uc2b5\ub2c8\ub2e4",
+    ],
+    Language.FRENCH: [
+        "Commen\u00e7ons par examiner",
+        "Passons maintenant \u00e0",
+        "Ensuite, parlons de",
+        "Explorons maintenant",
+        "Poursuivons avec",
+    ],
+    Language.GERMAN: [
+        "Beginnen wir mit",
+        "Kommen wir nun zu",
+        "Als N\u00e4chstes betrachten wir",
+        "Schauen wir uns an",
+        "Fahren wir fort mit",
+    ],
+    Language.SPANISH: [
+        "Comencemos por examinar",
+        "Ahora, pasemos a",
+        "A continuaci\u00f3n, hablemos de",
+        "Exploremos ahora",
+        "Sigamos adelante con",
     ],
 }
 
@@ -290,6 +320,52 @@ def _build_speaker_notes(title: str, content: list, slide_idx: int,
         notes = f"{transition} {title}. {points_text}"
 
     return notes[:400]
+
+
+def validate_content(slides: List[SlideData]) -> List[str]:
+    """
+    Validate slide content and return a list of warning messages.
+    Checks for common issues like duplicate titles, empty content, and imbalanced slides.
+    """
+    warnings = []
+
+    if not slides:
+        warnings.append("No slides to validate.")
+        return warnings
+
+    # Check for duplicate titles
+    titles = [s.title.strip().lower() for s in slides]
+    seen = {}
+    for i, t in enumerate(titles):
+        if t in seen:
+            warnings.append(f"Duplicate title: \"{slides[i].title}\" (slides {seen[t] + 1} and {i + 1})")
+        else:
+            seen[t] = i
+
+    for i, slide in enumerate(slides):
+        # Empty content on non-section/title slides
+        if slide.layout in (SlideLayout.CONTENT, SlideLayout.TWO_COLUMN):
+            if not slide.content or all(not c.strip() for c in slide.content):
+                warnings.append(f"Slide {i + 1} \"{slide.title}\": no content bullet points")
+
+        # Too many bullets
+        if len(slide.content) > 8:
+            warnings.append(
+                f"Slide {i + 1} \"{slide.title}\": {len(slide.content)} bullets (recommended: 3-6)"
+            )
+
+        # Missing speaker notes
+        if not slide.speaker_notes or not slide.speaker_notes.strip():
+            warnings.append(f"Slide {i + 1} \"{slide.title}\": missing speaker notes")
+
+        # Very long bullet points
+        for j, point in enumerate(slide.content):
+            if len(point) > 120:
+                warnings.append(
+                    f"Slide {i + 1}, bullet {j + 1}: too long ({len(point)} chars, max recommended: 120)"
+                )
+
+    return warnings
 
 
 def mock_generate_content(text: str, num_slides: int, language: Language = Language.ENGLISH) -> List[SlideData]:
