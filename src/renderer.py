@@ -1,160 +1,203 @@
-from pptx import Presentation
-from pptx.util import Inches, Pt
-from PIL import Image, ImageDraw, ImageFont
+"""
+Slide rendering module - generates PPTX, slide images, and PDF output.
+Supports multiple visual themes and improved layout engine.
+"""
 import os
+import logging
 import textwrap
+from typing import List
 
-def create_pptx_file(slides_data, output_path):
-    """
-    Creates a PowerPoint file from the slide data.
-    """
+from pptx import Presentation
+from pptx.util import Pt
+from PIL import Image, ImageDraw, ImageFont
+
+from src.models import SlideData, SlideTheme, ThemeColors, THEMES
+from src.config import (
+    SLIDE_WIDTH, SLIDE_HEIGHT,
+    TITLE_FONT_SIZE, CONTENT_FONT_SIZE, FOOTER_FONT_SIZE,
+    TEXT_WRAP_WIDTH,
+)
+
+logger = logging.getLogger(__name__)
+
+# Layout constants
+MARGIN_X = 100
+HEADER_HEIGHT = 200
+CONTENT_START_Y = 280
+LINE_SPACING = 75
+BULLET_INDENT = 30
+
+
+def _get_font(font_name: str, size: int) -> ImageFont.FreeTypeFont:
+    """Load a font with multi-level fallback."""
+    # 1. Try project-local fonts
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    font_path = os.path.join(base_dir, "data", "fonts", font_name)
+    if os.path.exists(font_path):
+        try:
+            return ImageFont.truetype(font_path, size)
+        except (OSError, IOError) as e:
+            logger.debug("Could not load project font %s: %s", font_path, e)
+
+    # 2. Try common system font paths
+    system_paths = [
+        f"/usr/share/fonts/truetype/dejavu/{font_name}",
+        f"/usr/share/fonts/truetype/{font_name}",
+        f"/usr/share/fonts/{font_name}",
+        f"/System/Library/Fonts/{font_name}",
+    ]
+    for path in system_paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except (OSError, IOError):
+                continue
+
+    # 3. Try by name (PIL's built-in search)
+    for name in [font_name, "DejaVuSans.ttf", "Arial.ttf", "Helvetica.ttf"]:
+        try:
+            return ImageFont.truetype(name, size)
+        except (OSError, IOError):
+            continue
+
+    # 4. Last resort: PIL default
+    logger.warning("No TrueType font found, using PIL default bitmap font")
+    return ImageFont.load_default()
+
+
+def create_pptx_file(slides_data: List[SlideData], output_path: str) -> str:
+    """Create a PowerPoint file from slide data."""
     prs = Presentation()
 
     for slide_data in slides_data:
-        # Layout 1 is 'Title and Content'
-        slide_layout = prs.slide_layouts[1]
+        slide_layout = prs.slide_layouts[1]  # 'Title and Content' layout
         slide = prs.slides.add_slide(slide_layout)
 
-        # Title
         if slide.shapes.title:
-            slide.shapes.title.text = slide_data.get("title", "Untitled Slide")
+            slide.shapes.title.text = slide_data.title
 
-        # Content
         if len(slide.placeholders) > 1:
-            content_placeholder = slide.placeholders[1]
-            if content_placeholder.has_text_frame:
-                tf = content_placeholder.text_frame
-                content_list = slide_data.get("content", [])
-
-                if content_list:
-                    tf.text = content_list[0]
-                    for point in content_list[1:]:
+            ph = slide.placeholders[1]
+            if ph.has_text_frame:
+                tf = ph.text_frame
+                if slide_data.content:
+                    tf.text = slide_data.content[0]
+                    for point in slide_data.content[1:]:
                         p = tf.add_paragraph()
                         p.text = point
 
-        # Speaker Notes
         if slide.has_notes_slide:
-            notes_slide = slide.notes_slide
-            text_frame = notes_slide.notes_text_frame
-            text_frame.text = slide_data.get("speaker_notes", "")
+            notes_tf = slide.notes_slide.notes_text_frame
+            notes_tf.text = slide_data.speaker_notes
 
     prs.save(output_path)
+    logger.info("PPTX saved: %s", output_path)
     return output_path
 
-def get_font(font_name, size):
-    """
-    Helper to load a font from the data/fonts directory.
-    Falls back to default if not found.
-    """
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    font_path = os.path.join(base_dir, "data", "fonts", font_name)
 
-    try:
-        if os.path.exists(font_path):
-            return ImageFont.truetype(font_path, size)
-    except Exception as e:
-        print(f"Error loading font {font_name}: {e}")
+def _draw_decorative_elements(draw: ImageDraw.Draw, theme: ThemeColors, slide_index: int, total_slides: int):
+    """Draw subtle decorative elements based on theme."""
+    # Accent line under header
+    draw.rectangle(
+        [(0, HEADER_HEIGHT), (SLIDE_WIDTH, HEADER_HEIGHT + 4)],
+        fill=theme.accent,
+    )
 
-    # Fallback to system search (Linux specific) or default
-    try:
-        return ImageFont.truetype("DejaVuSans.ttf", size)
-    except:
-        return ImageFont.load_default()
+    # Progress indicator at bottom
+    if total_slides > 1:
+        progress = (slide_index + 1) / total_slides
+        bar_y = SLIDE_HEIGHT - 6
+        draw.rectangle([(0, bar_y), (SLIDE_WIDTH, SLIDE_HEIGHT)], fill=theme.footer)
+        draw.rectangle([(0, bar_y), (int(SLIDE_WIDTH * progress), SLIDE_HEIGHT)], fill=theme.accent)
 
-def create_slide_images(slides_data, output_dir):
+
+def create_slide_images(
+    slides_data: List[SlideData],
+    output_dir: str,
+    theme: SlideTheme = SlideTheme.PROFESSIONAL,
+) -> List[str]:
     """
-    Generates images for each slide using Pillow with improved layout.
+    Render high-quality slide images using Pillow.
+    Supports multiple themes with improved layout.
     """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
+    os.makedirs(output_dir, exist_ok=True)
+    colors = THEMES.get(theme, THEMES[SlideTheme.PROFESSIONAL])
     image_paths = []
 
-    # Canvas Settings
-    WIDTH = 1920
-    HEIGHT = 1080
-    BG_COLOR = (255, 255, 255)
-    HEADER_COLOR = (44, 62, 80) # Dark Blue
-    TEXT_COLOR = (50, 50, 50)
-    TITLE_COLOR = (255, 255, 255)
+    title_font = _get_font("DejaVuSans-Bold.ttf", TITLE_FONT_SIZE)
+    content_font = _get_font("DejaVuSans.ttf", CONTENT_FONT_SIZE)
+    footer_font = _get_font("DejaVuSans.ttf", FOOTER_FONT_SIZE)
 
-    # Fonts
-    title_font = get_font("DejaVuSans-Bold.ttf", 70)
-    content_font = get_font("DejaVuSans.ttf", 45)
-    footer_font = get_font("DejaVuSans.ttf", 30)
-
-    # Margins
-    MARGIN_X = 100
-    MARGIN_Y_CONTENT = 300
-    LINE_SPACING = 80
+    total_slides = len(slides_data)
 
     for i, slide_data in enumerate(slides_data):
-        img = Image.new('RGB', (WIDTH, HEIGHT), color=BG_COLOR)
+        img = Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), color=colors.background)
         draw = ImageDraw.Draw(img)
 
-        # 1. Header Bar
-        header_height = 200
-        draw.rectangle([(0, 0), (WIDTH, header_height)], fill=HEADER_COLOR)
+        # Header bar
+        draw.rectangle([(0, 0), (SLIDE_WIDTH, HEADER_HEIGHT)], fill=colors.header)
 
-        # 2. Title
-        title = slide_data.get("title", "Untitled")
-        # Center title vertically in header
+        # Decorative elements
+        _draw_decorative_elements(draw, colors, i, total_slides)
+
+        # Title (vertically centered in header)
+        title = slide_data.title
         bbox = draw.textbbox((0, 0), title, font=title_font)
-        title_w = bbox[2] - bbox[0]
         title_h = bbox[3] - bbox[1]
-        title_x = MARGIN_X
-        title_y = (header_height - title_h) / 2
-        draw.text((title_x, title_y), title, font=title_font, fill=TITLE_COLOR)
+        title_y = (HEADER_HEIGHT - title_h) // 2
+        draw.text((MARGIN_X, title_y), title, font=title_font, fill=colors.title)
 
-        # 3. Content
-        y_text = MARGIN_Y_CONTENT
-        content_lines = slide_data.get("content", [])
+        # Content with improved wrapping
+        y = CONTENT_START_Y
+        max_y = SLIDE_HEIGHT - 80
 
-        # Character wrapping approximation
-        # 1920 width. Margin 100 on each side -> 1720 usable.
-        # Font size 45. Approx 25px width per char? 1720 / 25 ~= 68 chars.
-        # Let's be conservative with 60 chars.
-        WRAP_WIDTH = 70
-
-        for point in content_lines:
-            wrapped_lines = textwrap.wrap(point, width=WRAP_WIDTH)
-            for j, line in enumerate(wrapped_lines):
-                bullet = "• " if j == 0 else "  "
-                draw.text((MARGIN_X, y_text), f"{bullet}{line}", font=content_font, fill=TEXT_COLOR)
-                y_text += LINE_SPACING
-
-                # Prevent overflow
-                if y_text > HEIGHT - 100:
-                    break
-            if y_text > HEIGHT - 100:
+        for point in slide_data.content:
+            if y >= max_y:
+                draw.text((MARGIN_X, y), "...", font=content_font, fill=colors.footer)
                 break
 
-        # 4. Footer
-        footer_text = f"Slide {i+1} | Generated by AutoPresentation AI"
+            wrapped = textwrap.wrap(point, width=TEXT_WRAP_WIDTH)
+            for j, line in enumerate(wrapped):
+                if y >= max_y:
+                    break
+                prefix = "\u2022 " if j == 0 else "  "
+                x = MARGIN_X if j == 0 else MARGIN_X + BULLET_INDENT
+                draw.text((x, y), f"{prefix}{line}", font=content_font, fill=colors.text)
+                y += LINE_SPACING
+
+            y += 10  # Extra spacing between bullet groups
+
+        # Footer
+        footer_text = f"Slide {i + 1} / {total_slides}"
         bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
         footer_w = bbox[2] - bbox[0]
-        draw.text((WIDTH - footer_w - 50, HEIGHT - 50), footer_text, font=footer_font, fill=(150, 150, 150))
+        draw.text(
+            (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
+            footer_text,
+            font=footer_font,
+            fill=colors.footer,
+        )
 
-        image_filename = f"slide_{i+1:03d}.png"
-        image_path = os.path.join(output_dir, image_filename)
-        img.save(image_path)
-        image_paths.append(image_path)
+        filename = f"slide_{i + 1:03d}.png"
+        path = os.path.join(output_dir, filename)
+        img.save(path, "PNG", optimize=True)
+        image_paths.append(path)
 
+    logger.info("Rendered %d slide images (theme: %s)", len(image_paths), theme.value)
     return image_paths
 
-def create_pdf_from_images(image_paths, output_path):
-    """
-    Compiles a list of images into a single PDF.
-    """
+
+def create_pdf_from_images(image_paths: List[str], output_path: str) -> str:
+    """Compile slide images into a single PDF document."""
     if not image_paths:
-        return None
+        raise ValueError("No images provided for PDF generation")
 
-    images = [Image.open(p).convert('RGB') for p in image_paths]
-
-    first_image = images[0]
-    first_image.save(
+    images = [Image.open(p).convert("RGB") for p in image_paths]
+    images[0].save(
         output_path,
         save_all=True,
-        append_images=images[1:]
+        append_images=images[1:],
+        resolution=150,
     )
+    logger.info("PDF saved: %s (%d pages)", output_path, len(images))
     return output_path

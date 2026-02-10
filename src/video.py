@@ -1,111 +1,146 @@
+"""
+Video generation module - creates presentation videos with TTS voiceovers.
+Supports multiple languages and improved error handling.
+"""
 import asyncio
-import edge_tts
+import logging
 import os
+import shutil
+from typing import List, Optional
+
+import edge_tts
 from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
 
-async def _generate_audio_async(text, output_path, voice):
-    """
-    Async helper to generate TTS audio.
-    """
+from src.config import VIDEO_FPS, DEFAULT_SLIDE_DURATION, AUDIO_PADDING, MIN_AUDIO_SIZE
+
+logger = logging.getLogger(__name__)
+
+
+async def _generate_audio_async(text: str, output_path: str, voice: str) -> bool:
+    """Generate TTS audio asynchronously. Returns True on success."""
     try:
         communicate = edge_tts.Communicate(text, voice)
         await communicate.save(output_path)
+        return True
     except Exception as e:
-        print(f"EdgeTTS Error: {e}")
+        logger.error("Edge TTS error (voice=%s): %s", voice, e)
+        return False
 
-def generate_voiceover(text, output_path, voice="en-US-ChristopherNeural"):
+
+def generate_voiceover(text: str, output_path: str, voice: str = "en-US-JennyNeural") -> Optional[str]:
     """
-    Generates an audio file from text using edge-tts.
-    Synchronous wrapper for async function.
+    Generate a TTS audio file from text.
+    Returns the output path on success, None on failure.
     """
     if not text or not text.strip():
+        logger.debug("Empty text, skipping TTS generation")
         return None
 
     try:
-        asyncio.run(_generate_audio_async(text, output_path, voice))
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1024:
-            # Check for reasonable size (>1KB) to avoid empty/corrupt files
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                raise RuntimeError("closed loop")
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        success = loop.run_until_complete(_generate_audio_async(text, output_path, voice))
+
+        if success and os.path.exists(output_path) and os.path.getsize(output_path) > MIN_AUDIO_SIZE:
             return output_path
+
+        logger.warning("TTS output missing or too small: %s", output_path)
         return None
+
     except Exception as e:
-        print(f"TTS Error: {e}")
+        logger.error("TTS generation failed: %s", e)
         return None
 
-def create_video_presentation(image_paths, text_scripts, output_path, voice="en-US-ChristopherNeural"):
+
+def create_video_presentation(
+    image_paths: List[str],
+    text_scripts: List[str],
+    output_path: str,
+    voice: str = "en-US-JennyNeural",
+    progress_callback=None,
+) -> Optional[str]:
     """
-    Creates a video from a list of images and corresponding text scripts.
+    Create a video presentation from slide images and text scripts.
+
+    Args:
+        image_paths: List of slide image file paths.
+        text_scripts: List of speaker notes for each slide.
+        output_path: Where to save the output MP4.
+        voice: Edge TTS voice name.
+        progress_callback: Optional callable(current, total) for progress updates.
+
+    Returns:
+        Output path on success, None on failure.
     """
+    if not image_paths:
+        logger.error("No images provided for video generation")
+        return None
+
     clips = []
-    temp_audio_files = []
+    temp_audio_dir = os.path.join(os.path.dirname(os.path.abspath(output_path)), "temp_audio")
+    os.makedirs(temp_audio_dir, exist_ok=True)
 
-    # Ensure output directory for audio exists
-    audio_dir = os.path.join(os.path.dirname(os.path.abspath(output_path)), "temp_audio")
-    os.makedirs(audio_dir, exist_ok=True)
-
-    for i, (img_path, script) in enumerate(zip(image_paths, text_scripts)):
-        # Generate Audio
-        audio_filename = f"audio_{i}.mp3"
-        audio_path = os.path.join(audio_dir, audio_filename)
-
-        generated_audio = generate_voiceover(script, audio_path, voice)
-
-        if generated_audio:
-            temp_audio_files.append(generated_audio)
-
-            try:
-                # Create Audio Clip
-                audio_clip = AudioFileClip(generated_audio)
-                duration = audio_clip.duration + 0.5 # Add 0.5s padding
-
-                # Create Image Clip
-                img_clip = ImageClip(img_path).with_duration(duration)
-                img_clip = img_clip.with_audio(audio_clip)
-
-                clips.append(img_clip)
-            except Exception as e:
-                print(f"Error creating clip for slide {i}: {e}")
-                # Fallback
-                img_clip = ImageClip(img_path).with_duration(5)
-                clips.append(img_clip)
-        else:
-            # Fallback for failed/empty audio: just show slide for 5 seconds
-            print(f"Audio generation failed for slide {i}, using default duration.")
-            img_clip = ImageClip(img_path).with_duration(5)
-            clips.append(img_clip)
-
-    if not clips:
-        print("No clips created.")
-        return None
+    total = len(image_paths)
+    logger.info("Creating video from %d slides (voice: %s)", total, voice)
 
     try:
-        # Concatenate
-        final_video = concatenate_videoclips(clips, method="compose")
+        for i, img_path in enumerate(image_paths):
+            script = text_scripts[i] if i < len(text_scripts) else ""
 
-        # Write file
-        # Use 'libx264' codec and 'aac' audio for compatibility
-        # Add pix_fmt='yuv420p' for better compatibility with QuickTime/Windows Media Player
+            if progress_callback:
+                progress_callback(i, total)
+
+            audio_path = os.path.join(temp_audio_dir, f"audio_{i:03d}.mp3")
+            generated_audio = generate_voiceover(script, audio_path, voice)
+
+            if generated_audio:
+                try:
+                    audio_clip = AudioFileClip(generated_audio)
+                    duration = audio_clip.duration + AUDIO_PADDING
+                    img_clip = ImageClip(img_path).with_duration(duration).with_audio(audio_clip)
+                    clips.append(img_clip)
+                    logger.debug("Slide %d: %.1fs with audio", i + 1, duration)
+                except Exception as e:
+                    logger.warning("Slide %d: audio clip error (%s), using default duration", i + 1, e)
+                    clips.append(ImageClip(img_path).with_duration(DEFAULT_SLIDE_DURATION))
+            else:
+                logger.info("Slide %d: no audio, using default %ss duration", i + 1, DEFAULT_SLIDE_DURATION)
+                clips.append(ImageClip(img_path).with_duration(DEFAULT_SLIDE_DURATION))
+
+        if not clips:
+            logger.error("No video clips created")
+            return None
+
+        if progress_callback:
+            progress_callback(total, total)
+
+        logger.info("Encoding video...")
+        final_video = concatenate_videoclips(clips, method="compose")
         final_video.write_videofile(
             output_path,
-            fps=24,
-            codec='libx264',
-            audio_codec='aac',
-            ffmpeg_params=['-pix_fmt', 'yuv420p']
+            fps=VIDEO_FPS,
+            codec="libx264",
+            audio_codec="aac",
+            ffmpeg_params=["-pix_fmt", "yuv420p"],
+            logger=None,
         )
-    except Exception as e:
-        print(f"Video writing error: {e}")
-        raise e
-    finally:
-        # Cleanup temp audio
-        for audio_file in temp_audio_files:
-            try:
-                if os.path.exists(audio_file):
-                    os.remove(audio_file)
-            except:
-                pass
-        try:
-            if os.path.exists(audio_dir):
-                os.rmdir(audio_dir)
-        except:
-            pass
 
-    return output_path
+        logger.info("Video saved: %s (%.1fs)", output_path, final_video.duration)
+        return output_path
+
+    except Exception as e:
+        logger.error("Video generation failed: %s", e)
+        raise
+
+    finally:
+        if os.path.exists(temp_audio_dir):
+            try:
+                shutil.rmtree(temp_audio_dir)
+            except OSError as e:
+                logger.debug("Could not clean temp audio dir: %s", e)

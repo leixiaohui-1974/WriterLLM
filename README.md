@@ -1,43 +1,80 @@
 # AutoPresentation AI
 
-A powerful web application that transforms your documents (Word, PDF) into professional presentations (PPTX), PDFs, and Videos with AI-generated content and voiceovers.
+A web application that transforms documents (Word, PDF, TXT, Markdown) into professional presentations (PPTX), PDFs, and videos with AI-generated content and voiceovers.
 
 ## Features
 
-- **Document Parsing**: Extracts text from `.docx` and `.pdf` files.
-- **AI Content Generation**: Uses OpenAI/Doubao-compatible LLMs to generate structured slide content, including titles, bullet points, and speaker notes.
-- **PowerPoint Generation**: Creates editable `.pptx` files.
-- **Slide Rendering**: Generates high-quality slide images using Python (Pillow).
-- **Video Creation**: Synthesizes a video presentation by combining slide images with AI-generated voiceovers (using `edge-tts`).
-- **PDF Export**: Compiles slide images into a PDF document.
+- **Multi-Format Document Parsing**: Extracts text from `.docx`, `.pdf`, `.txt`, and `.md` files with heading structure preservation
+- **AI Content Generation**: Uses OpenAI-compatible LLMs to generate structured slide content with retry logic and validation
+- **Multi-Language Support**: Generate content and voiceovers in 7 languages (English, Chinese, Japanese, Korean, French, German, Spanish)
+- **5 Slide Themes**: Professional, Dark, Ocean, Sunset, and Minimal visual themes
+- **PowerPoint Generation**: Creates editable `.pptx` files with titles, bullet points, and speaker notes
+- **Slide Image Rendering**: High-quality 1920x1080 slide images with theme-aware layouts
+- **PDF Export**: Compiles slide images into a PDF document
+- **Video Creation**: AI-generated voiceovers with Microsoft Azure Neural TTS (via edge-tts)
+- **Progress Tracking**: Real-time progress bar with step-by-step status updates
+- **Mock Mode**: Full pipeline works without API keys for testing and demos
 
 ## Setup
 
-1.  **Install Dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2.  **Run the App**:
-    ```bash
-    streamlit run app.py
-    ```
+2. **Run the App**:
+   ```bash
+   streamlit run app.py
+   ```
 
-3.  **Usage**:
-    - Open the app in your browser (default: `http://localhost:8501`).
-    - Upload a document.
-    - (Optional) Enter your OpenAI API Key or compatible Base URL (e.g., for Doubao via an OpenAI-compatible proxy).
-    - Adjust settings (Number of slides, Voice).
-    - Click "Generate Presentation".
-    - Download your PPTX, PDF, and Video!
+3. **(Optional) Environment Variables**:
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   export OPENAI_BASE_URL="https://api.openai.com/v1"
+   export OPENAI_MODEL="gpt-4"
+   ```
+
+## Usage
+
+1. Open the app in your browser (default: `http://localhost:8501`)
+2. Select language and slide theme in the sidebar
+3. Upload a document (DOCX, PDF, TXT, or Markdown)
+4. (Optional) Configure API key for AI-powered content generation
+5. Adjust settings (number of slides, voice gender)
+6. Click **Generate Presentation**
+7. Download PPTX, PDF, and Video outputs
 
 ## Architecture
 
-- `src/parser.py`: Handles document text extraction.
-- `src/generator.py`: Interfaces with LLMs to structure content. Includes a Mock Mode for testing without API keys.
-- `src/renderer.py`: Generates `.pptx` files and renders slide images using Pillow.
-- `src/video.py`: Handles Text-to-Speech generation and video assembly using MoviePy.
-- `app.py`: Main Streamlit application.
+```
+src/
+├── __init__.py        # Package initialization
+├── config.py          # Configuration management, env vars, constants
+├── models.py          # Data models (SlideData, themes, languages, voices)
+├── parser.py          # Document text extraction (DOCX, PDF, TXT, MD)
+├── generator.py       # AI content generation with LLM integration
+├── renderer.py        # PPTX creation, slide image rendering, PDF export
+└── video.py           # TTS voiceover generation and video assembly
+app.py                 # Main Streamlit application
+```
+
+## Testing
+
+```bash
+pytest -v
+```
+
+## Supported Languages
+
+| Language | Content Generation | TTS Voice (M/F) |
+|----------|-------------------|------------------|
+| English  | Yes               | Yes              |
+| Chinese  | Yes               | Yes              |
+| Japanese | Yes               | Yes              |
+| Korean   | Yes               | Yes              |
+| French   | Yes               | Yes              |
+| German   | Yes               | Yes              |
+| Spanish  | Yes               | Yes              |
 
 ## Requirements
 
