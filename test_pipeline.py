@@ -24,9 +24,9 @@ from src.renderer import (
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES
-from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content
+from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations
+from src.renderer import _add_pptx_entrance_animations, PPTX_TRANSITION_TYPES
 
 
 OUTPUT_DIR = "test_output"
@@ -1628,6 +1628,192 @@ class TestPPTXTransitionDurationIntegration:
         path = os.path.join(OUTPUT_DIR, "slow_trans.pptx")
         create_pptx_file(slides_data, path, transition_duration_ms=2000)
         assert os.path.exists(path)
+
+
+class TestPPTXTransitionTypes:
+    """Tests for multiple PPTX transition types (v11)."""
+
+    def test_transition_types_list(self):
+        """Should have 6 supported transition types."""
+        assert len(PPTX_TRANSITION_TYPES) == 6
+        assert "fade" in PPTX_TRANSITION_TYPES
+        assert "push" in PPTX_TRANSITION_TYPES
+        assert "wipe" in PPTX_TRANSITION_TYPES
+        assert "cover" in PPTX_TRANSITION_TYPES
+        assert "split" in PPTX_TRANSITION_TYPES
+        assert "dissolve" in PPTX_TRANSITION_TYPES
+
+    def test_all_transition_types_xml(self):
+        """Each transition type should produce the correct OpenXML element."""
+        from pptx.oxml.ns import qn as _qn
+        for ttype in PPTX_TRANSITION_TYPES:
+            prs = Presentation()
+            prs.slide_width = Inches(13.333)
+            prs.slide_height = Inches(7.5)
+            slide = prs.slides.add_slide(prs.slide_layouts[0])
+            _add_pptx_slide_transition(slide, duration_ms=500, transition_type=ttype)
+            trans = slide._element.findall(_qn("p:transition"))
+            assert len(trans) == 1, f"No transition for type {ttype}"
+            # Should have exactly one child element for the transition type
+            children = list(trans[0])
+            assert len(children) == 1, f"Expected 1 child for {ttype}, got {len(children)}"
+
+    def test_unknown_type_falls_back_to_fade(self):
+        """Unknown transition type should fall back to fade."""
+        from pptx.oxml.ns import qn as _qn
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        _add_pptx_slide_transition(slide, transition_type="unknown_type")
+        trans = slide._element.findall(_qn("p:transition"))
+        assert len(trans) == 1
+        child = list(trans[0])[0]
+        assert "fade" in child.tag
+
+    def test_pptx_with_push_transition(self):
+        """PPTX with push transition should produce valid file."""
+        slides_data = [
+            SlideData(title="Push", content=["A", "B"], layout=SlideLayout.CONTENT),
+            SlideData(title="Slide 2", content=["C"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "push_transition.pptx")
+        create_pptx_file(slides_data, path, transition_type="push")
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+    def test_pptx_with_wipe_transition(self):
+        """PPTX with wipe transition should produce valid file."""
+        slides_data = [
+            SlideData(title="Wipe", content=["X"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "wipe_transition.pptx")
+        create_pptx_file(slides_data, path, transition_type="wipe")
+        assert os.path.exists(path)
+
+    def test_config_transition_type_default(self):
+        """PresentationConfig should default to 'fade' transition."""
+        config = PresentationConfig()
+        assert config.transition_type == "fade"
+
+    def test_config_transition_type_custom(self):
+        """PresentationConfig should accept custom transition type."""
+        config = PresentationConfig(transition_type="dissolve")
+        assert config.transition_type == "dissolve"
+
+
+class TestPDFMetadata:
+    """Tests for PDF metadata (title, author) in v11."""
+
+    def test_pdf_with_metadata(self):
+        """PDF with title and author should be valid."""
+        slides_data = [
+            SlideData(title="Meta Test", content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_meta")
+        image_paths = create_slide_images(slides_data, images_dir)
+        pdf_path = os.path.join(OUTPUT_DIR, "meta.pdf")
+        result = create_pdf_from_images(image_paths, pdf_path, title="My Presentation", author="John")
+        assert result == pdf_path
+        assert os.path.exists(pdf_path)
+        assert os.path.getsize(pdf_path) > 0
+
+    def test_pdf_without_metadata(self):
+        """PDF without metadata should still work."""
+        slides_data = [
+            SlideData(title="No Meta", content=["B"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_no_meta")
+        image_paths = create_slide_images(slides_data, images_dir)
+        pdf_path = os.path.join(OUTPUT_DIR, "no_meta.pdf")
+        result = create_pdf_from_images(image_paths, pdf_path)
+        assert result == pdf_path
+        assert os.path.exists(pdf_path)
+
+    def test_pdf_title_only(self):
+        """PDF with only title (no author) should work."""
+        slides_data = [
+            SlideData(title="Title Only", content=["C"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_title_only")
+        image_paths = create_slide_images(slides_data, images_dir)
+        pdf_path = os.path.join(OUTPUT_DIR, "title_only.pdf")
+        result = create_pdf_from_images(image_paths, pdf_path, title="Just Title")
+        assert result == pdf_path
+        assert os.path.exists(pdf_path)
+
+
+class TestSummaryTitlesModuleLevel:
+    """Tests for _SUMMARY_TITLES at module level (v11 cleanup)."""
+
+    def test_summary_titles_all_languages(self):
+        """All 7 languages should have summary titles."""
+        for lang in Language:
+            assert lang in _SUMMARY_TITLES, f"Missing summary title for {lang}"
+            assert len(_SUMMARY_TITLES[lang]) > 0
+
+    def test_summary_titles_english(self):
+        assert _SUMMARY_TITLES[Language.ENGLISH] == "Key Takeaways"
+
+    def test_summary_titles_chinese(self):
+        assert _SUMMARY_TITLES[Language.CHINESE] == "\u6838\u5fc3\u8981\u70b9"
+
+    def test_mock_uses_module_level_summary(self):
+        """Mock generation should use the module-level _SUMMARY_TITLES dict."""
+        text = "AI is great. ML is powerful. DL is deep. NLP reads text. CV sees images. " * 10
+        for lang in [Language.ENGLISH, Language.CHINESE, Language.JAPANESE]:
+            slides = mock_generate_content(text, num_slides=5, language=lang)
+            last = slides[-1]
+            assert last.title == _SUMMARY_TITLES[lang]
+
+
+class TestPresentationStatistics:
+    """Tests for presentation statistics computation logic (v11)."""
+
+    def test_word_count_calculation(self):
+        """Verify word counting logic for slides."""
+        slides = [
+            SlideData(title="T1", content=["Word1 Word2", "Word3"], speaker_notes="Note word"),
+            SlideData(title="T2", content=["A B C"], speaker_notes="D E"),
+        ]
+        total_words = sum(
+            len((" ".join(s.content) + " " + s.speaker_notes).split())
+            for s in slides
+        )
+        # Slide 1: "Word1 Word2 Word3" + "Note word" = 5 words
+        # Slide 2: "A B C" + "D E" = 5 words
+        assert total_words == 10
+
+    def test_bullet_count(self):
+        """Total bullet count should sum all content items."""
+        slides = [
+            SlideData(title="T1", content=["A", "B", "C"], speaker_notes=""),
+            SlideData(title="T2", content=["D"], speaker_notes=""),
+        ]
+        total_bullets = sum(len(s.content) for s in slides)
+        assert total_bullets == 4
+
+    def test_duration_estimate(self):
+        """Duration estimate at 150 wpm should be reasonable."""
+        # 300 words / 150 wpm = 2 minutes
+        total_words = 300
+        est_duration_min = max(1, round(total_words / 150))
+        assert est_duration_min == 2
+
+    def test_layout_distribution(self):
+        """Layout distribution counting should work."""
+        slides = [
+            SlideData(title="T", content=[], layout=SlideLayout.TITLE),
+            SlideData(title="C1", content=["A"], layout=SlideLayout.CONTENT),
+            SlideData(title="C2", content=["B"], layout=SlideLayout.CONTENT),
+            SlideData(title="S", content=[], layout=SlideLayout.SECTION),
+        ]
+        layout_counts = {}
+        for s in slides:
+            layout_counts[s.layout.value] = layout_counts.get(s.layout.value, 0) + 1
+        assert layout_counts["title"] == 1
+        assert layout_counts["content"] == 2
+        assert layout_counts["section"] == 1
 
 
 if __name__ == "__main__":

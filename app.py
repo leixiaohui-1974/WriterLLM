@@ -17,7 +17,7 @@ from src.models import (
 )
 from src.parser import parse_document, SUPPORTED_EXTENSIONS
 from src.generator import generate_slides, validate_content
-from src.renderer import create_pptx_file, create_slide_images, create_pdf_from_images
+from src.renderer import create_pptx_file, create_slide_images, create_pdf_from_images, PPTX_TRANSITION_TYPES
 from src.video import create_video_presentation
 from src.image_gen import generate_slide_images_batch
 
@@ -166,10 +166,17 @@ with st.sidebar.expander("Advanced Options"):
         value=True,
         help="Enable click-to-appear entrance animations for bullet points in PowerPoint.",
     )
+    transition_type = st.selectbox(
+        "Transition Type",
+        options=PPTX_TRANSITION_TYPES,
+        format_func=lambda x: x.capitalize(),
+        index=0,
+        help="Slide transition effect in PPTX (fade, push, wipe, cover, split, dissolve).",
+    )
     transition_duration_ms = st.slider(
         "Transition Duration (ms)",
         min_value=200, max_value=2000, value=700, step=100,
-        help="Duration of fade transitions between slides in PPTX.",
+        help="Duration of slide transitions in PPTX.",
     )
 
 # -- Main Content --
@@ -219,6 +226,7 @@ if uploaded_file:
         footer_author=footer_author,
         enable_animations=enable_animations,
         transition_duration_ms=transition_duration_ms,
+        transition_type=transition_type,
         export_formats=export_formats,
     )
 
@@ -297,6 +305,26 @@ if uploaded_file:
             with st.expander(f"Content Warnings ({len(content_warnings)})", expanded=False):
                 for w in content_warnings:
                     st.warning(w)
+
+        # Presentation statistics
+        total_bullets = sum(len(s.content) for s in slides)
+        total_words = sum(
+            len((" ".join(s.content) + " " + s.speaker_notes).split())
+            for s in slides
+        )
+        layout_counts = {}
+        for s in slides:
+            layout_counts[s.layout.value] = layout_counts.get(s.layout.value, 0) + 1
+        notes_chars = sum(len(s.speaker_notes) for s in slides)
+        # Rough estimate: 150 words per minute for speaking
+        est_duration_min = max(1, round(total_words / 150))
+
+        stat_cols = st.columns(5)
+        stat_cols[0].metric("Slides", len(slides))
+        stat_cols[1].metric("Bullets", total_bullets)
+        stat_cols[2].metric("Words", total_words)
+        stat_cols[3].metric("Est. Duration", f"{est_duration_min} min")
+        stat_cols[4].metric("Layouts", ", ".join(f"{k}:{v}" for k, v in sorted(layout_counts.items())))
 
         st.subheader("Slide Editor")
         st.caption("Edit slide content below, then click 'Create Presentation' to render.")
@@ -449,6 +477,7 @@ if uploaded_file:
                         footer_author=config.footer_author,
                         enable_animations=config.enable_animations,
                         transition_duration_ms=config.transition_duration_ms,
+                        transition_type=config.transition_type,
                     )
 
                 # Slide Images (needed for PDF and video)
@@ -469,7 +498,11 @@ if uploaded_file:
                     progress_bar.progress(50, text="Generating PDF...")
                     status.markdown("**Step 3/4:** Generating PDF...")
                     pdf_path = os.path.join(output_dir, "presentation.pdf")
-                    create_pdf_from_images(image_paths, pdf_path)
+                    pdf_title = slides[0].title if slides else ""
+                    create_pdf_from_images(
+                        image_paths, pdf_path,
+                        title=pdf_title, author=config.footer_author,
+                    )
 
                 # Video
                 if ExportFormat.VIDEO in config.export_formats:
@@ -640,6 +673,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v10.0")
+st.sidebar.caption("AutoPresentation AI v11.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

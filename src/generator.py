@@ -192,6 +192,16 @@ _TOC_TITLES = {
     Language.SPANISH: "Agenda",
 }
 
+_SUMMARY_TITLES = {
+    Language.ENGLISH: "Key Takeaways",
+    Language.CHINESE: "\u6838\u5fc3\u8981\u70b9",
+    Language.JAPANESE: "\u307e\u3068\u3081",
+    Language.KOREAN: "\ud575\uc2ec \uc694\uc810",
+    Language.FRENCH: "Points cl\u00e9s",
+    Language.GERMAN: "Kernpunkte",
+    Language.SPANISH: "Puntos clave",
+}
+
 
 def _create_toc_slide(slides: List[SlideData], language: Language) -> SlideData:
     """Create a table of contents / agenda slide from slide titles."""
@@ -432,15 +442,6 @@ def mock_generate_content(text: str, num_slides: int, language: Language = Langu
 
     # Add summary/key takeaways slide
     if num_slides > 2:
-        _SUMMARY_TITLES = {
-            Language.ENGLISH: "Key Takeaways",
-            Language.CHINESE: "\u6838\u5fc3\u8981\u70b9",
-            Language.JAPANESE: "\u307e\u3068\u3081",
-            Language.KOREAN: "\ud575\uc2ec \uc694\uc810",
-            Language.FRENCH: "Points cl\u00e9s",
-            Language.GERMAN: "Kernpunkte",
-            Language.SPANISH: "Puntos clave",
-        }
         summary_title = _SUMMARY_TITLES.get(language, "Key Takeaways")
         # Collect first sentence from each content slide as summary points
         summary_points = []

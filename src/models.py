@@ -114,6 +114,7 @@ class PresentationConfig:
     footer_author: str = ""   # Author name shown in footer center
     enable_animations: bool = True  # Bullet-by-bullet entrance animations in PPTX
     transition_duration_ms: int = 700  # Slide transition duration in milliseconds
+    transition_type: str = "fade"  # Slide transition type (fade, push, wipe, cover, split, dissolve)
     export_formats: List[ExportFormat] = field(
         default_factory=lambda: [ExportFormat.PPTX, ExportFormat.PDF, ExportFormat.VIDEO]
     )

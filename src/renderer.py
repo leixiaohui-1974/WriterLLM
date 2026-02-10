@@ -343,8 +343,12 @@ def _set_pptx_slide_background(slide, color: tuple):
         logger.debug("Could not set slide background: %s", e)
 
 
-def _add_pptx_slide_transition(slide, duration_ms: int = 700):
-    """Add a fade transition to a PPTX slide with configurable duration."""
+# Supported PPTX transition types (OpenXML element names)
+PPTX_TRANSITION_TYPES = ["fade", "push", "wipe", "cover", "split", "dissolve"]
+
+
+def _add_pptx_slide_transition(slide, duration_ms: int = 700, transition_type: str = "fade"):
+    """Add a slide transition with configurable duration and type."""
     try:
         from lxml import etree
         transition = etree.SubElement(
@@ -352,7 +356,17 @@ def _add_pptx_slide_transition(slide, duration_ms: int = 700):
             qn("p:transition"),
             attrib={"advClick": "1", "dur": str(duration_ms)},
         )
-        etree.SubElement(transition, qn("p:fade"))
+        # Map type name to OpenXML element
+        type_map = {
+            "fade": "p:fade",
+            "push": "p:push",
+            "wipe": "p:wipe",
+            "cover": "p:cover",
+            "split": "p:split",
+            "dissolve": "p:dissolve",
+        }
+        element_name = type_map.get(transition_type, "p:fade")
+        etree.SubElement(transition, qn(element_name))
     except Exception as e:
         logger.debug("Could not add slide transition: %s", e)
 
@@ -417,6 +431,7 @@ def create_pptx_file(
     footer_author: str = "",
     enable_animations: bool = True,
     transition_duration_ms: int = 700,
+    transition_type: str = "fade",
 ) -> str:
     """Create a themed PowerPoint file from slide data with optional AI backgrounds."""
     prs = Presentation()
@@ -450,7 +465,7 @@ def create_pptx_file(
 
         # Add slide transition and footer
         current_slide = prs.slides[len(prs.slides) - 1]
-        _add_pptx_slide_transition(current_slide, duration_ms=transition_duration_ms)
+        _add_pptx_slide_transition(current_slide, duration_ms=transition_duration_ms, transition_type=transition_type)
         _add_pptx_slide_number(
             current_slide, i, total_slides, colors,
             footer_company=footer_company, footer_author=footer_author,
@@ -1145,17 +1160,42 @@ def create_slide_images(
     return image_paths
 
 
-def create_pdf_from_images(image_paths: List[str], output_path: str) -> str:
-    """Compile slide images into a single PDF document."""
+def create_pdf_from_images(
+    image_paths: List[str],
+    output_path: str,
+    title: str = "",
+    author: str = "",
+) -> str:
+    """Compile slide images into a single PDF document with optional metadata."""
     if not image_paths:
         raise ValueError("No images provided for PDF generation")
 
     images = [Image.open(p).convert("RGB") for p in image_paths]
-    images[0].save(
-        output_path,
-        save_all=True,
-        append_images=images[1:],
-        resolution=300,
-    )
+
+    # Build save kwargs
+    save_kwargs = {
+        "save_all": True,
+        "append_images": images[1:],
+        "resolution": 300,
+    }
+
+    # Add PDF metadata if Pillow supports it
+    if title or author:
+        try:
+            from PIL import PdfImagePlugin
+            info = PdfImagePlugin.PdfInfo()
+            if title:
+                info.title = title
+            if author:
+                info.author = author
+            info.creator = "AutoPresentation AI"
+            save_kwargs["append_images"] = images[1:]
+            images[0].save(output_path, **save_kwargs)
+        except (ImportError, AttributeError, Exception):
+            # Fallback: save without metadata if PdfInfo not available
+            images[0].save(output_path, **save_kwargs)
+    else:
+        images[0].save(output_path, **save_kwargs)
+
     logger.info("PDF saved: %s (%d pages)", output_path, len(images))
     return output_path
