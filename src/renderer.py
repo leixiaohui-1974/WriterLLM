@@ -1,7 +1,7 @@
 """
 Slide rendering module - generates PPTX, slide images, and PDF output.
 Supports multiple visual themes, slide layouts, themed PPTX output,
-AI background image compositing, and CJK font support.
+AI background image compositing, CJK text wrapping, and text shadows.
 """
 import os
 import logging
@@ -30,6 +30,14 @@ CONTENT_START_Y = 280
 LINE_SPACING = 75
 BULLET_INDENT = 30
 
+# Available pixel widths for text content
+CONTENT_MAX_WIDTH = SLIDE_WIDTH - 2 * MARGIN_X       # ~1720px for full-width content
+COLUMN_MAX_WIDTH = SLIDE_WIDTH // 2 - MARGIN_X - 40  # ~820px per column
+
+# Text shadow settings
+_SHADOW_OFFSET = 2
+_SHADOW_COLOR = (0, 0, 0)
+
 # CJK language set and font paths
 _CJK_LANGUAGES = {Language.CHINESE, Language.JAPANESE, Language.KOREAN}
 
@@ -43,12 +51,77 @@ _CJK_FONT_PATHS = [
 ]
 
 _CJK_BOLD_FONT_PATHS = [
-    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",  # WQY has bold weight built-in
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
     "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/truetype/noto/NotoSansSC-Bold.otf",
 ]
 
+
+# ---- CJK Detection & Text Wrapping ----
+
+def _is_cjk_char(ch: str) -> bool:
+    """Check if a character is CJK, Hiragana, Katakana, Hangul, or fullwidth."""
+    cp = ord(ch)
+    return (
+        (0x4E00 <= cp <= 0x9FFF) or    # CJK Unified Ideographs
+        (0x3400 <= cp <= 0x4DBF) or    # CJK Extension A
+        (0x20000 <= cp <= 0x2A6DF) or  # CJK Extension B
+        (0xF900 <= cp <= 0xFAFF) or    # CJK Compatibility Ideographs
+        (0x3000 <= cp <= 0x303F) or    # CJK Symbols and Punctuation
+        (0x3040 <= cp <= 0x309F) or    # Hiragana
+        (0x30A0 <= cp <= 0x30FF) or    # Katakana
+        (0xAC00 <= cp <= 0xD7AF) or    # Hangul Syllables
+        (0x1100 <= cp <= 0x11FF) or    # Hangul Jamo
+        (0xFF00 <= cp <= 0xFFEF) or    # Halfwidth and Fullwidth Forms
+        (0xFE30 <= cp <= 0xFE4F)       # CJK Compatibility Forms
+    )
+
+
+def _contains_cjk(text: str) -> bool:
+    """Check if text contains any CJK characters."""
+    return any(_is_cjk_char(ch) for ch in text)
+
+
+def _text_pixel_width(text: str, font) -> int:
+    """Get pixel width of text with given font."""
+    if not text:
+        return 0
+    bbox = font.getbbox(text)
+    return bbox[2] - bbox[0]
+
+
+def _wrap_text(text: str, font, max_width: int) -> list:
+    """
+    Wrap text with CJK support using pixel-width measurement.
+    For Latin-only text, uses textwrap with estimated character width.
+    For CJK or mixed text, wraps character-by-character based on pixel width.
+    """
+    if not text or not text.strip():
+        return []
+
+    # For pure Latin text, use standard textwrap (preserves word boundaries)
+    if not _contains_cjk(text):
+        avg_char_w = max(1, _text_pixel_width("M", font))
+        chars_per_line = max(10, max_width // avg_char_w)
+        return textwrap.wrap(text, width=chars_per_line)
+
+    # CJK or mixed text: pixel-based character wrapping
+    lines = []
+    current = ""
+    for ch in text:
+        test = current + ch
+        if _text_pixel_width(test, font) > max_width and current:
+            lines.append(current)
+            current = ch
+        else:
+            current = test
+    if current:
+        lines.append(current)
+    return lines
+
+
+# ---- Font Loading ----
 
 def _get_font(
     font_name: str,
@@ -101,9 +174,21 @@ def _get_font(
     return ImageFont.load_default()
 
 
+# ---- Drawing Helpers ----
+
 def _rgb_color(color_tuple: tuple) -> RGBColor:
     """Convert (r, g, b) tuple to pptx RGBColor."""
     return RGBColor(color_tuple[0], color_tuple[1], color_tuple[2])
+
+
+def _draw_text(draw, pos, text, font, fill, shadow=False):
+    """Draw text with optional drop shadow for readability over images."""
+    if shadow:
+        draw.text(
+            (pos[0] + _SHADOW_OFFSET, pos[1] + _SHADOW_OFFSET),
+            text, font=font, fill=_SHADOW_COLOR,
+        )
+    draw.text(pos, text, font=font, fill=fill)
 
 
 def _prepare_background(
@@ -192,10 +277,9 @@ def create_pptx_file(
 
 def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
     """Add a standard content slide with themed colors."""
-    slide_layout = prs.slide_layouts[1]  # Title and Content
+    slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
 
-    # Style the title
     if slide.shapes.title:
         slide.shapes.title.text = slide_data.title
         for paragraph in slide.shapes.title.text_frame.paragraphs:
@@ -204,7 +288,6 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
                 run.font.bold = True
                 run.font.size = Pt(32)
 
-    # Style the content
     if len(slide.placeholders) > 1:
         ph = slide.placeholders[1]
         if ph.has_text_frame:
@@ -222,14 +305,13 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
                         run.font.size = Pt(18)
                         run.font.color.rgb = _rgb_color(colors.text)
 
-    # Speaker Notes
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
 
 
 def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
     """Add a title/cover slide."""
-    slide_layout = prs.slide_layouts[0]  # Title Slide
+    slide_layout = prs.slide_layouts[0]
     slide = prs.slides.add_slide(slide_layout)
 
     if slide.shapes.title:
@@ -241,7 +323,6 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
                 run.font.bold = True
                 run.font.size = Pt(44)
 
-    # Subtitle from first content item
     if len(slide.placeholders) > 1 and slide_data.content:
         subtitle_ph = slide.placeholders[1]
         if subtitle_ph.has_text_frame:
@@ -287,12 +368,10 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
                 run.font.bold = True
                 run.font.size = Pt(32)
 
-    # Split content into two columns
     if len(slide.placeholders) > 1:
         ph = slide.placeholders[1]
         if ph.has_text_frame:
             tf = ph.text_frame
-            mid = len(slide_data.content) // 2
             all_content = slide_data.content
             if all_content:
                 tf.text = all_content[0]
@@ -314,13 +393,10 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
 
 def _draw_decorative_elements(draw: ImageDraw.Draw, theme: ThemeColors, slide_index: int, total_slides: int):
     """Draw subtle decorative elements based on theme."""
-    # Accent line under header
     draw.rectangle(
         [(0, HEADER_HEIGHT), (SLIDE_WIDTH, HEADER_HEIGHT + 4)],
         fill=theme.accent,
     )
-
-    # Progress indicator at bottom
     if total_slides > 1:
         progress = (slide_index + 1) / total_slides
         bar_y = SLIDE_HEIGHT - 6
@@ -338,10 +414,12 @@ def _render_title_layout(
     slide_index: int,
     total_slides: int,
     has_bg_image: bool = False,
+    language: Language = Language.ENGLISH,
 ):
     """Render a title/cover slide with centered content."""
+    shadow = has_bg_image
+
     if not has_bg_image:
-        # Full-slide header background (skip when AI image is the background)
         draw.rectangle([(0, 0), (SLIDE_WIDTH, SLIDE_HEIGHT)], fill=colors.header)
 
     # Accent line
@@ -355,9 +433,8 @@ def _render_title_layout(
     title_h = bbox[3] - bbox[1]
     title_x = (SLIDE_WIDTH - title_w) // 2
     title_y = SLIDE_HEIGHT // 2 - title_h - 30
-    # Use white text when background image is present, otherwise theme title color
     title_color = (255, 255, 255) if has_bg_image else colors.title
-    draw.text((title_x, title_y), title, font=title_font, fill=title_color)
+    _draw_text(draw, (title_x, title_y), title, title_font, title_color, shadow=shadow)
 
     # Subtitle (first content item)
     if slide_data.content:
@@ -365,16 +442,16 @@ def _render_title_layout(
         bbox = draw.textbbox((0, 0), subtitle, font=content_font)
         sub_w = bbox[2] - bbox[0]
         sub_x = (SLIDE_WIDTH - sub_w) // 2
-        draw.text((sub_x, accent_y + 30), subtitle, font=content_font, fill=colors.accent)
+        _draw_text(draw, (sub_x, accent_y + 30), subtitle, content_font, colors.accent, shadow=shadow)
 
     # Footer
     footer_text = f"Slide {slide_index + 1} / {total_slides}"
     bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
     footer_w = bbox[2] - bbox[0]
     footer_color = (200, 200, 200) if has_bg_image else (*colors.title[:2], colors.title[2] // 2)
-    draw.text(
-        (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
-        footer_text, font=footer_font, fill=footer_color,
+    _draw_text(
+        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
+        footer_text, footer_font, footer_color, shadow=shadow,
     )
 
 
@@ -388,21 +465,24 @@ def _render_section_layout(
     slide_index: int,
     total_slides: int,
     has_bg_image: bool = False,
+    language: Language = Language.ENGLISH,
 ):
     """Render a section divider slide."""
+    shadow = has_bg_image
+
     # Left accent bar
     draw.rectangle([(0, 0), (20, SLIDE_HEIGHT)], fill=colors.accent)
 
-    # Centered large title
+    # Centered large title (uses language-aware font!)
     title = slide_data.title
-    large_font = _get_font("DejaVuSans-Bold.ttf", 90)
+    large_font = _get_font("DejaVuSans-Bold.ttf", 90, language)
     bbox = draw.textbbox((0, 0), title, font=large_font)
     title_w = bbox[2] - bbox[0]
     title_h = bbox[3] - bbox[1]
     title_x = (SLIDE_WIDTH - title_w) // 2
     title_y = (SLIDE_HEIGHT - title_h) // 2 - 20
     title_color = (255, 255, 255) if has_bg_image else colors.header
-    draw.text((title_x, title_y), title, font=large_font, fill=title_color)
+    _draw_text(draw, (title_x, title_y), title, large_font, title_color, shadow=shadow)
 
     # Subtle underline
     line_y = title_y + title_h + 20
@@ -415,7 +495,10 @@ def _render_section_layout(
     bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
     footer_w = bbox[2] - bbox[0]
     footer_color = (200, 200, 200) if has_bg_image else colors.footer
-    draw.text((SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45), footer_text, font=footer_font, fill=footer_color)
+    _draw_text(
+        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
+        footer_text, footer_font, footer_color, shadow=shadow,
+    )
 
 
 def _render_two_column_layout(
@@ -428,10 +511,12 @@ def _render_two_column_layout(
     slide_index: int,
     total_slides: int,
     has_bg_image: bool = False,
+    language: Language = Language.ENGLISH,
 ):
     """Render a two-column content slide."""
-    # Header bar (semi-transparent when bg image)
-    header_color = (*colors.header, 180) if has_bg_image else colors.header
+    shadow = has_bg_image
+
+    # Header bar
     draw.rectangle([(0, 0), (SLIDE_WIDTH, HEADER_HEIGHT)], fill=colors.header)
     _draw_decorative_elements(draw, colors, slide_index, total_slides)
 
@@ -440,7 +525,7 @@ def _render_two_column_layout(
     bbox = draw.textbbox((0, 0), title, font=title_font)
     title_h = bbox[3] - bbox[1]
     title_y = (HEADER_HEIGHT - title_h) // 2
-    draw.text((MARGIN_X, title_y), title, font=title_font, fill=colors.title)
+    _draw_text(draw, (MARGIN_X, title_y), title, title_font, colors.title, shadow=False)
 
     # Vertical divider line
     mid_x = SLIDE_WIDTH // 2
@@ -452,7 +537,6 @@ def _render_two_column_layout(
     mid = max(1, len(content) // 2)
     left_items = content[:mid]
     right_items = content[mid:]
-    col_wrap = TEXT_WRAP_WIDTH // 2 + 5
 
     for col_idx, (items, start_x) in enumerate([(left_items, MARGIN_X), (right_items, mid_x + 40)]):
         y = CONTENT_START_Y
@@ -460,12 +544,12 @@ def _render_two_column_layout(
         for point in items:
             if y >= max_y:
                 break
-            wrapped = textwrap.wrap(point, width=col_wrap)
+            wrapped = _wrap_text(point, content_font, COLUMN_MAX_WIDTH)
             for j, line in enumerate(wrapped):
                 if y >= max_y:
                     break
                 prefix = "\u2022 " if j == 0 else "  "
-                draw.text((start_x, y), f"{prefix}{line}", font=content_font, fill=colors.text)
+                _draw_text(draw, (start_x, y), f"{prefix}{line}", content_font, colors.text, shadow=shadow)
                 y += LINE_SPACING
             y += 10
 
@@ -474,7 +558,10 @@ def _render_two_column_layout(
     bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
     footer_w = bbox[2] - bbox[0]
     footer_color = (200, 200, 200) if has_bg_image else colors.footer
-    draw.text((SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45), footer_text, font=footer_font, fill=footer_color)
+    _draw_text(
+        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
+        footer_text, footer_font, footer_color, shadow=shadow,
+    )
 
 
 def _render_content_layout(
@@ -487,8 +574,11 @@ def _render_content_layout(
     slide_index: int,
     total_slides: int,
     has_bg_image: bool = False,
+    language: Language = Language.ENGLISH,
 ):
     """Render a standard content slide."""
+    shadow = has_bg_image
+
     # Header bar
     draw.rectangle([(0, 0), (SLIDE_WIDTH, HEADER_HEIGHT)], fill=colors.header)
     _draw_decorative_elements(draw, colors, slide_index, total_slides)
@@ -498,22 +588,22 @@ def _render_content_layout(
     bbox = draw.textbbox((0, 0), title, font=title_font)
     title_h = bbox[3] - bbox[1]
     title_y = (HEADER_HEIGHT - title_h) // 2
-    draw.text((MARGIN_X, title_y), title, font=title_font, fill=colors.title)
+    _draw_text(draw, (MARGIN_X, title_y), title, title_font, colors.title, shadow=False)
 
-    # Content
+    # Content with CJK-aware wrapping
     y = CONTENT_START_Y
     max_y = SLIDE_HEIGHT - 80
     for point in slide_data.content:
         if y >= max_y:
-            draw.text((MARGIN_X, y), "...", font=content_font, fill=colors.footer)
+            _draw_text(draw, (MARGIN_X, y), "...", content_font, colors.footer, shadow=shadow)
             break
-        wrapped = textwrap.wrap(point, width=TEXT_WRAP_WIDTH)
+        wrapped = _wrap_text(point, content_font, CONTENT_MAX_WIDTH)
         for j, line in enumerate(wrapped):
             if y >= max_y:
                 break
             prefix = "\u2022 " if j == 0 else "  "
             x = MARGIN_X if j == 0 else MARGIN_X + BULLET_INDENT
-            draw.text((x, y), f"{prefix}{line}", font=content_font, fill=colors.text)
+            _draw_text(draw, (x, y), f"{prefix}{line}", content_font, colors.text, shadow=shadow)
             y += LINE_SPACING
         y += 10
 
@@ -522,7 +612,10 @@ def _render_content_layout(
     bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
     footer_w = bbox[2] - bbox[0]
     footer_color = (200, 200, 200) if has_bg_image else colors.footer
-    draw.text((SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45), footer_text, font=footer_font, fill=footer_color)
+    _draw_text(
+        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
+        footer_text, footer_font, footer_color, shadow=shadow,
+    )
 
 
 # Layout renderer dispatch
@@ -543,7 +636,7 @@ def create_slide_images(
 ) -> List[str]:
     """
     Render high-quality slide images using Pillow.
-    Supports themes, layouts, AI background images, and CJK fonts.
+    Supports themes, layouts, AI background images, CJK fonts, and text shadows.
     """
     os.makedirs(output_dir, exist_ok=True)
     colors = THEMES.get(theme, THEMES[SlideTheme.PROFESSIONAL])
@@ -556,14 +649,15 @@ def create_slide_images(
     total_slides = len(slides_data)
 
     for i, slide_data in enumerate(slides_data):
-        # Use AI background if available, otherwise solid color
         img = _prepare_background(i, colors, background_images)
         draw = ImageDraw.Draw(img)
 
-        has_bg = background_images is not None and i in (background_images or {})
+        has_bg = background_images is not None and i in background_images
         renderer = _LAYOUT_RENDERERS.get(slide_data.layout, _render_content_layout)
-        renderer(draw, slide_data, colors, title_font, content_font, footer_font,
-                 i, total_slides, has_bg_image=has_bg)
+        renderer(
+            draw, slide_data, colors, title_font, content_font, footer_font,
+            i, total_slides, has_bg_image=has_bg, language=language,
+        )
 
         filename = f"slide_{i + 1:03d}.png"
         path = os.path.join(output_dir, filename)
@@ -588,7 +682,7 @@ def create_pdf_from_images(image_paths: List[str], output_path: str) -> str:
         output_path,
         save_all=True,
         append_images=images[1:],
-        resolution=150,
+        resolution=300,
     )
     logger.info("PDF saved: %s (%d pages)", output_path, len(images))
     return output_path

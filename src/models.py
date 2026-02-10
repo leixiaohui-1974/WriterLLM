@@ -162,12 +162,12 @@ THEMES = {
         footer=(160, 140, 130),
     ),
     SlideTheme.MINIMAL: ThemeColors(
-        background=(250, 250, 250),
-        header=(250, 250, 250),
-        text=(60, 60, 60),
+        background=(248, 248, 248),
+        header=(235, 235, 235),
+        text=(50, 50, 50),
         title=(30, 30, 30),
-        accent=(100, 100, 100),
-        footer=(180, 180, 180),
+        accent=(80, 80, 80),
+        footer=(170, 170, 170),
     ),
 }
 

@@ -10,7 +10,8 @@ from src.generator import generate_slides
 from src.models import SlideData, SlideLayout, SlideTheme, Language, ExportFormat, PresentationConfig
 from src.renderer import (
     create_pptx_file, create_slide_images, create_pdf_from_images,
-    _prepare_background, _get_font,
+    _prepare_background, _get_font, _is_cjk_char, _contains_cjk,
+    _wrap_text, _text_pixel_width, _draw_text,
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES
@@ -228,26 +229,88 @@ class TestBackgroundImageCompositing:
             assert os.path.exists(p)
 
 
+class TestCJKTextWrapping:
+    """Tests for CJK character detection and pixel-based text wrapping."""
+
+    def test_is_cjk_char_chinese(self):
+        assert _is_cjk_char("人") is True
+        assert _is_cjk_char("智") is True
+
+    def test_is_cjk_char_japanese(self):
+        assert _is_cjk_char("あ") is True  # Hiragana
+        assert _is_cjk_char("カ") is True  # Katakana
+
+    def test_is_cjk_char_korean(self):
+        assert _is_cjk_char("한") is True  # Hangul
+
+    def test_is_cjk_char_latin(self):
+        assert _is_cjk_char("A") is False
+        assert _is_cjk_char("z") is False
+        assert _is_cjk_char(" ") is False
+
+    def test_contains_cjk(self):
+        assert _contains_cjk("人工智能") is True
+        assert _contains_cjk("Hello World") is False
+        assert _contains_cjk("Hello 世界") is True  # Mixed
+        assert _contains_cjk("") is False
+
+    def test_wrap_text_latin(self):
+        font = _get_font("DejaVuSans.ttf", 45, Language.ENGLISH)
+        result = _wrap_text("Short text", font, 1720)
+        assert len(result) >= 1
+        assert "Short text" in result[0]
+
+    def test_wrap_text_cjk_wraps_long_string(self):
+        """CJK text without spaces must be wrapped by pixel width."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.CHINESE)
+        long_cjk = "人工智能正在改变世界的方方面面包括医疗金融教育交通等各个领域"
+        result = _wrap_text(long_cjk, font, 800)  # Narrow width
+        assert len(result) >= 2, f"Expected multiple lines, got {len(result)}: {result}"
+
+    def test_wrap_text_cjk_short_fits(self):
+        """Short CJK text should fit in one line."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.CHINESE)
+        result = _wrap_text("人工智能", font, 1720)
+        assert len(result) == 1
+
+    def test_wrap_text_empty(self):
+        font = _get_font("DejaVuSans.ttf", 45, Language.ENGLISH)
+        assert _wrap_text("", font, 1000) == []
+        assert _wrap_text("   ", font, 1000) == []
+
+    def test_wrap_text_mixed_cjk_latin(self):
+        """Mixed CJK+Latin text should wrap correctly."""
+        font = _get_font("DejaVuSans.ttf", 45, Language.CHINESE)
+        mixed = "AI人工智能is changing the world世界"
+        result = _wrap_text(mixed, font, 600)
+        assert len(result) >= 1
+
+    def test_text_pixel_width(self):
+        font = _get_font("DejaVuSans.ttf", 45, Language.ENGLISH)
+        assert _text_pixel_width("", font) == 0
+        w = _text_pixel_width("Hello", font)
+        assert w > 0
+        # Longer text should be wider
+        w2 = _text_pixel_width("Hello World", font)
+        assert w2 > w
+
+
 class TestCJKFontSupport:
     """Tests for CJK font loading and rendering."""
 
     def test_cjk_font_loading_chinese(self):
-        """Verify CJK font loads for Chinese language."""
         font = _get_font("DejaVuSans.ttf", 45, Language.CHINESE)
         assert font is not None
 
     def test_cjk_font_loading_japanese(self):
-        """Verify CJK font loads for Japanese language."""
         font = _get_font("DejaVuSans.ttf", 45, Language.JAPANESE)
         assert font is not None
 
     def test_cjk_font_loading_korean(self):
-        """Verify CJK font loads for Korean language."""
         font = _get_font("DejaVuSans.ttf", 45, Language.KOREAN)
         assert font is not None
 
     def test_english_font_loading(self):
-        """Verify English font loads (non-CJK path)."""
         font = _get_font("DejaVuSans.ttf", 45, Language.ENGLISH)
         assert font is not None
 
@@ -274,6 +337,71 @@ class TestCJKFontSupport:
         )
         assert len(image_paths) == 1
         assert os.path.getsize(image_paths[0]) > 0
+
+    def test_chinese_section_layout(self):
+        """Verify section layout renders CJK title with correct font."""
+        slides_data = [
+            SlideData(title="第二部分", content=[], layout=SlideLayout.SECTION),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_zh_section")
+        image_paths = create_slide_images(
+            slides_data, images_dir, language=Language.CHINESE,
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_cjk_long_content_wrapping(self):
+        """Verify long Chinese text wraps correctly in slide images."""
+        long_text = "人工智能正在改变世界的方方面面包括医疗金融教育交通等各个领域，它能够帮助我们更好地理解和分析大量数据"
+        slides_data = [
+            SlideData(title="长文本测试", content=[long_text], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_zh_long")
+        image_paths = create_slide_images(
+            slides_data, images_dir, language=Language.CHINESE,
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+
+class TestTextShadow:
+    """Tests for text shadow rendering with background images."""
+
+    def test_slide_with_bg_renders_shadow(self):
+        """Verify slides with background images render without error (shadow active)."""
+        slides_data = [
+            SlideData(title="Shadow Test", content=["Point A", "Point B"], layout=SlideLayout.CONTENT),
+        ]
+        bg_path = os.path.join(OUTPUT_DIR, "bg_shadow.png")
+        _create_test_bg_image(bg_path)
+
+        images_dir = os.path.join(OUTPUT_DIR, "images_shadow")
+        image_paths = create_slide_images(
+            slides_data, images_dir, background_images={0: bg_path},
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_draw_text_with_shadow(self):
+        """Verify _draw_text with shadow draws more dark pixels than without."""
+        from PIL import Image, ImageDraw
+        # Render without shadow
+        img_no_shadow = Image.new("RGB", (400, 100), (255, 255, 255))
+        draw1 = ImageDraw.Draw(img_no_shadow)
+        font = _get_font("DejaVuSans.ttf", 30, Language.ENGLISH)
+        _draw_text(draw1, (10, 10), "Shadow", font, (255, 0, 0), shadow=False)
+        px1 = img_no_shadow.load()
+        dark_no_shadow = sum(1 for x in range(400) for y in range(100) if px1[x, y][0] < 200)
+
+        # Render with shadow
+        img_shadow = Image.new("RGB", (400, 100), (255, 255, 255))
+        draw2 = ImageDraw.Draw(img_shadow)
+        _draw_text(draw2, (10, 10), "Shadow", font, (255, 0, 0), shadow=True)
+        px2 = img_shadow.load()
+        dark_shadow = sum(1 for x in range(400) for y in range(100) if px2[x, y][0] < 200)
+
+        # Shadow version should have more dark pixels (the black shadow layer)
+        assert dark_shadow > dark_no_shadow, "Shadow should add more dark pixels"
 
 
 class TestMultiLanguage:

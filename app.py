@@ -369,25 +369,13 @@ if uploaded_file:
             ai_bg_images = st.session_state.ai_bg_images
 
             try:
+                # Ensure output directory exists (no destructive cleanup)
+                os.makedirs(output_dir, exist_ok=True)
+
                 # Render PPTX
                 if ExportFormat.PPTX in config.export_formats:
                     progress_bar.progress(10, text="Creating PowerPoint...")
                     status.markdown("**Step 1/4:** Creating PowerPoint file...")
-
-                    if os.path.exists(output_dir):
-                        bg_dir_path = os.path.join(output_dir, "backgrounds")
-                        bg_exists = os.path.exists(bg_dir_path)
-                        if bg_exists:
-                            import tempfile
-                            tmp = tempfile.mkdtemp()
-                            shutil.copytree(bg_dir_path, os.path.join(tmp, "backgrounds"))
-                        shutil.rmtree(output_dir)
-                        os.makedirs(output_dir)
-                        if bg_exists:
-                            shutil.copytree(os.path.join(tmp, "backgrounds"), bg_dir_path)
-                            shutil.rmtree(tmp)
-                    else:
-                        os.makedirs(output_dir)
 
                     pptx_path = os.path.join(output_dir, "presentation.pptx")
                     create_pptx_file(
@@ -398,9 +386,6 @@ if uploaded_file:
                 # Slide Images (needed for PDF and video)
                 progress_bar.progress(30, text="Rendering slide images...")
                 status.markdown("**Step 2/4:** Rendering slide images...")
-
-                if not os.path.exists(output_dir):
-                    os.makedirs(output_dir)
                 images_dir = os.path.join(output_dir, "images")
                 image_paths = create_slide_images(
                     slides, images_dir, theme=config.theme,
