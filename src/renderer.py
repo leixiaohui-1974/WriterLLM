@@ -459,9 +459,14 @@ def create_pptx_file(
             _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.background)
 
         # Add AI background image if available (overrides solid background)
-        if background_images and i in background_images:
+        has_bg_image = background_images and i in background_images
+        if has_bg_image:
             slide = prs.slides[len(prs.slides) - 1]
             _add_pptx_background(slide, background_images[i], prs)
+            # Add text shadows for readability on background images
+            for shape in prs.slides[len(prs.slides) - 1].shapes:
+                if shape.has_text_frame and shape.text_frame.text.strip():
+                    _add_pptx_text_shadow(shape)
 
         # Add slide transition and footer
         current_slide = prs.slides[len(prs.slides) - 1]
@@ -707,6 +712,49 @@ def _compute_pptx_font_size(content: list, base_size: int = 18, min_size: int = 
     return base_size
 
 
+def _populate_pptx_bullets(text_frame, items: list, colors: ThemeColors, font_size: int):
+    """Populate a PPTX text frame with styled bullet items. Shared by content and two-column slides."""
+    if not items:
+        return
+    text_frame.text = items[0]
+    for run in text_frame.paragraphs[0].runs:
+        run.font.size = Pt(font_size)
+        run.font.color.rgb = _rgb_color(colors.text)
+    _format_pptx_bullet(text_frame.paragraphs[0], colors)
+    for point in items[1:]:
+        p = text_frame.add_paragraph()
+        p.text = point
+        p.space_before = Pt(6)
+        for run in p.runs:
+            run.font.size = Pt(font_size)
+            run.font.color.rgb = _rgb_color(colors.text)
+        _format_pptx_bullet(p, colors)
+
+
+def _add_pptx_text_shadow(shape):
+    """Add a drop shadow effect to all text in a PPTX shape for readability on background images."""
+    try:
+        from lxml import etree
+        for paragraph in shape.text_frame.paragraphs:
+            for run in paragraph.runs:
+                rPr = run._r.get_or_add_rPr()
+                # Remove existing effect list
+                for child in list(rPr):
+                    tag_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                    if tag_local == "effectLst":
+                        rPr.remove(child)
+                shadow_xml = (
+                    '<a:effectLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                    '<a:outerShdw blurRad="38100" dist="19050" dir="2700000" algn="tl">'
+                    '<a:srgbClr val="000000"><a:alpha val="60000"/></a:srgbClr>'
+                    '</a:outerShdw>'
+                    '</a:effectLst>'
+                )
+                rPr.append(etree.fromstring(shadow_xml))
+    except Exception:
+        pass
+
+
 def _format_pptx_bullet(paragraph, colors: ThemeColors):
     """Apply accent-colored bullet formatting to a PPTX paragraph."""
     try:
@@ -749,23 +797,9 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
 
     if len(slide.placeholders) > 1:
         ph = slide.placeholders[1]
-        if ph.has_text_frame:
-            tf = ph.text_frame
-            if slide_data.content:
-                font_size = _compute_pptx_font_size(slide_data.content, base_size=18, min_size=12)
-                tf.text = slide_data.content[0]
-                for run in tf.paragraphs[0].runs:
-                    run.font.size = Pt(font_size)
-                    run.font.color.rgb = _rgb_color(colors.text)
-                _format_pptx_bullet(tf.paragraphs[0], colors)
-                for point in slide_data.content[1:]:
-                    p = tf.add_paragraph()
-                    p.text = point
-                    p.space_before = Pt(6)
-                    for run in p.runs:
-                        run.font.size = Pt(font_size)
-                        run.font.color.rgb = _rgb_color(colors.text)
-                    _format_pptx_bullet(p, colors)
+        if ph.has_text_frame and slide_data.content:
+            font_size = _compute_pptx_font_size(slide_data.content, base_size=18, min_size=12)
+            _populate_pptx_bullets(ph.text_frame, slide_data.content, colors, font_size)
 
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
@@ -890,38 +924,14 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
         Inches(0.5), Inches(1.6), Inches(5.9), Inches(5.0),
     )
     left_box.text_frame.word_wrap = True
-    if left_items:
-        left_box.text_frame.text = left_items[0]
-        _format_pptx_bullet(left_box.text_frame.paragraphs[0], colors)
-        for run in left_box.text_frame.paragraphs[0].runs:
-            run.font.size = Pt(col_font_size)
-            run.font.color.rgb = _rgb_color(colors.text)
-        for point in left_items[1:]:
-            p = left_box.text_frame.add_paragraph()
-            p.text = point
-            _format_pptx_bullet(p, colors)
-            for run in p.runs:
-                run.font.size = Pt(col_font_size)
-                run.font.color.rgb = _rgb_color(colors.text)
+    _populate_pptx_bullets(left_box.text_frame, left_items, colors, col_font_size)
 
     # Right column text box
     right_box = slide.shapes.add_textbox(
         Inches(6.8), Inches(1.6), Inches(5.9), Inches(5.0),
     )
     right_box.text_frame.word_wrap = True
-    if right_items:
-        right_box.text_frame.text = right_items[0]
-        _format_pptx_bullet(right_box.text_frame.paragraphs[0], colors)
-        for run in right_box.text_frame.paragraphs[0].runs:
-            run.font.size = Pt(col_font_size)
-            run.font.color.rgb = _rgb_color(colors.text)
-        for point in right_items[1:]:
-            p = right_box.text_frame.add_paragraph()
-            p.text = point
-            _format_pptx_bullet(p, colors)
-            for run in p.runs:
-                run.font.size = Pt(col_font_size)
-                run.font.color.rgb = _rgb_color(colors.text)
+    _populate_pptx_bullets(right_box.text_frame, right_items, colors, col_font_size)
 
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes

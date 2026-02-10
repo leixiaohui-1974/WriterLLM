@@ -56,6 +56,52 @@ VOICE_MAP = {
 }
 
 
+SLIDE_TEMPLATES = {
+    "blank": {
+        "label": "Blank",
+        "title": "New Slide",
+        "content": ["New content point"],
+        "notes": "Speaker notes here.",
+        "layout": SlideLayout.CONTENT,
+    },
+    "intro": {
+        "label": "Introduction",
+        "title": "Introduction",
+        "content": ["Background and context", "Key objectives", "Scope of this presentation"],
+        "notes": "Welcome the audience and provide an overview of the presentation.",
+        "layout": SlideLayout.CONTENT,
+    },
+    "comparison": {
+        "label": "Comparison",
+        "title": "Comparison",
+        "content": ["Option A: advantage 1", "Option A: advantage 2", "Option B: advantage 1", "Option B: advantage 2"],
+        "notes": "Compare and contrast the two options, highlighting trade-offs.",
+        "layout": SlideLayout.TWO_COLUMN,
+    },
+    "section_break": {
+        "label": "Section Break",
+        "title": "Section Title",
+        "content": [],
+        "notes": "Transition to the next section of the presentation.",
+        "layout": SlideLayout.SECTION,
+    },
+    "key_points": {
+        "label": "Key Points",
+        "title": "Key Takeaways",
+        "content": ["First key insight or finding", "Second important conclusion", "Third actionable recommendation"],
+        "notes": "Summarize the most important points for the audience.",
+        "layout": SlideLayout.CONTENT,
+    },
+    "thank_you": {
+        "label": "Thank You",
+        "title": "Thank You",
+        "content": ["Questions and discussion"],
+        "notes": "Thank the audience and open the floor for questions.",
+        "layout": SlideLayout.TITLE,
+    },
+}
+
+
 @dataclass
 class SlideData:
     """Represents a single slide's content."""
@@ -220,7 +266,7 @@ def serialize_project(slides: List[SlideData], language: str = "en",
                       theme: str = "professional", **kwargs) -> dict:
     """Serialize slides and settings to a JSON-compatible dict for project save."""
     return {
-        "version": "15.0",
+        "version": "16.0",
         "settings": {
             "language": language,
             "theme": theme,

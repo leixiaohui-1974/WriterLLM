@@ -14,7 +14,7 @@ import streamlit as st
 from src.config import setup_logging, DEFAULT_API_KEY, DEFAULT_BASE_URL, DEFAULT_MODEL
 from src.models import (
     Language, SlideTheme, SlideData, SlideLayout, PresentationConfig, ExportFormat,
-    MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES, THEMES,
+    MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES, THEMES, SLIDE_TEMPLATES,
     serialize_project, deserialize_project,
 )
 from src.parser import parse_document, SUPPORTED_EXTENSIONS
@@ -485,18 +485,32 @@ if uploaded_file:
             st.session_state.slides_data = slides
             st.rerun()
 
-        # Add new slide button
-        if st.button("+ Add Slide"):
-            new_slide = SlideData(
-                title=f"Slide {len(slides) + 1}",
-                content=["New content point"],
-                speaker_notes="Speaker notes here.",
-                image_prompt="Professional presentation visual",
-                layout=SlideLayout.CONTENT,
+        # Add new slide with template selector
+        add_cols = st.columns([2, 1])
+        with add_cols[0]:
+            template_options = list(SLIDE_TEMPLATES.keys())
+            template_labels = {k: v["label"] for k, v in SLIDE_TEMPLATES.items()}
+            selected_template = st.selectbox(
+                "Slide Template",
+                options=template_options,
+                format_func=lambda x: template_labels[x],
+                index=0,
+                key="add_slide_template",
+                label_visibility="collapsed",
             )
-            slides.append(new_slide)
-            st.session_state.slides_data = slides
-            st.rerun()
+        with add_cols[1]:
+            if st.button("+ Add Slide", use_container_width=True):
+                tmpl = SLIDE_TEMPLATES[selected_template]
+                new_slide = SlideData(
+                    title=tmpl["title"],
+                    content=list(tmpl["content"]),
+                    speaker_notes=tmpl["notes"],
+                    image_prompt="Professional presentation visual",
+                    layout=tmpl["layout"],
+                )
+                slides.append(new_slide)
+                st.session_state.slides_data = slides
+                st.rerun()
 
         st.divider()
 
@@ -780,6 +794,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v15.0")
+st.sidebar.caption("AutoPresentation AI v16.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

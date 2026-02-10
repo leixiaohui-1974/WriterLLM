@@ -24,10 +24,10 @@ from src.renderer import (
     SLIDE_HEIGHT, SLIDE_WIDTH, HEADER_HEIGHT, TITLE_FONT_SIZE,
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
-from src.models import ThemeColors, THEMES, serialize_project, deserialize_project
+from src.models import ThemeColors, THEMES, SLIDE_TEMPLATES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, PPTX_TRANSITION_TYPES
+from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, PPTX_TRANSITION_TYPES
 
 
 OUTPUT_DIR = "test_output"
@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "15.0"
+        assert proj["version"] == "16.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "15.0"
+        assert proj["version"] == "16.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -2509,6 +2509,169 @@ class TestPPTXProgressBar:
         # Each slide should have at least some shapes
         for slide in prs.slides:
             assert len(slide.shapes) >= 4  # header + accent + content + progress bars
+
+
+class TestPopulatePptxBullets:
+    """Tests for shared bullet population helper (v16)."""
+
+    def test_populate_empty_list(self):
+        """Empty item list should not modify text frame."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(3))
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _populate_pptx_bullets(box.text_frame, [], colors, 18)
+        # Should not crash, text frame stays empty
+        assert box.text_frame.text.strip() == ""
+
+    def test_populate_single_item(self):
+        """Single item should create one paragraph."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(3))
+        colors = THEMES[SlideTheme.OCEAN]
+        _populate_pptx_bullets(box.text_frame, ["Hello World"], colors, 16)
+        assert "Hello World" in box.text_frame.text
+
+    def test_populate_multiple_items(self):
+        """Multiple items should create multiple paragraphs."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(3))
+        colors = THEMES[SlideTheme.DARK]
+        items = ["Point A", "Point B", "Point C"]
+        _populate_pptx_bullets(box.text_frame, items, colors, 14)
+        assert len(box.text_frame.paragraphs) == 3
+
+    def test_content_slide_uses_shared_helper(self):
+        """Content slide should still render correctly after dedup refactor."""
+        slides_data = [
+            SlideData(title="Refactored", content=["A", "B", "C"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "dedup_content.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 1
+
+    def test_two_column_uses_shared_helper(self):
+        """Two-column slide should still render correctly after dedup refactor."""
+        slides_data = [
+            SlideData(title="Dedup TwoCol", content=["L1", "L2", "R1", "R2"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "dedup_twocol.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        text_shapes = [s for s in slide.shapes if s.has_text_frame and s.text_frame.text.strip()]
+        assert len(text_shapes) >= 3  # title + left + right
+
+
+class TestPPTXTextShadow:
+    """Tests for PPTX text shadow on background images (v16)."""
+
+    def test_add_text_shadow_does_not_raise(self):
+        """Adding text shadow should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(2))
+        box.text_frame.text = "Shadow test"
+        _add_pptx_text_shadow(box)
+
+    def test_shadow_adds_effect_element(self):
+        """Text shadow should add a:effectLst to run properties."""
+        from pptx.oxml.ns import qn as _qn
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(2))
+        box.text_frame.text = "Shadow check"
+        _add_pptx_text_shadow(box)
+        # Check for effectLst element in run properties
+        found = False
+        for p in box.text_frame.paragraphs:
+            for run in p.runs:
+                effects = run._r.findall(".//" + _qn("a:effectLst"))
+                if effects:
+                    found = True
+                    break
+        assert found, "No effectLst element found after adding shadow"
+
+    def test_shadow_on_empty_shape_no_crash(self):
+        """Shadow on shape with no text should not crash."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        box = slide.shapes.add_textbox(Inches(0), Inches(0), Inches(5), Inches(2))
+        _add_pptx_text_shadow(box)  # Should not raise
+
+
+class TestSlideTemplates:
+    """Tests for slide template presets (v16)."""
+
+    def test_all_templates_have_required_keys(self):
+        """Each template should have label, title, content, notes, layout."""
+        for key, tmpl in SLIDE_TEMPLATES.items():
+            assert "label" in tmpl, f"Template {key} missing 'label'"
+            assert "title" in tmpl, f"Template {key} missing 'title'"
+            assert "content" in tmpl, f"Template {key} missing 'content'"
+            assert "notes" in tmpl, f"Template {key} missing 'notes'"
+            assert "layout" in tmpl, f"Template {key} missing 'layout'"
+
+    def test_templates_have_valid_layouts(self):
+        """Template layouts should be valid SlideLayout values."""
+        for key, tmpl in SLIDE_TEMPLATES.items():
+            assert isinstance(tmpl["layout"], SlideLayout), f"Template {key} has invalid layout"
+
+    def test_blank_template_exists(self):
+        """Should have a 'blank' template."""
+        assert "blank" in SLIDE_TEMPLATES
+
+    def test_template_count(self):
+        """Should have at least 5 templates."""
+        assert len(SLIDE_TEMPLATES) >= 5
+
+    def test_create_slide_from_template(self):
+        """Creating a SlideData from template should work."""
+        tmpl = SLIDE_TEMPLATES["intro"]
+        slide = SlideData(
+            title=tmpl["title"],
+            content=list(tmpl["content"]),
+            speaker_notes=tmpl["notes"],
+            layout=tmpl["layout"],
+        )
+        assert slide.title == "Introduction"
+        assert len(slide.content) == 3
+        assert slide.layout == SlideLayout.CONTENT
+
+    def test_comparison_template_is_two_column(self):
+        """Comparison template should use TWO_COLUMN layout."""
+        assert SLIDE_TEMPLATES["comparison"]["layout"] == SlideLayout.TWO_COLUMN
+
+    def test_render_all_templates(self):
+        """Rendering slides from all templates should not crash."""
+        slides = []
+        for key, tmpl in SLIDE_TEMPLATES.items():
+            slides.append(SlideData(
+                title=tmpl["title"],
+                content=list(tmpl["content"]),
+                speaker_notes=tmpl["notes"],
+                layout=tmpl["layout"],
+            ))
+        path = os.path.join(OUTPUT_DIR, "all_templates.pptx")
+        create_pptx_file(slides, path)
+        prs = Presentation(path)
+        assert len(prs.slides) == len(SLIDE_TEMPLATES)
 
 
 if __name__ == "__main__":
