@@ -41,75 +41,99 @@ def create_pptx_file(slides_data, output_path):
     prs.save(output_path)
     return output_path
 
+def get_font(font_name, size):
+    """
+    Helper to load a font from the data/fonts directory.
+    Falls back to default if not found.
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    font_path = os.path.join(base_dir, "data", "fonts", font_name)
+
+    try:
+        if os.path.exists(font_path):
+            return ImageFont.truetype(font_path, size)
+    except Exception as e:
+        print(f"Error loading font {font_name}: {e}")
+
+    # Fallback to system search (Linux specific) or default
+    try:
+        return ImageFont.truetype("DejaVuSans.ttf", size)
+    except:
+        return ImageFont.load_default()
+
 def create_slide_images(slides_data, output_dir):
     """
-    Generates images for each slide using Pillow.
-    Returns a list of image paths.
+    Generates images for each slide using Pillow with improved layout.
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     image_paths = []
 
-    width = 1920
-    height = 1080
-    background_color = (255, 255, 255)
-    header_color = (70, 130, 180) # Steel Blue
-    text_color = (0, 0, 0)
+    # Canvas Settings
+    WIDTH = 1920
+    HEIGHT = 1080
+    BG_COLOR = (255, 255, 255)
+    HEADER_COLOR = (44, 62, 80) # Dark Blue
+    TEXT_COLOR = (50, 50, 50)
+    TITLE_COLOR = (255, 255, 255)
 
-    # Font Logic
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    if not os.path.exists(font_path):
-        # Fallback search
-        import glob
-        fonts = glob.glob("/usr/share/fonts/**/*.ttf", recursive=True)
-        if fonts:
-            font_path = fonts[0]
-        else:
-            font_path = None
+    # Fonts
+    title_font = get_font("DejaVuSans-Bold.ttf", 70)
+    content_font = get_font("DejaVuSans.ttf", 45)
+    footer_font = get_font("DejaVuSans.ttf", 30)
 
-    try:
-        if font_path:
-            title_font = ImageFont.truetype(font_path, 60)
-            content_font = ImageFont.truetype(font_path, 40)
-            footer_font = ImageFont.truetype(font_path, 30)
-        else:
-            # Load default bitmap font
-            title_font = ImageFont.load_default()
-            content_font = ImageFont.load_default()
-            footer_font = ImageFont.load_default()
-    except Exception as e:
-        print(f"Font loading warning: {e}")
-        title_font = ImageFont.load_default()
-        content_font = ImageFont.load_default()
-        footer_font = ImageFont.load_default()
+    # Margins
+    MARGIN_X = 100
+    MARGIN_Y_CONTENT = 300
+    LINE_SPACING = 80
 
     for i, slide_data in enumerate(slides_data):
-        img = Image.new('RGB', (width, height), color=background_color)
+        img = Image.new('RGB', (WIDTH, HEIGHT), color=BG_COLOR)
         draw = ImageDraw.Draw(img)
 
-        # Draw header
-        draw.rectangle([(0, 0), (width, 150)], fill=header_color)
+        # 1. Header Bar
+        header_height = 200
+        draw.rectangle([(0, 0), (WIDTH, header_height)], fill=HEADER_COLOR)
 
-        # Title
+        # 2. Title
         title = slide_data.get("title", "Untitled")
-        draw.text((50, 45), title, font=title_font, fill=(255, 255, 255))
+        # Center title vertically in header
+        bbox = draw.textbbox((0, 0), title, font=title_font)
+        title_w = bbox[2] - bbox[0]
+        title_h = bbox[3] - bbox[1]
+        title_x = MARGIN_X
+        title_y = (header_height - title_h) / 2
+        draw.text((title_x, title_y), title, font=title_font, fill=TITLE_COLOR)
 
-        # Content
-        y_text = 250
+        # 3. Content
+        y_text = MARGIN_Y_CONTENT
         content_lines = slide_data.get("content", [])
 
-        # Basic text wrapping
-        max_chars = 60
-        for point in content_lines:
-            # Use textwrap to split long lines
-            wrapped_lines = textwrap.wrap(point, width=max_chars)
-            for line in wrapped_lines:
-                draw.text((100, y_text), f"• {line}", font=content_font, fill=text_color)
-                y_text += 60 # Line spacing
+        # Character wrapping approximation
+        # 1920 width. Margin 100 on each side -> 1720 usable.
+        # Font size 45. Approx 25px width per char? 1720 / 25 ~= 68 chars.
+        # Let's be conservative with 60 chars.
+        WRAP_WIDTH = 70
 
-        # Footer
-        draw.text((width - 200, height - 50), f"Slide {i+1}", font=footer_font, fill=(100, 100, 100))
+        for point in content_lines:
+            wrapped_lines = textwrap.wrap(point, width=WRAP_WIDTH)
+            for j, line in enumerate(wrapped_lines):
+                bullet = "• " if j == 0 else "  "
+                draw.text((MARGIN_X, y_text), f"{bullet}{line}", font=content_font, fill=TEXT_COLOR)
+                y_text += LINE_SPACING
+
+                # Prevent overflow
+                if y_text > HEIGHT - 100:
+                    break
+            if y_text > HEIGHT - 100:
+                break
+
+        # 4. Footer
+        footer_text = f"Slide {i+1} | Generated by AutoPresentation AI"
+        bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
+        footer_w = bbox[2] - bbox[0]
+        draw.text((WIDTH - footer_w - 50, HEIGHT - 50), footer_text, font=footer_font, fill=(150, 150, 150))
 
         image_filename = f"slide_{i+1:03d}.png"
         image_path = os.path.join(output_dir, image_filename)
@@ -127,7 +151,6 @@ def create_pdf_from_images(image_paths, output_path):
 
     images = [Image.open(p).convert('RGB') for p in image_paths]
 
-    # Save first image and append the rest
     first_image = images[0]
     first_image.save(
         output_path,

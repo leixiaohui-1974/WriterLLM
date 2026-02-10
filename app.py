@@ -15,6 +15,7 @@ st.markdown("Generates PPT, PDF, and Video from your documents using AI.")
 st.sidebar.header("Settings")
 api_key = st.sidebar.text_input("OpenAI API Key (Optional)", type="password", help="Leave empty to use Mock Mode.")
 base_url = st.sidebar.text_input("API Base URL (Optional)", help="e.g. https://api.doubao.com/v1")
+model_name = st.sidebar.text_input("Model Name (Optional)", value="gpt-3.5-turbo", help="e.g. gpt-4, doubao-pro-4k")
 num_slides = st.sidebar.slider("Number of Slides", 3, 20, 5)
 voice_gender = st.sidebar.selectbox("Voice Gender", ["Male", "Female"])
 
@@ -40,7 +41,8 @@ if uploaded_file:
                     text,
                     num_slides=num_slides,
                     api_key=api_key if api_key else None,
-                    base_url=base_url if base_url else None
+                    base_url=base_url if base_url else None,
+                    model=model_name
                 )
                 st.success("Content generated.")
                 with st.expander("View Slide Content"):
