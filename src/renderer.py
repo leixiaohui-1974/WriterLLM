@@ -232,6 +232,39 @@ def _draw_text(draw, pos, text, font, fill, shadow=False):
     draw.text(pos, text, font=font, fill=fill)
 
 
+def _draw_gradient_rect(img: Image.Image, rect: tuple, color_top: tuple, color_bottom: tuple):
+    """Draw a vertical gradient rectangle onto an image (in-place)."""
+    x0, y0, x1, y1 = rect
+    h = max(1, y1 - y0)
+    for row in range(h):
+        t = row / h
+        r = int(color_top[0] + (color_bottom[0] - color_top[0]) * t)
+        g = int(color_top[1] + (color_bottom[1] - color_top[1]) * t)
+        b = int(color_top[2] + (color_bottom[2] - color_top[2]) * t)
+        draw = ImageDraw.Draw(img)
+        draw.line([(x0, y0 + row), (x1, y0 + row)], fill=(r, g, b))
+
+
+def _fit_title_in_header(
+    title: str, title_font, language: Language, max_width: int, base_size: int = TITLE_FONT_SIZE,
+) -> tuple:
+    """
+    Wrap and optionally shrink a title to fit within max_width.
+    Returns (lines, font) where lines is a list of wrapped title lines.
+    """
+    min_size = 40
+    size = base_size
+    font = title_font
+    while size >= min_size:
+        lines = _wrap_text(title, font, max_width)
+        if len(lines) <= 2:
+            return lines, font
+        size -= 4
+        font = _get_font("DejaVuSans-Bold.ttf", size, language)
+    # At minimum size, just wrap and accept
+    return _wrap_text(title, font, max_width)[:2], font
+
+
 def _prepare_background(
     slide_index: int,
     colors: ThemeColors,
@@ -294,6 +327,18 @@ def _add_pptx_background(slide, bg_path: str, prs: Presentation):
 
 # ---- PPTX Slide Builders ----
 
+def _set_pptx_slide_background(slide, color: tuple):
+    """Set a solid background fill color on a PPTX slide."""
+    try:
+        from pptx.oxml.ns import qn
+        bg = slide.background
+        fill = bg.fill
+        fill.solid()
+        fill.fore_color.rgb = _rgb_color(color)
+    except Exception as e:
+        logger.debug("Could not set slide background: %s", e)
+
+
 def create_pptx_file(
     slides_data: List[SlideData],
     output_path: str,
@@ -313,14 +358,19 @@ def create_pptx_file(
 
         if layout == SlideLayout.TITLE:
             _add_title_slide(prs, slide_data, colors)
+            # Title slides use header color as background
+            _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.header)
         elif layout == SlideLayout.SECTION:
             _add_section_slide(prs, slide_data, colors)
+            _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.background)
         elif layout == SlideLayout.TWO_COLUMN:
             _add_two_column_slide(prs, slide_data, colors)
+            _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.background)
         else:
             _add_content_slide(prs, slide_data, colors)
+            _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.background)
 
-        # Add AI background image if available
+        # Add AI background image if available (overrides solid background)
         if background_images and i in background_images:
             slide = prs.slides[len(prs.slides) - 1]
             _add_pptx_background(slide, background_images[i], prs)
@@ -446,6 +496,13 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
 
 # ---- Pillow Slide Image Renderers ----
 
+def _draw_header_gradient(img: Image.Image, colors: ThemeColors):
+    """Draw a gradient header bar from header color to a slightly lighter shade."""
+    r, g, b = colors.header
+    lighter = (min(r + 30, 255), min(g + 30, 255), min(b + 30, 255))
+    _draw_gradient_rect(img, (0, 0, SLIDE_WIDTH, HEADER_HEIGHT), colors.header, lighter)
+
+
 def _draw_decorative_elements(draw: ImageDraw.Draw, theme: ThemeColors, slide_index: int, total_slides: int):
     """Draw subtle decorative elements based on theme."""
     draw.rectangle(
@@ -475,21 +532,37 @@ def _render_title_layout(
     shadow = has_bg_image
 
     if not has_bg_image:
-        draw.rectangle([(0, 0), (SLIDE_WIDTH, SLIDE_HEIGHT)], fill=colors.header)
+        # Gradient background for title slide
+        _draw_gradient_rect(draw._image, (0, 0, SLIDE_WIDTH, SLIDE_HEIGHT), colors.header,
+                            (min(colors.header[0] + 40, 255), min(colors.header[1] + 40, 255), min(colors.header[2] + 40, 255)))
 
     # Accent line
     accent_y = SLIDE_HEIGHT // 2 + 40
     draw.rectangle([(SLIDE_WIDTH // 4, accent_y), (3 * SLIDE_WIDTH // 4, accent_y + 4)], fill=colors.accent)
 
-    # Centered title
-    title = slide_data.title
-    bbox = draw.textbbox((0, 0), title, font=title_font)
-    title_w = bbox[2] - bbox[0]
-    title_h = bbox[3] - bbox[1]
-    title_x = (SLIDE_WIDTH - title_w) // 2
-    title_y = SLIDE_HEIGHT // 2 - title_h - 30
+    # Centered title with wrapping
     title_color = (255, 255, 255) if has_bg_image else colors.title
-    _draw_text(draw, (title_x, title_y), title, title_font, title_color, shadow=shadow)
+    title_max_w = SLIDE_WIDTH - 2 * MARGIN_X
+    title_lines, used_font = _fit_title_in_header(
+        slide_data.title, title_font, language, title_max_w,
+    )
+    if len(title_lines) == 1:
+        bbox = draw.textbbox((0, 0), title_lines[0], font=used_font)
+        title_w = bbox[2] - bbox[0]
+        title_h = bbox[3] - bbox[1]
+        title_x = (SLIDE_WIDTH - title_w) // 2
+        title_y = SLIDE_HEIGHT // 2 - title_h - 30
+        _draw_text(draw, (title_x, title_y), title_lines[0], used_font, title_color, shadow=shadow)
+    else:
+        bbox0 = draw.textbbox((0, 0), title_lines[0], font=used_font)
+        line_h = bbox0[3] - bbox0[1]
+        total_h = line_h * len(title_lines) + 10 * (len(title_lines) - 1)
+        start_y = SLIDE_HEIGHT // 2 - total_h - 10
+        for li, tl in enumerate(title_lines):
+            bbox = draw.textbbox((0, 0), tl, font=used_font)
+            w = bbox[2] - bbox[0]
+            x = (SLIDE_WIDTH - w) // 2
+            _draw_text(draw, (x, start_y + li * (line_h + 10)), tl, used_font, title_color, shadow=shadow)
 
     # Subtitle (first content item)
     if slide_data.content:
@@ -571,16 +644,26 @@ def _render_two_column_layout(
     """Render a two-column content slide."""
     shadow = has_bg_image
 
-    # Header bar
-    draw.rectangle([(0, 0), (SLIDE_WIDTH, HEADER_HEIGHT)], fill=colors.header)
+    # Gradient header bar
+    _draw_header_gradient(draw._image, colors)
     _draw_decorative_elements(draw, colors, slide_index, total_slides)
 
-    # Title
-    title = slide_data.title
-    bbox = draw.textbbox((0, 0), title, font=title_font)
-    title_h = bbox[3] - bbox[1]
-    title_y = (HEADER_HEIGHT - title_h) // 2
-    _draw_text(draw, (MARGIN_X, title_y), title, title_font, colors.title, shadow=False)
+    # Title with wrapping
+    title_lines, used_title_font = _fit_title_in_header(
+        slide_data.title, title_font, language, CONTENT_MAX_WIDTH,
+    )
+    if len(title_lines) == 1:
+        bbox = draw.textbbox((0, 0), title_lines[0], font=used_title_font)
+        title_h = bbox[3] - bbox[1]
+        title_y = (HEADER_HEIGHT - title_h) // 2
+        _draw_text(draw, (MARGIN_X, title_y), title_lines[0], used_title_font, colors.title, shadow=False)
+    else:
+        bbox0 = draw.textbbox((0, 0), title_lines[0], font=used_title_font)
+        line_h = bbox0[3] - bbox0[1]
+        total_h = line_h * len(title_lines) + 8 * (len(title_lines) - 1)
+        start_y = (HEADER_HEIGHT - total_h) // 2
+        for li, line in enumerate(title_lines):
+            _draw_text(draw, (MARGIN_X, start_y + li * (line_h + 8)), line, used_title_font, colors.title, shadow=False)
 
     # Vertical divider line
     mid_x = SLIDE_WIDTH // 2
@@ -645,16 +728,26 @@ def _render_content_layout(
     """Render a standard content slide with responsive font sizing."""
     shadow = has_bg_image
 
-    # Header bar
-    draw.rectangle([(0, 0), (SLIDE_WIDTH, HEADER_HEIGHT)], fill=colors.header)
+    # Gradient header bar
+    _draw_header_gradient(draw._image, colors)
     _draw_decorative_elements(draw, colors, slide_index, total_slides)
 
-    # Title
-    title = slide_data.title
-    bbox = draw.textbbox((0, 0), title, font=title_font)
-    title_h = bbox[3] - bbox[1]
-    title_y = (HEADER_HEIGHT - title_h) // 2
-    _draw_text(draw, (MARGIN_X, title_y), title, title_font, colors.title, shadow=False)
+    # Title with wrapping for long titles
+    title_lines, used_title_font = _fit_title_in_header(
+        slide_data.title, title_font, language, CONTENT_MAX_WIDTH,
+    )
+    if len(title_lines) == 1:
+        bbox = draw.textbbox((0, 0), title_lines[0], font=used_title_font)
+        title_h = bbox[3] - bbox[1]
+        title_y = (HEADER_HEIGHT - title_h) // 2
+        _draw_text(draw, (MARGIN_X, title_y), title_lines[0], used_title_font, colors.title, shadow=False)
+    else:
+        bbox0 = draw.textbbox((0, 0), title_lines[0], font=used_title_font)
+        line_h = bbox0[3] - bbox0[1]
+        total_h = line_h * len(title_lines) + 8 * (len(title_lines) - 1)
+        start_y = (HEADER_HEIGHT - total_h) // 2
+        for li, line in enumerate(title_lines):
+            _draw_text(draw, (MARGIN_X, start_y + li * (line_h + 8)), line, used_title_font, colors.title, shadow=False)
 
     # Responsive font sizing: shrink font if content won't fit
     available_h = SLIDE_HEIGHT - CONTENT_START_Y - FOOTER_AREA

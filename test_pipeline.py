@@ -5,6 +5,9 @@ import io
 import pytest
 import docx
 
+from pptx import Presentation
+from pptx.util import Inches
+
 from src.parser import parse_document
 from src.generator import generate_slides
 from src.models import SlideData, SlideLayout, SlideTheme, Language, ExportFormat, PresentationConfig
@@ -13,12 +16,14 @@ from src.renderer import (
     _prepare_background, _get_font, _is_cjk_char, _contains_cjk,
     _wrap_text, _text_pixel_width, _draw_text,
     _compute_content_font_size, _estimate_content_lines, _cover_crop,
+    _draw_gradient_rect, _fit_title_in_header, _draw_header_gradient,
+    _set_pptx_slide_background,
     CONTENT_MAX_WIDTH, CONTENT_FONT_SIZE, FOOTER_AREA, CONTENT_START_Y,
-    SLIDE_HEIGHT,
+    SLIDE_HEIGHT, SLIDE_WIDTH, HEADER_HEIGHT, TITLE_FONT_SIZE,
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES
-from src.generator import mock_generate_content
+from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES
 
 
 OUTPUT_DIR = "test_output"
@@ -621,22 +626,27 @@ class TestMockSummarySlide:
     """Tests for improved mock mode with summary slide generation."""
 
     def test_mock_generates_summary_slide(self):
-        """Mock mode with 5+ slides should produce a summary slide."""
+        """Mock mode with 5+ slides should produce summary + TOC slides."""
         text = "AI is transforming healthcare. Machine learning improves diagnostics. " * 20
         slides = mock_generate_content(text, num_slides=5)
-        assert len(slides) == 5
+        # 5 content/summary slides + 1 TOC inserted at position 1 = 6
+        assert len(slides) == 6
         last = slides[-1]
         assert last.title == "Key Takeaways"
+        # TOC should be at index 1
+        assert slides[1].title == "Agenda"
 
     def test_mock_summary_chinese(self):
-        """Chinese mock mode should produce Chinese summary title."""
+        """Chinese mock mode should produce Chinese summary and TOC titles."""
         text = "人工智能正在改变世界。机器学习改善诊断。" * 10
         slides = mock_generate_content(text, num_slides=5, language=Language.CHINESE)
         last = slides[-1]
         assert last.title == "\u6838\u5fc3\u8981\u70b9"
+        # Chinese TOC title
+        assert slides[1].title == "\u76ee\u5f55"
 
     def test_mock_no_summary_for_few_slides(self):
-        """2 slides should not have a separate summary."""
+        """2 slides should not have a separate summary or TOC."""
         text = "Short content for testing."
         slides = mock_generate_content(text, num_slides=2)
         assert len(slides) == 2
@@ -665,6 +675,218 @@ class TestPresentationConfigOverlay:
     def test_config_custom_overlay(self):
         config = PresentationConfig(overlay_opacity=200)
         assert config.overlay_opacity == 200
+
+
+class TestGradientHeader:
+    """Tests for gradient header rendering in v6."""
+
+    def test_draw_gradient_rect_produces_gradient(self):
+        """Verify gradient rectangle draws a smooth vertical gradient."""
+        from PIL import Image
+        img = Image.new("RGB", (200, 100), (255, 255, 255))
+        _draw_gradient_rect(img, (0, 0, 200, 100), (0, 0, 0), (255, 255, 255))
+        # Top row should be dark, bottom row should be light
+        top_pixel = img.getpixel((100, 0))
+        bottom_pixel = img.getpixel((100, 99))
+        assert top_pixel[0] < 10  # near black
+        assert bottom_pixel[0] > 240  # near white
+
+    def test_draw_gradient_rect_single_row(self):
+        """Gradient with h=1 should not crash."""
+        from PIL import Image
+        img = Image.new("RGB", (100, 1), (0, 0, 0))
+        _draw_gradient_rect(img, (0, 0, 100, 1), (255, 0, 0), (0, 0, 255))
+        assert img.getpixel((50, 0)) is not None
+
+    def test_draw_header_gradient_fills_header_area(self):
+        """Verify header gradient fills the header area with theme colors."""
+        from PIL import Image
+        img = Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), (255, 255, 255))
+        colors = THEMES[SlideTheme.OCEAN]
+        _draw_header_gradient(img, colors)
+        # Top of header should be close to header color
+        px = img.getpixel((100, 5))
+        assert abs(px[0] - colors.header[0]) < 5
+        assert abs(px[1] - colors.header[1]) < 5
+
+    def test_gradient_header_in_content_slide(self):
+        """Content slide should render with gradient header without error."""
+        slides_data = [
+            SlideData(title="Gradient Test", content=["Point 1", "Point 2"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_gradient")
+        image_paths = create_slide_images(slides_data, images_dir, theme=SlideTheme.DARK)
+        assert len(image_paths) == 1
+        # Verify header area has dark theme gradient (not plain white)
+        from PIL import Image
+        img = Image.open(image_paths[0])
+        header_px = img.getpixel((100, 10))
+        assert header_px[0] < 100  # Dark theme header should be dark
+
+
+class TestTitleWrapping:
+    """Tests for responsive title wrapping in headers."""
+
+    def test_short_title_no_wrapping(self):
+        """Short title should fit in one line."""
+        font = _get_font("DejaVuSans-Bold.ttf", TITLE_FONT_SIZE, Language.ENGLISH)
+        lines, used_font = _fit_title_in_header("Short Title", font, Language.ENGLISH, CONTENT_MAX_WIDTH)
+        assert len(lines) == 1
+        assert "Short Title" in lines[0]
+
+    def test_long_title_wraps(self):
+        """Very long title should wrap into multiple lines."""
+        font = _get_font("DejaVuSans-Bold.ttf", TITLE_FONT_SIZE, Language.ENGLISH)
+        long_title = "This Is A Very Long Presentation Title That Should Definitely Wrap Into Multiple Lines"
+        lines, used_font = _fit_title_in_header(long_title, font, Language.ENGLISH, CONTENT_MAX_WIDTH)
+        assert len(lines) >= 1
+        assert len(lines) <= 2  # Should be capped at 2 lines
+
+    def test_title_font_shrinks_for_long_text(self):
+        """Title font should shrink when text is very long."""
+        font = _get_font("DejaVuSans-Bold.ttf", TITLE_FONT_SIZE, Language.ENGLISH)
+        very_long = "Extremely Long Title " * 10
+        lines, used_font = _fit_title_in_header(very_long, font, Language.ENGLISH, CONTENT_MAX_WIDTH)
+        assert len(lines) <= 2
+
+    def test_cjk_title_wrapping(self):
+        """CJK titles should wrap correctly."""
+        font = _get_font("DejaVuSans-Bold.ttf", TITLE_FONT_SIZE, Language.CHINESE)
+        cjk_title = "人工智能在医疗健康领域的应用与发展前景展望分析报告"
+        lines, used_font = _fit_title_in_header(cjk_title, font, Language.CHINESE, CONTENT_MAX_WIDTH)
+        assert len(lines) >= 1
+
+    def test_long_title_slide_renders(self):
+        """Slide with a very long title should render without error."""
+        slides_data = [
+            SlideData(
+                title="This Is An Exceptionally Long Title That Tests The Wrapping Feature in Content Slides",
+                content=["Point A", "Point B"],
+                layout=SlideLayout.CONTENT,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_long_title")
+        image_paths = create_slide_images(slides_data, images_dir)
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+
+class TestTOCSlide:
+    """Tests for auto-generated table of contents / agenda slide."""
+
+    def test_create_toc_slide_english(self):
+        """TOC slide should have correct English title and content from slide titles."""
+        slides = [
+            SlideData(title="Introduction", content=["A"], layout=SlideLayout.CONTENT),
+            SlideData(title="Methods", content=["B"], layout=SlideLayout.CONTENT),
+            SlideData(title="Results", content=["C"], layout=SlideLayout.CONTENT),
+        ]
+        toc = _create_toc_slide(slides, Language.ENGLISH)
+        assert toc.title == "Agenda"
+        assert "Introduction" in toc.content
+        assert "Methods" in toc.content
+        assert toc.layout == SlideLayout.CONTENT
+
+    def test_create_toc_slide_chinese(self):
+        """Chinese TOC should use Chinese title."""
+        slides = [SlideData(title="分析", content=["A"], layout=SlideLayout.CONTENT)]
+        toc = _create_toc_slide(slides, Language.CHINESE)
+        assert toc.title == "\u76ee\u5f55"
+
+    def test_toc_skips_title_layout(self):
+        """TOC should not include slides with TITLE layout."""
+        slides = [
+            SlideData(title="Cover Title", content=[], layout=SlideLayout.TITLE),
+            SlideData(title="Real Content", content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        toc = _create_toc_slide(slides, Language.ENGLISH)
+        assert "Cover Title" not in toc.content
+        assert "Real Content" in toc.content
+
+    def test_toc_max_items(self):
+        """TOC should have at most 8 items."""
+        slides = [
+            SlideData(title=f"Topic {i}", content=["X"], layout=SlideLayout.CONTENT)
+            for i in range(12)
+        ]
+        toc = _create_toc_slide(slides, Language.ENGLISH)
+        assert len(toc.content) <= 8
+
+    def test_toc_titles_all_languages(self):
+        """All supported languages should have a TOC title."""
+        for lang in Language:
+            assert lang in _TOC_TITLES
+
+    def test_mock_inserts_toc_for_5_plus_slides(self):
+        """Mock generation with 5+ slides should insert TOC at position 1."""
+        text = "Point one. Point two. Point three. Point four. Point five. " * 10
+        slides = mock_generate_content(text, num_slides=5)
+        assert slides[0].layout == SlideLayout.TITLE
+        assert slides[1].title == "Agenda"
+
+    def test_mock_no_toc_for_few_slides(self):
+        """Mock generation with <5 slides should not insert TOC."""
+        text = "Short text for few slides."
+        slides = mock_generate_content(text, num_slides=3)
+        for s in slides:
+            assert s.title != "Agenda"
+
+
+class TestSpeakingRate:
+    """Tests for TTS speaking rate configuration."""
+
+    def test_config_default_speaking_rate(self):
+        config = PresentationConfig()
+        assert config.speaking_rate == "+0%"
+
+    def test_config_custom_speaking_rate(self):
+        config = PresentationConfig(speaking_rate="+20%")
+        assert config.speaking_rate == "+20%"
+
+    def test_config_negative_speaking_rate(self):
+        config = PresentationConfig(speaking_rate="-10%")
+        assert config.speaking_rate == "-10%"
+
+
+class TestPPTXSlideBackground:
+    """Tests for PPTX solid background fill (v6)."""
+
+    def test_set_pptx_slide_background(self):
+        """Setting a slide background should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide_layout = prs.slide_layouts[0]
+        slide = prs.slides.add_slide(slide_layout)
+        # Should not raise
+        _set_pptx_slide_background(slide, (44, 62, 80))
+
+    def test_pptx_themed_backgrounds(self):
+        """PPTX generation with all themes should produce valid files with backgrounds."""
+        slides_data = [
+            SlideData(title="BG Test", content=["A"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["B", "C"], layout=SlideLayout.CONTENT),
+        ]
+        for theme in SlideTheme:
+            path = os.path.join(OUTPUT_DIR, f"bg_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
+            assert os.path.getsize(path) > 0
+
+    def test_pptx_all_layouts_with_background_colors(self):
+        """All layout types should get background colors in PPTX."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A", "B"], layout=SlideLayout.CONTENT),
+            SlideData(title="Section", content=[], layout=SlideLayout.SECTION),
+            SlideData(title="Two Col", content=["L1", "L2", "R1", "R2"], layout=SlideLayout.TWO_COLUMN),
+        ]
+        pptx_path = os.path.join(OUTPUT_DIR, "bg_all_layouts.pptx")
+        create_pptx_file(slides_data, pptx_path)
+        assert os.path.exists(pptx_path)
+        # Verify slides were created
+        prs = Presentation(pptx_path)
+        assert len(prs.slides) == 4
 
 
 if __name__ == "__main__":

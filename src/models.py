@@ -106,6 +106,7 @@ class PresentationConfig:
     model: str = "gpt-3.5-turbo"
     custom_prompt: str = ""
     overlay_opacity: int = 130  # 0=transparent, 255=opaque
+    speaking_rate: str = "+0%"  # TTS speaking rate: "+20%", "-10%", etc.
     export_formats: List[ExportFormat] = field(
         default_factory=lambda: [ExportFormat.PPTX, ExportFormat.PDF, ExportFormat.VIDEO]
     )

@@ -107,6 +107,12 @@ st.sidebar.divider()
 st.sidebar.subheader("Presentation")
 num_slides = st.sidebar.slider("Number of Slides", 3, 20, 5)
 voice_gender = st.sidebar.selectbox("Voice Gender", ["Female", "Male"])
+speaking_rate_pct = st.sidebar.slider(
+    "Speaking Rate",
+    min_value=-50, max_value=50, value=0, step=10,
+    help="Adjust TTS speaking speed (-50% slower to +50% faster).",
+)
+speaking_rate = f"+{speaking_rate_pct}%" if speaking_rate_pct >= 0 else f"{speaking_rate_pct}%"
 
 # Export options
 st.sidebar.divider()
@@ -180,6 +186,7 @@ if uploaded_file:
         model=model_name,
         custom_prompt=custom_prompt if custom_prompt else "",
         overlay_opacity=overlay_opacity,
+        speaking_rate=speaking_rate,
         export_formats=export_formats,
     )
 
@@ -424,6 +431,7 @@ if uploaded_file:
                         create_video_presentation(
                             image_paths, scripts, video_path,
                             voice=voice, progress_callback=video_progress,
+                            speaking_rate=config.speaking_rate,
                         )
                     except Exception as e:
                         logger.error("Video generation failed: %s", e)
@@ -527,6 +535,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v5.0")
+st.sidebar.caption("AutoPresentation AI v6.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

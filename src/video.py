@@ -24,20 +24,22 @@ logger = logging.getLogger(__name__)
 _TTS_MAX_RETRIES = 3
 
 
-async def _generate_audio_async(text: str, output_path: str, voice: str) -> bool:
+async def _generate_audio_async(text: str, output_path: str, voice: str, rate: str = "+0%") -> bool:
     """Generate TTS audio asynchronously. Returns True on success."""
     try:
-        communicate = edge_tts.Communicate(text, voice)
+        communicate = edge_tts.Communicate(text, voice, rate=rate)
         await communicate.save(output_path)
         return True
     except Exception as e:
-        logger.error("Edge TTS error (voice=%s): %s", voice, e)
+        logger.error("Edge TTS error (voice=%s, rate=%s): %s", voice, rate, e)
         return False
 
 
-def generate_voiceover(text: str, output_path: str, voice: str = "en-US-JennyNeural") -> Optional[str]:
+def generate_voiceover(
+    text: str, output_path: str, voice: str = "en-US-JennyNeural", rate: str = "+0%",
+) -> Optional[str]:
     """
-    Generate a TTS audio file from text with retry logic.
+    Generate a TTS audio file from text with retry logic and speaking rate control.
     Returns the output path on success, None on failure.
     """
     if not text or not text.strip():
@@ -54,7 +56,7 @@ def generate_voiceover(text: str, output_path: str, voice: str = "en-US-JennyNeu
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
-            success = loop.run_until_complete(_generate_audio_async(text, output_path, voice))
+            success = loop.run_until_complete(_generate_audio_async(text, output_path, voice, rate))
 
             if success and os.path.exists(output_path) and os.path.getsize(output_path) > MIN_AUDIO_SIZE:
                 return output_path
@@ -97,6 +99,7 @@ def create_video_presentation(
     voice: str = "en-US-JennyNeural",
     progress_callback=None,
     enable_transitions: bool = True,
+    speaking_rate: str = "+0%",
 ) -> Optional[str]:
     """
     Create a video presentation from slide images and text scripts.
@@ -108,6 +111,7 @@ def create_video_presentation(
         voice: Edge TTS voice name.
         progress_callback: Optional callable(current, total) for progress updates.
         enable_transitions: Whether to add fade transitions between slides.
+        speaking_rate: TTS speaking rate (e.g., "+0%", "+20%", "-10%").
 
     Returns:
         Output path on success, None on failure.
@@ -121,7 +125,7 @@ def create_video_presentation(
     os.makedirs(temp_audio_dir, exist_ok=True)
 
     total = len(image_paths)
-    logger.info("Creating video from %d slides (voice: %s, transitions: %s)", total, voice, enable_transitions)
+    logger.info("Creating video from %d slides (voice: %s, rate: %s, transitions: %s)", total, voice, speaking_rate, enable_transitions)
 
     try:
         for i, img_path in enumerate(image_paths):
@@ -131,7 +135,7 @@ def create_video_presentation(
                 progress_callback(i, total)
 
             audio_path = os.path.join(temp_audio_dir, f"audio_{i:03d}.mp3")
-            generated_audio = generate_voiceover(script, audio_path, voice)
+            generated_audio = generate_voiceover(script, audio_path, voice, rate=speaking_rate)
 
             if generated_audio:
                 try:
