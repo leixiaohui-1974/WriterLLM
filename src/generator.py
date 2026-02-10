@@ -1,13 +1,13 @@
 """
 AI content generation module - transforms extracted text into structured slide data.
-Supports OpenAI-compatible APIs with retry logic and multi-language prompts.
+Supports OpenAI-compatible APIs with retry logic, multi-language prompts, and layout assignment.
 """
 import json
 import logging
 import time
 from typing import List, Optional
 
-from src.models import SlideData, Language
+from src.models import SlideData, SlideLayout, Language
 
 logger = logging.getLogger(__name__)
 
@@ -20,52 +20,125 @@ except ImportError:
 
 # Language-specific system prompts
 SYSTEM_PROMPTS = {
-    Language.ENGLISH: "You are a professional presentation assistant. You output structured JSON.",
-    Language.CHINESE: "你是一个专业的演示文稿助手。你输出结构化的JSON格式内容。",
-    Language.JAPANESE: "あなたはプロのプレゼンテーションアシスタントです。構造化されたJSONを出力します。",
-    Language.KOREAN: "당신은 전문 프레젠테이션 어시스턴트입니다. 구조화된 JSON을 출력합니다.",
-    Language.FRENCH: "Vous êtes un assistant de présentation professionnel. Vous produisez du JSON structuré.",
-    Language.GERMAN: "Sie sind ein professioneller Präsentationsassistent. Sie geben strukturiertes JSON aus.",
-    Language.SPANISH: "Eres un asistente de presentaciones profesional. Produces JSON estructurado.",
+    Language.ENGLISH: "You are a professional presentation designer. You output structured JSON.",
+    Language.CHINESE: "你是一个专业的演示文稿设计师。你输出结构化的JSON格式内容。",
+    Language.JAPANESE: "あなたはプロのプレゼンテーションデザイナーです。構造化されたJSONを出力します。",
+    Language.KOREAN: "당신은 전문 프레젠테이션 디자이너입니다. 구조화된 JSON을 출력합니다.",
+    Language.FRENCH: "Vous \u00eates un concepteur de pr\u00e9sentations professionnel. Vous produisez du JSON structur\u00e9.",
+    Language.GERMAN: "Sie sind ein professioneller Pr\u00e4sentationsdesigner. Sie geben strukturiertes JSON aus.",
+    Language.SPANISH: "Eres un dise\u00f1ador de presentaciones profesional. Produces JSON estructurado.",
 }
 
-
-def _build_prompt(text: str, num_slides: int, language: Language, max_input_length: int = 6000) -> str:
-    """Build the LLM prompt for slide generation."""
-    truncated = text[:max_input_length]
-    if len(text) > max_input_length:
-        truncated += "\n\n[... text truncated ...]"
-
-    lang_instructions = {
-        Language.ENGLISH: f"""Analyze the following text and create a {num_slides}-slide presentation.
+# Full language-specific prompts
+_PROMPT_TEMPLATES = {
+    Language.ENGLISH: """Analyze the following text and create a {num_slides}-slide presentation.
 Return a JSON object with a key "slides" containing an array of slide objects.
 Each slide object must have:
 - "title": string (concise slide title)
 - "content": list of strings (3-5 bullet points per slide)
 - "speaker_notes": string (2-3 sentences of natural presenter script)
-- "image_prompt": string (visual description for the slide background)
+- "image_prompt": string (detailed visual description for AI image generation, in English)
+- "layout": string (one of: "title", "content", "section", "two_column")
+
+Layout rules:
+- The first slide MUST use "title" layout
+- Use "section" layout for topic transitions (1-2 per presentation)
+- Use "two_column" for comparison or pros/cons slides (if appropriate)
+- Use "content" for all other slides
+- The last slide should be a summary/conclusion
 
 Requirements:
-- The first slide should be a title/introduction slide
-- The last slide should be a summary/conclusion slide
 - Bullet points should be concise (under 80 characters each)
-- Speaker notes should be conversational and natural""",
-        Language.CHINESE: f"""分析以下文本，创建一个{num_slides}页的演示文稿。
+- Speaker notes should be conversational and natural
+- Image prompts should describe a professional, relevant visual scene""",
+
+    Language.CHINESE: """分析以下文本，创建一个{num_slides}页的演示文稿。
 返回一个JSON对象，包含键"slides"，其值为幻灯片对象数组。
 每个幻灯片对象必须包含：
 - "title": 字符串（简洁的幻灯片标题）
 - "content": 字符串列表（每页3-5个要点）
 - "speaker_notes": 字符串（2-3句自然的演讲稿）
-- "image_prompt": 字符串（幻灯片背景的视觉描述，用英文）
+- "image_prompt": 字符串（AI图像生成的详细视觉描述，用英文）
+- "layout": 字符串（可选值："title", "content", "section", "two_column"）
+
+布局规则：
+- 第一页必须使用"title"布局
+- 话题过渡使用"section"布局（每个演示文稿1-2个）
+- 对比或优缺点使用"two_column"布局
+- 其他页面使用"content"布局
+- 最后一页应该是总结/结论
 
 要求：
-- 第一页应该是标题/引言页
-- 最后一页应该是总结/结论页
 - 要点应简洁（每条不超过40个字符）
-- 演讲稿应自然流畅""",
-    }
+- 演讲稿应自然流畅
+- 图像提示应描述专业、相关的视觉场景（用英文）""",
 
-    instruction = lang_instructions.get(language, lang_instructions[Language.ENGLISH])
+    Language.JAPANESE: """以下のテキストを分析し、{num_slides}ページのプレゼンテーションを作成してください。
+"slides"キーを含むJSONオブジェクトを返してください。
+各スライドオブジェクトには以下を含める必要があります：
+- "title": 文字列（簡潔なスライドタイトル）
+- "content": 文字列のリスト（各スライド3-5の箇条書き）
+- "speaker_notes": 文字列（2-3文の自然なプレゼンタースクリプト）
+- "image_prompt": 文字列（AI画像生成の詳細な視覚的説明、英語で）
+- "layout": 文字列（"title", "content", "section", "two_column"のいずれか）
+
+レイアウトルール：
+- 最初のスライドは"title"レイアウトを使用
+- トピックの移行には"section"を使用
+- 比較には"two_column"を使用
+- その他は"content"を使用""",
+
+    Language.KOREAN: """다음 텍스트를 분석하여 {num_slides}페이지 프레젠테이션을 만들어 주세요.
+"slides" 키를 포함하는 JSON 객체를 반환하세요.
+각 슬라이드 객체에는 다음이 포함되어야 합니다:
+- "title": 문자열 (간결한 슬라이드 제목)
+- "content": 문자열 목록 (슬라이드당 3-5개의 요점)
+- "speaker_notes": 문자열 (자연스러운 발표자 대본 2-3문장)
+- "image_prompt": 문자열 (AI 이미지 생성을 위한 상세 시각적 설명, 영어로)
+- "layout": 문자열 ("title", "content", "section", "two_column" 중 하나)""",
+
+    Language.FRENCH: """Analysez le texte suivant et cr\u00e9ez une pr\u00e9sentation de {num_slides} diapositives.
+Retournez un objet JSON avec une cl\u00e9 "slides" contenant un tableau d'objets.
+Chaque objet doit avoir :
+- "title": cha\u00eene (titre concis)
+- "content": liste de cha\u00eenes (3-5 points par diapositive)
+- "speaker_notes": cha\u00eene (2-3 phrases naturelles)
+- "image_prompt": cha\u00eene (description visuelle d\u00e9taill\u00e9e en anglais)
+- "layout": cha\u00eene ("title", "content", "section", "two_column")""",
+
+    Language.GERMAN: """Analysieren Sie den folgenden Text und erstellen Sie eine {num_slides}-Folien-Pr\u00e4sentation.
+Geben Sie ein JSON-Objekt mit dem Schl\u00fcssel "slides" zur\u00fcck.
+Jedes Folienobjekt muss enthalten:
+- "title": String (pr\u00e4gnanter Folientitel)
+- "content": Liste von Strings (3-5 Aufz\u00e4hlungspunkte pro Folie)
+- "speaker_notes": String (2-3 nat\u00fcrliche S\u00e4tze)
+- "image_prompt": String (detaillierte visuelle Beschreibung auf Englisch)
+- "layout": String ("title", "content", "section", "two_column")""",
+
+    Language.SPANISH: """Analiza el siguiente texto y crea una presentaci\u00f3n de {num_slides} diapositivas.
+Devuelve un objeto JSON con la clave "slides" que contenga un array de objetos.
+Cada objeto debe tener:
+- "title": cadena (t\u00edtulo conciso)
+- "content": lista de cadenas (3-5 vi\u00f1etas por diapositiva)
+- "speaker_notes": cadena (2-3 oraciones naturales)
+- "image_prompt": cadena (descripci\u00f3n visual detallada en ingl\u00e9s)
+- "layout": cadena ("title", "content", "section", "two_column")""",
+}
+
+
+def _build_prompt(text: str, num_slides: int, language: Language,
+                  max_input_length: int = 6000, custom_prompt: str = "") -> str:
+    """Build the LLM prompt for slide generation."""
+    truncated = text[:max_input_length]
+    if len(text) > max_input_length:
+        truncated += "\n\n[... text truncated ...]"
+
+    template = _PROMPT_TEMPLATES.get(language, _PROMPT_TEMPLATES[Language.ENGLISH])
+    instruction = template.format(num_slides=num_slides)
+
+    if custom_prompt:
+        instruction += f"\n\nAdditional instructions: {custom_prompt}"
+
     return f"{instruction}\n\nText to analyze:\n{truncated}"
 
 
@@ -89,17 +162,51 @@ def _validate_slides(slides_data: list, num_slides: int) -> List[SlideData]:
         speaker_notes = str(item.get("speaker_notes", "")).strip()
         image_prompt = str(item.get("image_prompt", "")).strip()
 
+        layout_str = item.get("layout", "content")
+        try:
+            layout = SlideLayout(layout_str)
+        except ValueError:
+            layout = SlideLayout.CONTENT
+
         validated.append(SlideData(
             title=title,
             content=content if content else [""],
             speaker_notes=speaker_notes,
             image_prompt=image_prompt,
+            layout=layout,
         ))
 
     if not validated:
         raise ValueError("No valid slides produced from LLM response")
 
     return validated
+
+
+def _assign_layouts(slides: List[SlideData]) -> List[SlideData]:
+    """Assign smart layouts to slides generated by mock mode."""
+    if not slides:
+        return slides
+
+    # First slide = title
+    slides[0].layout = SlideLayout.TITLE
+
+    # Last slide = content (summary)
+    if len(slides) > 1:
+        slides[-1].layout = SlideLayout.CONTENT
+
+    # Middle slides: assign section dividers periodically
+    if len(slides) > 4:
+        section_interval = max(3, len(slides) // 3)
+        for i in range(1, len(slides) - 1):
+            if i % section_interval == 0:
+                slides[i].layout = SlideLayout.SECTION
+
+    # Assign two_column to slides with 6+ bullet points
+    for slide in slides:
+        if slide.layout == SlideLayout.CONTENT and len(slide.content) >= 6:
+            slide.layout = SlideLayout.TWO_COLUMN
+
+    return slides
 
 
 def mock_generate_content(text: str, num_slides: int, language: Language = Language.ENGLISH) -> List[SlideData]:
@@ -139,9 +246,10 @@ def mock_generate_content(text: str, num_slides: int, language: Language = Langu
             title=title,
             content=content,
             speaker_notes=notes,
-            image_prompt=f"Professional presentation slide about: {title}",
+            image_prompt=f"Professional presentation visual: {title}",
         ))
 
+    slides = _assign_layouts(slides)
     return slides
 
 
@@ -153,6 +261,7 @@ def llm_generate_content(
     num_slides: int = 5,
     language: Language = Language.ENGLISH,
     max_retries: int = 3,
+    custom_prompt: str = "",
 ) -> List[SlideData]:
     """
     Use an OpenAI-compatible LLM to generate structured slide content.
@@ -166,7 +275,7 @@ def llm_generate_content(
         client_kwargs["base_url"] = base_url
     client = OpenAI(**client_kwargs)
 
-    prompt = _build_prompt(text, num_slides, language)
+    prompt = _build_prompt(text, num_slides, language, custom_prompt=custom_prompt)
     system_prompt = SYSTEM_PROMPTS.get(language, SYSTEM_PROMPTS[Language.ENGLISH])
 
     last_error = None
@@ -227,13 +336,17 @@ def generate_slides(
     base_url: Optional[str] = None,
     model: str = "gpt-3.5-turbo",
     language: Language = Language.ENGLISH,
+    custom_prompt: str = "",
 ) -> List[SlideData]:
     """
     Main entry point for content generation.
     Uses LLM if API key is provided, otherwise falls back to mock mode.
     """
     if api_key:
-        return llm_generate_content(text, api_key, base_url, model, num_slides, language)
+        return llm_generate_content(
+            text, api_key, base_url, model, num_slides, language,
+            custom_prompt=custom_prompt,
+        )
     else:
         logger.info("No API key provided, using mock content generation")
         return mock_generate_content(text, num_slides, language)

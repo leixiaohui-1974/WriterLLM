@@ -1,6 +1,7 @@
 """
 AutoPresentation AI - Main Streamlit Application
 Transforms documents into professional presentations, PDFs, and videos.
+Features: multi-language, themes, layouts, AI image generation, partial recovery.
 """
 import os
 import shutil
@@ -9,11 +10,15 @@ import logging
 import streamlit as st
 
 from src.config import setup_logging, DEFAULT_API_KEY, DEFAULT_BASE_URL, DEFAULT_MODEL
-from src.models import Language, SlideTheme, PresentationConfig
+from src.models import (
+    Language, SlideTheme, PresentationConfig, ExportFormat,
+    MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES,
+)
 from src.parser import parse_document, SUPPORTED_EXTENSIONS
 from src.generator import generate_slides
 from src.renderer import create_pptx_file, create_slide_images, create_pdf_from_images
 from src.video import create_video_presentation
+from src.image_gen import generate_slide_images_batch
 
 # Initialize logging
 setup_logging()
@@ -86,6 +91,31 @@ st.sidebar.subheader("Presentation")
 num_slides = st.sidebar.slider("Number of Slides", 3, 20, 5)
 voice_gender = st.sidebar.selectbox("Voice Gender", ["Female", "Male"])
 
+# Export options
+st.sidebar.divider()
+st.sidebar.subheader("Export Options")
+export_pptx = st.sidebar.checkbox("PowerPoint (PPTX)", value=True)
+export_pdf = st.sidebar.checkbox("PDF", value=True)
+export_video = st.sidebar.checkbox("Video (MP4)", value=True)
+enable_ai_images = st.sidebar.checkbox(
+    "AI Slide Images",
+    value=False,
+    help="Generate AI background images for each slide (requires API key, adds generation time).",
+)
+
+# Advanced
+with st.sidebar.expander("Advanced Options"):
+    custom_prompt = st.text_area(
+        "Custom Instructions",
+        placeholder="e.g., 'Focus on technical details' or 'Use a formal tone'",
+        help="Additional instructions for AI content generation.",
+    )
+    image_model = st.text_input(
+        "Image Model",
+        value="dall-e-3",
+        help="Model for AI image generation (dall-e-3, dall-e-2, etc.).",
+    )
+
 # -- Main Content --
 st.title("AutoPresentation AI")
 st.markdown("Transform your documents into professional presentations, PDFs, and videos with AI.")
@@ -95,10 +125,28 @@ file_types = list(SUPPORTED_EXTENSIONS)
 uploaded_file = st.file_uploader(
     "Upload Document",
     type=file_types,
-    help=f"Supported formats: {', '.join('.' + ext for ext in sorted(file_types))}",
+    help=f"Supported formats: {', '.join('.' + ext for ext in sorted(file_types))} (max {MAX_UPLOAD_SIZE_MB} MB)",
 )
 
 if uploaded_file:
+    # File size validation
+    if uploaded_file.size > MAX_UPLOAD_SIZE_BYTES:
+        st.error(f"File too large ({uploaded_file.size / 1024 / 1024:.1f} MB). Maximum: {MAX_UPLOAD_SIZE_MB} MB.")
+        st.stop()
+
+    # Build export format list
+    export_formats = []
+    if export_pptx:
+        export_formats.append(ExportFormat.PPTX)
+    if export_pdf:
+        export_formats.append(ExportFormat.PDF)
+    if export_video:
+        export_formats.append(ExportFormat.VIDEO)
+
+    if not export_formats:
+        st.warning("Please select at least one export format.")
+        st.stop()
+
     # Build config
     config = PresentationConfig(
         num_slides=num_slides,
@@ -108,9 +156,11 @@ if uploaded_file:
         api_key=api_key if api_key else None,
         base_url=base_url if base_url else None,
         model=model_name,
+        custom_prompt=custom_prompt if custom_prompt else "",
+        export_formats=export_formats,
     )
 
-    # Show file info
+    # File info
     st.info(f"File: **{uploaded_file.name}** ({uploaded_file.size / 1024:.1f} KB)")
 
     if st.button("Generate Presentation", type="primary"):
@@ -118,10 +168,17 @@ if uploaded_file:
         progress_bar = st.progress(0, text="Starting...")
         status = st.empty()
 
+        # Track partial results for recovery
+        pptx_path = None
+        pdf_path = None
+        video_path = None
+        image_paths = []
+        slides_data = []
+
         try:
             # -- Step 1: Parse Document --
             progress_bar.progress(5, text="Parsing document...")
-            status.markdown("**Step 1/4:** Extracting text from document...")
+            status.markdown("**Step 1/5:** Extracting text from document...")
 
             text = parse_document(uploaded_file)
 
@@ -132,9 +189,9 @@ if uploaded_file:
                     st.caption(f"... ({len(text) - preview_len} more characters)")
 
             # -- Step 2: Generate Content --
-            progress_bar.progress(20, text="Generating content...")
+            progress_bar.progress(15, text="Generating content...")
             mode = "AI" if config.api_key else "Mock"
-            status.markdown(f"**Step 2/4:** Generating slide content ({mode} mode)...")
+            status.markdown(f"**Step 2/5:** Generating slide content ({mode} mode)...")
 
             slides_data = generate_slides(
                 text,
@@ -143,88 +200,153 @@ if uploaded_file:
                 base_url=config.base_url,
                 model=config.model,
                 language=config.language,
+                custom_prompt=config.custom_prompt,
             )
 
             with st.expander("Generated Slide Content", expanded=False):
                 for i, slide in enumerate(slides_data):
-                    st.markdown(f"**Slide {i+1}: {slide.title}**")
+                    layout_badge = f"`{slide.layout.value}`"
+                    st.markdown(f"**Slide {i+1}: {slide.title}** {layout_badge}")
                     for point in slide.content:
                         st.markdown(f"- {point}")
                     if slide.speaker_notes:
-                        st.caption(f"Notes: {slide.speaker_notes[:100]}...")
+                        st.caption(f"Notes: {slide.speaker_notes[:120]}...")
                     st.divider()
 
-            # -- Step 3: Render Slides --
+            # -- Step 3: AI Image Generation (optional) --
+            ai_bg_images = {}
+            if enable_ai_images and config.api_key:
+                progress_bar.progress(25, text="Generating AI images...")
+                status.markdown("**Step 3/5:** Generating AI background images...")
+
+                bg_dir = os.path.join(output_dir, "backgrounds")
+                prompts = [(i, s.image_prompt) for i, s in enumerate(slides_data) if s.image_prompt]
+
+                def img_progress(current, total):
+                    pct = 25 + int((current / max(total, 1)) * 15)
+                    progress_bar.progress(min(pct, 40), text=f"Generating image {current + 1}/{total}...")
+
+                ai_bg_images = generate_slide_images_batch(
+                    prompts, bg_dir,
+                    api_key=config.api_key, base_url=config.base_url,
+                    model=image_model, progress_callback=img_progress,
+                )
+                if ai_bg_images:
+                    st.success(f"Generated {len(ai_bg_images)} AI background images.")
+            else:
+                progress_bar.progress(40, text="Skipping AI images...")
+
+            # -- Step 4: Render Slides --
             progress_bar.progress(40, text="Rendering slides...")
-            status.markdown("**Step 3/4:** Rendering presentations...")
+            status.markdown("**Step 4/5:** Rendering presentations...")
 
             if os.path.exists(output_dir):
+                # Preserve backgrounds dir if it exists
+                bg_dir_path = os.path.join(output_dir, "backgrounds")
+                bg_exists = os.path.exists(bg_dir_path)
+                if bg_exists:
+                    import tempfile
+                    tmp = tempfile.mkdtemp()
+                    shutil.copytree(bg_dir_path, os.path.join(tmp, "backgrounds"))
                 shutil.rmtree(output_dir)
-            os.makedirs(output_dir)
+                os.makedirs(output_dir)
+                if bg_exists:
+                    shutil.copytree(os.path.join(tmp, "backgrounds"), bg_dir_path)
+                    shutil.rmtree(tmp)
+            else:
+                os.makedirs(output_dir)
 
             # PPTX
-            pptx_path = os.path.join(output_dir, "presentation.pptx")
-            create_pptx_file(slides_data, pptx_path)
+            if ExportFormat.PPTX in config.export_formats:
+                pptx_path = os.path.join(output_dir, "presentation.pptx")
+                create_pptx_file(slides_data, pptx_path, theme=config.theme)
 
             progress_bar.progress(50, text="Creating slide images...")
 
-            # Slide Images
+            # Slide Images (always needed for PDF and video)
             images_dir = os.path.join(output_dir, "images")
             image_paths = create_slide_images(slides_data, images_dir, theme=config.theme)
 
-            progress_bar.progress(60, text="Generating PDF...")
-
             # PDF
-            pdf_path = os.path.join(output_dir, "presentation.pdf")
-            create_pdf_from_images(image_paths, pdf_path)
+            if ExportFormat.PDF in config.export_formats:
+                progress_bar.progress(55, text="Generating PDF...")
+                pdf_path = os.path.join(output_dir, "presentation.pdf")
+                create_pdf_from_images(image_paths, pdf_path)
 
-            # -- Step 4: Generate Video --
-            progress_bar.progress(70, text="Creating video with voiceover...")
-            status.markdown("**Step 4/4:** Generating video with AI voiceover...")
+            # -- Step 5: Generate Video --
+            if ExportFormat.VIDEO in config.export_formats:
+                progress_bar.progress(60, text="Creating video with voiceover...")
+                status.markdown("**Step 5/5:** Generating video with AI voiceover...")
 
-            video_path = os.path.join(output_dir, "presentation.mp4")
-            voice = config.voice_name
-            scripts = [s.speaker_notes for s in slides_data]
+                video_path = os.path.join(output_dir, "presentation.mp4")
+                voice = config.voice_name
+                scripts = [s.speaker_notes for s in slides_data]
 
-            def video_progress(current, total):
-                pct = 70 + int((current / max(total, 1)) * 25)
-                progress_bar.progress(min(pct, 95), text=f"Processing slide {current + 1}/{total}...")
+                def video_progress(current, total):
+                    pct = 60 + int((current / max(total, 1)) * 35)
+                    progress_bar.progress(min(pct, 95), text=f"Processing slide {current + 1}/{total}...")
 
-            create_video_presentation(image_paths, scripts, video_path, voice=voice, progress_callback=video_progress)
+                try:
+                    create_video_presentation(
+                        image_paths, scripts, video_path,
+                        voice=voice, progress_callback=video_progress,
+                    )
+                except Exception as e:
+                    logger.error("Video generation failed: %s", e)
+                    video_path = None
+                    st.warning(f"Video generation failed: {e}. Other outputs are still available.")
 
             progress_bar.progress(100, text="Done!")
-            status.markdown("**All steps completed successfully!**")
+            status.markdown("**All steps completed!**")
 
-            # -- Results --
+        except Exception as e:
+            logger.error("Pipeline error: %s", e, exc_info=True)
+            progress_bar.empty()
+            status.empty()
+            st.error(f"Error: {e}")
+
+        # -- Results (shown even if video failed) --
+        has_any_output = pptx_path or pdf_path or video_path or image_paths
+        if has_any_output:
             st.divider()
             st.header("Results")
 
             # Slide preview
             if image_paths:
                 st.subheader("Slide Preview")
-                cols = st.columns(min(len(image_paths), 4))
-                for idx, img_path in enumerate(image_paths[:4]):
+                preview_count = min(len(image_paths), 5)
+                cols = st.columns(preview_count)
+                for idx in range(preview_count):
                     with cols[idx]:
-                        st.image(img_path, caption=f"Slide {idx + 1}", use_container_width=True)
-                if len(image_paths) > 4:
-                    st.caption(f"... and {len(image_paths) - 4} more slides")
+                        st.image(image_paths[idx], caption=f"Slide {idx + 1}", use_container_width=True)
+                if len(image_paths) > preview_count:
+                    st.caption(f"... and {len(image_paths) - preview_count} more slides")
+
+            # AI-generated background previews
+            if ai_bg_images:
+                with st.expander("AI Generated Backgrounds", expanded=False):
+                    bg_cols = st.columns(min(len(ai_bg_images), 4))
+                    for idx, (slide_idx, bg_path) in enumerate(sorted(ai_bg_images.items())[:4]):
+                        with bg_cols[idx]:
+                            st.image(bg_path, caption=f"Slide {slide_idx + 1} BG", use_container_width=True)
 
             # Downloads
             st.subheader("Downloads")
-            dl_col1, dl_col2, dl_col3 = st.columns(3)
+            dl_cols = st.columns(3)
 
-            with dl_col1:
-                with open(pptx_path, "rb") as f:
-                    st.download_button(
-                        "Download PPTX",
-                        f,
-                        file_name="presentation.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        use_container_width=True,
-                    )
+            with dl_cols[0]:
+                if pptx_path and os.path.exists(pptx_path):
+                    with open(pptx_path, "rb") as f:
+                        st.download_button(
+                            "Download PPTX",
+                            f,
+                            file_name="presentation.pptx",
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            use_container_width=True,
+                        )
 
-            with dl_col2:
-                if os.path.exists(pdf_path):
+            with dl_cols[1]:
+                if pdf_path and os.path.exists(pdf_path):
                     with open(pdf_path, "rb") as f:
                         st.download_button(
                             "Download PDF",
@@ -234,8 +356,8 @@ if uploaded_file:
                             use_container_width=True,
                         )
 
-            with dl_col3:
-                if os.path.exists(video_path):
+            with dl_cols[2]:
+                if video_path and os.path.exists(video_path):
                     with open(video_path, "rb") as f:
                         st.download_button(
                             "Download Video",
@@ -246,18 +368,12 @@ if uploaded_file:
                         )
 
             # Video player
-            if os.path.exists(video_path):
+            if video_path and os.path.exists(video_path):
                 st.subheader("Video Preview")
                 st.video(video_path)
 
-        except Exception as e:
-            logger.error("Pipeline error: %s", e, exc_info=True)
-            progress_bar.empty()
-            status.empty()
-            st.error(f"Error: {e}")
-
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v2.0")
+st.sidebar.caption("AutoPresentation AI v2.1")
 if not api_key:
-    st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content.")
+    st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

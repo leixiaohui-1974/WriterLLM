@@ -15,6 +15,14 @@ class SlideTheme(Enum):
     MINIMAL = "minimal"
 
 
+class SlideLayout(Enum):
+    """Slide layout types for varied visual presentation."""
+    TITLE = "title"          # Title slide with centered text
+    CONTENT = "content"      # Standard bullet-point content
+    SECTION = "section"      # Section divider with large title
+    TWO_COLUMN = "two_column"  # Two-column layout
+
+
 class Language(Enum):
     """Supported languages for TTS and content generation."""
     ENGLISH = "en"
@@ -52,6 +60,7 @@ class SlideData:
     content: List[str] = field(default_factory=list)
     speaker_notes: str = ""
     image_prompt: str = ""
+    layout: SlideLayout = SlideLayout.CONTENT
 
     def to_dict(self) -> dict:
         return {
@@ -59,16 +68,30 @@ class SlideData:
             "content": self.content,
             "speaker_notes": self.speaker_notes,
             "image_prompt": self.image_prompt,
+            "layout": self.layout.value,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "SlideData":
+        layout_str = data.get("layout", "content")
+        try:
+            layout = SlideLayout(layout_str)
+        except ValueError:
+            layout = SlideLayout.CONTENT
         return cls(
             title=data.get("title", "Untitled"),
             content=data.get("content", []),
             speaker_notes=data.get("speaker_notes", ""),
             image_prompt=data.get("image_prompt", ""),
+            layout=layout,
         )
+
+
+class ExportFormat(Enum):
+    """Available export formats."""
+    PPTX = "pptx"
+    PDF = "pdf"
+    VIDEO = "video"
 
 
 @dataclass
@@ -81,6 +104,10 @@ class PresentationConfig:
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     model: str = "gpt-3.5-turbo"
+    custom_prompt: str = ""
+    export_formats: List[ExportFormat] = field(
+        default_factory=lambda: [ExportFormat.PPTX, ExportFormat.PDF, ExportFormat.VIDEO]
+    )
 
     @property
     def voice_name(self) -> str:
@@ -143,3 +170,7 @@ THEMES = {
         footer=(180, 180, 180),
     ),
 }
+
+# Max upload file size (50 MB)
+MAX_UPLOAD_SIZE_MB = 50
+MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024

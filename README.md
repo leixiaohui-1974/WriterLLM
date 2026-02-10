@@ -1,19 +1,41 @@
 # AutoPresentation AI
 
-A web application that transforms documents (Word, PDF, TXT, Markdown) into professional presentations (PPTX), PDFs, and videos with AI-generated content and voiceovers.
+A web application that transforms documents (Word, PDF, TXT, Markdown) into professional presentations (PPTX), PDFs, and videos with AI-generated content, images, and voiceovers.
 
 ## Features
 
-- **Multi-Format Document Parsing**: Extracts text from `.docx`, `.pdf`, `.txt`, and `.md` files with heading structure preservation
-- **AI Content Generation**: Uses OpenAI-compatible LLMs to generate structured slide content with retry logic and validation
-- **Multi-Language Support**: Generate content and voiceovers in 7 languages (English, Chinese, Japanese, Korean, French, German, Spanish)
-- **5 Slide Themes**: Professional, Dark, Ocean, Sunset, and Minimal visual themes
-- **PowerPoint Generation**: Creates editable `.pptx` files with titles, bullet points, and speaker notes
-- **Slide Image Rendering**: High-quality 1920x1080 slide images with theme-aware layouts
-- **PDF Export**: Compiles slide images into a PDF document
-- **Video Creation**: AI-generated voiceovers with Microsoft Azure Neural TTS (via edge-tts)
-- **Progress Tracking**: Real-time progress bar with step-by-step status updates
+### Document Processing
+- **Multi-Format Parsing**: Extracts text from `.docx`, `.pdf`, `.txt`, and `.md` files with heading structure preservation
+- **Smart Text Analysis**: Preserves document structure (headings, paragraphs) for better slide generation
+
+### AI-Powered Content
+- **LLM Content Generation**: Uses OpenAI-compatible LLMs with retry logic and response validation
+- **Custom Prompts**: Provide additional instructions to guide AI content generation
+- **AI Image Generation**: Generate background images for each slide using DALL-E or compatible APIs
 - **Mock Mode**: Full pipeline works without API keys for testing and demos
+
+### Multi-Language (7 Languages)
+- English, Chinese, Japanese, Korean, French, German, Spanish
+- Language-specific LLM prompts, TTS voices (male/female), and system prompts
+
+### Presentation Design
+- **5 Visual Themes**: Professional, Dark, Ocean, Sunset, Minimal
+- **4 Slide Layouts**: Title, Content, Section Divider, Two-Column
+- **Smart Layout Assignment**: Automatic layout selection based on content
+- **Themed PPTX Output**: PowerPoint files match selected visual theme
+
+### Output Formats
+- **PowerPoint (PPTX)**: Editable files with themed colors, layouts, and speaker notes
+- **PDF Export**: High-quality slide images compiled into PDF
+- **Video (MP4)**: AI voiceovers with Microsoft Azure Neural TTS (edge-tts)
+- **Selective Export**: Choose which formats to generate
+- **Partial Recovery**: PPTX/PDF delivered even if video generation fails
+
+### User Experience
+- Real-time progress tracking with step-by-step status
+- Slide preview grid with layout badges
+- File size validation (50 MB limit)
+- Advanced options panel with custom prompts and image model selection
 
 ## Setup
 
@@ -34,27 +56,18 @@ A web application that transforms documents (Word, PDF, TXT, Markdown) into prof
    export OPENAI_MODEL="gpt-4"
    ```
 
-## Usage
-
-1. Open the app in your browser (default: `http://localhost:8501`)
-2. Select language and slide theme in the sidebar
-3. Upload a document (DOCX, PDF, TXT, or Markdown)
-4. (Optional) Configure API key for AI-powered content generation
-5. Adjust settings (number of slides, voice gender)
-6. Click **Generate Presentation**
-7. Download PPTX, PDF, and Video outputs
-
 ## Architecture
 
 ```
 src/
 ├── __init__.py        # Package initialization
 ├── config.py          # Configuration management, env vars, constants
-├── models.py          # Data models (SlideData, themes, languages, voices)
+├── models.py          # Data models (SlideData, themes, languages, layouts, voices)
 ├── parser.py          # Document text extraction (DOCX, PDF, TXT, MD)
-├── generator.py       # AI content generation with LLM integration
-├── renderer.py        # PPTX creation, slide image rendering, PDF export
-└── video.py           # TTS voiceover generation and video assembly
+├── generator.py       # AI content generation with LLM + layout assignment
+├── renderer.py        # Themed PPTX, layout-aware image rendering, PDF export
+├── video.py           # TTS voiceover generation and video assembly
+└── image_gen.py       # AI image generation for slide backgrounds
 app.py                 # Main Streamlit application
 ```
 
@@ -66,15 +79,15 @@ pytest -v
 
 ## Supported Languages
 
-| Language | Content Generation | TTS Voice (M/F) |
-|----------|-------------------|------------------|
-| English  | Yes               | Yes              |
-| Chinese  | Yes               | Yes              |
-| Japanese | Yes               | Yes              |
-| Korean   | Yes               | Yes              |
-| French   | Yes               | Yes              |
-| German   | Yes               | Yes              |
-| Spanish  | Yes               | Yes              |
+| Language | Content | TTS Voice (M/F) | Prompt |
+|----------|---------|------------------|--------|
+| English  | Yes     | Yes              | Full   |
+| Chinese  | Yes     | Yes              | Full   |
+| Japanese | Yes     | Yes              | Full   |
+| Korean   | Yes     | Yes              | Full   |
+| French   | Yes     | Yes              | Full   |
+| German   | Yes     | Yes              | Full   |
+| Spanish  | Yes     | Yes              | Full   |
 
 ## Requirements
 
