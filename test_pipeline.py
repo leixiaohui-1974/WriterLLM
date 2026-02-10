@@ -27,7 +27,7 @@ from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, PPTX_TRANSITION_TYPES
+from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, PPTX_TRANSITION_TYPES
 
 
 OUTPUT_DIR = "test_output"
@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "14.0"
+        assert proj["version"] == "15.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "14.0"
+        assert proj["version"] == "15.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -2346,6 +2346,169 @@ class TestProjectVersionString:
         slides, settings = deserialize_project(data)
         assert len(slides) == 1
         assert slides[0].title == "T"
+
+
+class TestPPTXResponsiveFontSize:
+    """Tests for responsive PPTX font sizing (v15)."""
+
+    def test_few_items_uses_base_size(self):
+        """Few items should use the base font size."""
+        assert _compute_pptx_font_size(["Short", "Items"], base_size=18) == 18
+
+    def test_many_items_shrinks_font(self):
+        """Many items should trigger font shrinking."""
+        items = [f"Item {i}" for i in range(10)]
+        size = _compute_pptx_font_size(items, base_size=18)
+        assert size < 18
+
+    def test_long_text_shrinks_font(self):
+        """Long text content should trigger font shrinking."""
+        items = ["This is a very long bullet point " * 5 for _ in range(3)]
+        size = _compute_pptx_font_size(items, base_size=18)
+        assert size < 18
+
+    def test_respects_min_size(self):
+        """Font size should not shrink below min_size."""
+        items = [f"Long item number {i} with extra text padding here" for i in range(20)]
+        size = _compute_pptx_font_size(items, base_size=18, min_size=12)
+        assert size >= 12
+
+    def test_two_column_base_size(self):
+        """Two-column base size (16) should be used correctly."""
+        assert _compute_pptx_font_size(["A", "B"], base_size=16) == 16
+
+    def test_content_slide_dense_renders(self):
+        """Dense content slide should render with smaller fonts without error."""
+        slides_data = [
+            SlideData(title="Dense", content=[f"Point {i}: details here" for i in range(10)],
+                      layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "dense_content.pptx")
+        create_pptx_file(slides_data, path)
+        assert os.path.exists(path)
+
+    def test_two_column_dense_renders(self):
+        """Dense two-column slide should render with responsive fonts."""
+        slides_data = [
+            SlideData(title="Dense Cols", content=[f"Item {i}" for i in range(12)],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "dense_two_col.pptx")
+        create_pptx_file(slides_data, path)
+        assert os.path.exists(path)
+
+
+class TestPPTXGradientFill:
+    """Tests for PPTX gradient header fills (v15)."""
+
+    def test_gradient_header_renders(self):
+        """Content slide with gradient header should render."""
+        slides_data = [
+            SlideData(title="Gradient", content=["A", "B"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "gradient_header.pptx")
+        create_pptx_file(slides_data, path)
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+    def test_gradient_header_has_grad_fill(self):
+        """Header bar shape should contain a:gradFill element."""
+        from pptx.oxml.ns import qn as _qn
+        slides_data = [
+            SlideData(title="GradCheck", content=["X"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "grad_check.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Search for gradFill element in any shape
+        found_grad = False
+        for shape in slide.shapes:
+            sp_el = shape._element
+            grad_fills = sp_el.findall(".//" + _qn("a:gradFill"))
+            if grad_fills:
+                found_grad = True
+                break
+        assert found_grad, "No gradient fill found in slide shapes"
+
+    def test_gradient_all_themes(self):
+        """Gradient headers should work with all themes."""
+        slides_data = [
+            SlideData(title="Theme Grad", content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        for theme in SlideTheme:
+            path = os.path.join(OUTPUT_DIR, f"grad_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
+
+    def test_gradient_two_column(self):
+        """Two-column slides should also have gradient headers."""
+        from pptx.oxml.ns import qn as _qn
+        slides_data = [
+            SlideData(title="TwoCol Grad", content=["A", "B", "C", "D"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "grad_two_col.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        found_grad = False
+        for shape in slide.shapes:
+            grad_fills = shape._element.findall(".//" + _qn("a:gradFill"))
+            if grad_fills:
+                found_grad = True
+                break
+        assert found_grad
+
+
+class TestPPTXProgressBar:
+    """Tests for PPTX progress bar (v15)."""
+
+    def test_progress_bar_does_not_raise(self):
+        """Adding a progress bar should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_pptx_progress_bar(slide, 0, 5, colors)
+
+    def test_progress_bar_adds_shapes(self):
+        """Progress bar should add two rectangle shapes (bg + progress)."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        shapes_before = len(slide.shapes)
+        colors = THEMES[SlideTheme.OCEAN]
+        _add_pptx_progress_bar(slide, 2, 5, colors)
+        assert len(slide.shapes) >= shapes_before + 2
+
+    def test_progress_bar_skipped_single_slide(self):
+        """Single-slide deck should not have progress bar."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        shapes_before = len(slide.shapes)
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_pptx_progress_bar(slide, 0, 1, colors)
+        assert len(slide.shapes) == shapes_before
+
+    def test_progress_bar_in_full_deck(self):
+        """Multi-slide deck should include progress bars."""
+        slides_data = [
+            SlideData(title="S1", content=["A"], layout=SlideLayout.CONTENT),
+            SlideData(title="S2", content=["B"], layout=SlideLayout.CONTENT),
+            SlideData(title="S3", content=["C"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "progress_deck.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 3
+        # Each slide should have at least some shapes
+        for slide in prs.slides:
+            assert len(slide.shapes) >= 4  # header + accent + content + progress bars
 
 
 if __name__ == "__main__":

@@ -470,6 +470,7 @@ def create_pptx_file(
             current_slide, i, total_slides, colors,
             footer_company=footer_company, footer_author=footer_author,
         )
+        _add_pptx_progress_bar(current_slide, i, total_slides, colors)
 
         # Add bullet-by-bullet entrance animations for content slides
         if enable_animations and layout in (SlideLayout.CONTENT, SlideLayout.TWO_COLUMN):
@@ -603,16 +604,45 @@ def _add_pptx_entrance_animations(slide, content_shape_id: int, num_paragraphs: 
 
 
 def _add_pptx_header_bar(slide, colors: ThemeColors):
-    """Add a header bar shape with accent line to a PPTX slide for visual parity with image renderer."""
+    """Add a header bar shape with gradient fill and accent line to a PPTX slide."""
     try:
+        from lxml import etree
+
         # Header rectangle (~1.4 inches matches 200/1080 ratio of image renderer)
         header_bar = slide.shapes.add_shape(
             1,  # MSO_SHAPE.RECTANGLE
             Inches(0), Inches(0), Inches(13.333), Inches(1.4),
         )
-        header_bar.fill.solid()
-        header_bar.fill.fore_color.rgb = _rgb_color(colors.header)
         header_bar.line.fill.background()
+
+        # Apply gradient fill via OpenXML (top color -> lighter bottom)
+        r, g, b = colors.header
+        r2 = min(r + 30, 255)
+        g2 = min(g + 30, 255)
+        b2 = min(b + 30, 255)
+        sp_pr = header_bar._element.find(qn("p:spPr"))
+        if sp_pr is None:
+            sp_pr = header_bar._element.find(qn("a:spPr"))
+        if sp_pr is None:
+            sp_pr = header_bar._element.makeelement(qn("p:spPr"), {})
+            header_bar._element.append(sp_pr)
+        # Remove any existing fill
+        for child in list(sp_pr):
+            tag_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+            if tag_local in ("solidFill", "gradFill", "noFill"):
+                sp_pr.remove(child)
+        grad_xml = (
+            f'<a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            f'<a:gsLst>'
+            f'<a:gs pos="0"><a:srgbClr val="{r:02X}{g:02X}{b:02X}"/></a:gs>'
+            f'<a:gs pos="100000"><a:srgbClr val="{r2:02X}{g2:02X}{b2:02X}"/></a:gs>'
+            f'</a:gsLst>'
+            f'<a:lin ang="5400000" scaled="1"/>'
+            f'</a:gradFill>'
+        )
+        grad_elem = etree.fromstring(grad_xml)
+        sp_pr.append(grad_elem)
+
         # Move header to back
         sp = header_bar._element
         sp.getparent().remove(sp)
@@ -628,6 +658,53 @@ def _add_pptx_header_bar(slide, colors: ThemeColors):
         accent_line.line.fill.background()
     except Exception:
         pass
+
+
+def _add_pptx_progress_bar(slide, slide_index: int, total_slides: int, colors: ThemeColors):
+    """Add a thin progress bar at the bottom of a PPTX slide."""
+    if total_slides <= 1:
+        return
+    try:
+        progress = (slide_index + 1) / total_slides
+        bar_height = Inches(0.04)
+        bar_y = Inches(7.5) - bar_height  # bottom of slide
+
+        # Background bar (footer color)
+        bg_bar = slide.shapes.add_shape(
+            1, Inches(0), bar_y, Inches(13.333), bar_height,
+        )
+        bg_bar.fill.solid()
+        bg_bar.fill.fore_color.rgb = _rgb_color(colors.footer)
+        bg_bar.line.fill.background()
+
+        # Progress bar (accent color)
+        prog_width = Inches(13.333 * progress)
+        prog_bar = slide.shapes.add_shape(
+            1, Inches(0), bar_y, prog_width, bar_height,
+        )
+        prog_bar.fill.solid()
+        prog_bar.fill.fore_color.rgb = _rgb_color(colors.accent)
+        prog_bar.line.fill.background()
+    except Exception:
+        pass
+
+
+def _compute_pptx_font_size(content: list, base_size: int = 18, min_size: int = 12) -> int:
+    """Compute responsive font size for PPTX based on content density.
+
+    Shrinks font when there are many bullets or long text to prevent overflow.
+    """
+    total_chars = sum(len(item) for item in content)
+    num_items = len(content)
+
+    # Thresholds for shrinking (approximate line count heuristic)
+    if num_items > 8 or total_chars > 600:
+        return max(min_size, base_size - 6)
+    if num_items > 6 or total_chars > 400:
+        return max(min_size, base_size - 4)
+    if num_items > 4 or total_chars > 250:
+        return max(min_size, base_size - 2)
+    return base_size
 
 
 def _format_pptx_bullet(paragraph, colors: ThemeColors):
@@ -675,9 +752,10 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
         if ph.has_text_frame:
             tf = ph.text_frame
             if slide_data.content:
+                font_size = _compute_pptx_font_size(slide_data.content, base_size=18, min_size=12)
                 tf.text = slide_data.content[0]
                 for run in tf.paragraphs[0].runs:
-                    run.font.size = Pt(18)
+                    run.font.size = Pt(font_size)
                     run.font.color.rgb = _rgb_color(colors.text)
                 _format_pptx_bullet(tf.paragraphs[0], colors)
                 for point in slide_data.content[1:]:
@@ -685,7 +763,7 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
                     p.text = point
                     p.space_before = Pt(6)
                     for run in p.runs:
-                        run.font.size = Pt(18)
+                        run.font.size = Pt(font_size)
                         run.font.color.rgb = _rgb_color(colors.text)
                     _format_pptx_bullet(p, colors)
 
@@ -804,6 +882,9 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
     left_items = content[:mid]
     right_items = content[mid:]
 
+    # Responsive font size based on total content density
+    col_font_size = _compute_pptx_font_size(content, base_size=16, min_size=11)
+
     # Left column text box
     left_box = slide.shapes.add_textbox(
         Inches(0.5), Inches(1.6), Inches(5.9), Inches(5.0),
@@ -813,14 +894,14 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
         left_box.text_frame.text = left_items[0]
         _format_pptx_bullet(left_box.text_frame.paragraphs[0], colors)
         for run in left_box.text_frame.paragraphs[0].runs:
-            run.font.size = Pt(16)
+            run.font.size = Pt(col_font_size)
             run.font.color.rgb = _rgb_color(colors.text)
         for point in left_items[1:]:
             p = left_box.text_frame.add_paragraph()
             p.text = point
             _format_pptx_bullet(p, colors)
             for run in p.runs:
-                run.font.size = Pt(16)
+                run.font.size = Pt(col_font_size)
                 run.font.color.rgb = _rgb_color(colors.text)
 
     # Right column text box
@@ -832,14 +913,14 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
         right_box.text_frame.text = right_items[0]
         _format_pptx_bullet(right_box.text_frame.paragraphs[0], colors)
         for run in right_box.text_frame.paragraphs[0].runs:
-            run.font.size = Pt(16)
+            run.font.size = Pt(col_font_size)
             run.font.color.rgb = _rgb_color(colors.text)
         for point in right_items[1:]:
             p = right_box.text_frame.add_paragraph()
             p.text = point
             _format_pptx_bullet(p, colors)
             for run in p.runs:
-                run.font.size = Pt(16)
+                run.font.size = Pt(col_font_size)
                 run.font.color.rgb = _rgb_color(colors.text)
 
     if slide.has_notes_slide:
