@@ -239,6 +239,59 @@ def _assign_layouts(slides: List[SlideData]) -> List[SlideData]:
     return slides
 
 
+_TRANSITION_PHRASES = {
+    Language.ENGLISH: [
+        "Let's begin by looking at",
+        "Now, let's move on to",
+        "Next, I'd like to discuss",
+        "Let's explore",
+        "Moving forward, let's examine",
+        "Now let's turn our attention to",
+        "Building on that, let's look at",
+    ],
+    Language.CHINESE: [
+        "\u8ba9\u6211\u4eec\u9996\u5148\u770b\u770b",
+        "\u63a5\u4e0b\u6765\uff0c\u8ba9\u6211\u4eec\u8ba8\u8bba",
+        "\u73b0\u5728\u8ba9\u6211\u4eec\u6765\u770b\u770b",
+        "\u4e0b\u9762\u6211\u4eec\u6765\u63a2\u8ba8",
+        "\u63a5\u4e0b\u6765\u8ba9\u6211\u4eec\u5173\u6ce8",
+    ],
+    Language.JAPANESE: [
+        "\u307e\u305a\u3001\u898b\u3066\u307f\u307e\u3057\u3087\u3046",
+        "\u6b21\u306b\u3001\u8a71\u3057\u5408\u3044\u307e\u3057\u3087\u3046",
+        "\u7d9a\u3044\u3066\u3001\u63a2\u3063\u3066\u307f\u307e\u3057\u3087\u3046",
+    ],
+}
+
+
+def _build_speaker_notes(title: str, content: list, slide_idx: int,
+                         total_content_slides: int, language: Language) -> str:
+    """Build structured, conversational speaker notes for a slide."""
+    phrases = _TRANSITION_PHRASES.get(language, _TRANSITION_PHRASES[Language.ENGLISH])
+    transition = phrases[slide_idx % len(phrases)]
+
+    # Build the main talking points from content
+    points_text = " ".join(c[:80] for c in content[:3] if c and c != "Content placeholder")
+    if not points_text:
+        points_text = title
+
+    if slide_idx == 0:
+        # First content slide (title slide)
+        notes = f"{transition} {title}. {points_text}."
+    elif slide_idx >= total_content_slides - 1:
+        # Last content slide
+        if language == Language.CHINESE:
+            notes = f"\u6700\u540e\uff0c\u8ba9\u6211\u4eec\u603b\u7ed3\u4e00\u4e0b\u3002{points_text}"
+        elif language == Language.JAPANESE:
+            notes = f"\u6700\u5f8c\u306b\u3001\u307e\u3068\u3081\u307e\u3057\u3087\u3046\u3002{points_text}"
+        else:
+            notes = f"Finally, let's wrap up with the key points. {points_text}"
+    else:
+        notes = f"{transition} {title}. {points_text}"
+
+    return notes[:400]
+
+
 def mock_generate_content(text: str, num_slides: int, language: Language = Language.ENGLISH) -> List[SlideData]:
     """
     Generate slide content without an LLM by splitting text intelligently.
@@ -273,7 +326,7 @@ def mock_generate_content(text: str, num_slides: int, language: Language = Langu
 
         title = chunk[0][:60] if len(chunk[0]) >= 5 else f"Slide {i + 1}"
         content = chunk[1:6] if len(chunk) > 1 else [chunk[0]]
-        notes = " ".join(chunk)[:300]
+        notes = _build_speaker_notes(title, content, i, content_slides, language)
 
         slides.append(SlideData(
             title=title,

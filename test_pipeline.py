@@ -14,16 +14,17 @@ from src.models import SlideData, SlideLayout, SlideTheme, Language, ExportForma
 from src.renderer import (
     create_pptx_file, create_slide_images, create_pdf_from_images,
     _prepare_background, _get_font, _is_cjk_char, _contains_cjk,
-    _wrap_text, _text_pixel_width, _draw_text,
+    _wrap_text, _text_pixel_width, _draw_text, _draw_slide_footer,
     _compute_content_font_size, _estimate_content_lines, _cover_crop,
     _draw_gradient_rect, _fit_title_in_header, _draw_header_gradient,
-    _set_pptx_slide_background,
+    _set_pptx_slide_background, _add_pptx_slide_transition,
+    _add_pptx_slide_number, _BULLET_ICONS,
     CONTENT_MAX_WIDTH, CONTENT_FONT_SIZE, FOOTER_AREA, CONTENT_START_Y,
     SLIDE_HEIGHT, SLIDE_WIDTH, HEADER_HEIGHT, TITLE_FONT_SIZE,
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES
-from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES
+from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _build_speaker_notes, _TRANSITION_PHRASES
 
 
 OUTPUT_DIR = "test_output"
@@ -887,6 +888,227 @@ class TestPPTXSlideBackground:
         # Verify slides were created
         prs = Presentation(pptx_path)
         assert len(prs.slides) == 4
+
+
+class TestPPTXTransitions:
+    """Tests for PPTX slide transitions (v7)."""
+
+    def test_transition_does_not_raise(self):
+        """Adding a transition to a slide should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        _add_pptx_slide_transition(slide)
+
+    def test_pptx_with_transitions(self):
+        """PPTX generation should include transitions without error."""
+        slides_data = [
+            SlideData(title="Slide 1", content=["A"], layout=SlideLayout.TITLE),
+            SlideData(title="Slide 2", content=["B", "C"], layout=SlideLayout.CONTENT),
+            SlideData(title="Slide 3", content=[], layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "transitions.pptx")
+        create_pptx_file(slides_data, path)
+        assert os.path.exists(path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 3
+
+
+class TestPPTXSlideNumbers:
+    """Tests for PPTX slide numbering and footer branding (v7)."""
+
+    def test_slide_number_does_not_raise(self):
+        """Adding slide numbers should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_pptx_slide_number(slide, 0, 3, colors)
+
+    def test_slide_number_with_branding(self):
+        """Slide numbers with company and author should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        colors = THEMES[SlideTheme.OCEAN]
+        _add_pptx_slide_number(slide, 2, 5, colors, footer_company="ACME Corp", footer_author="Jane Doe")
+        # Should have extra text boxes for branding
+        text_shapes = [s for s in slide.shapes if s.has_text_frame]
+        assert len(text_shapes) >= 3  # slide number + company + author
+
+    def test_pptx_with_footer_branding(self):
+        """PPTX file with footer branding should be valid."""
+        slides_data = [
+            SlideData(title="Branded", content=["Test"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "branded.pptx")
+        create_pptx_file(slides_data, path, footer_company="Test Inc.", footer_author="Author")
+        assert os.path.exists(path)
+        assert os.path.getsize(path) > 0
+
+
+class TestBulletStyling:
+    """Tests for themed bullet icons in slide images (v7)."""
+
+    def test_bullet_icons_defined(self):
+        """Bullet icon list should exist and be non-empty."""
+        assert len(_BULLET_ICONS) > 0
+
+    def test_bullet_in_content_slide(self):
+        """Content slide with bullets should render with accent-colored icons."""
+        slides_data = [
+            SlideData(title="Bullet Test", content=["Point 1", "Point 2", "Point 3"],
+                      layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_bullets")
+        image_paths = create_slide_images(slides_data, images_dir, theme=SlideTheme.OCEAN)
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_bullet_in_two_column(self):
+        """Two-column slide should also use themed bullets."""
+        slides_data = [
+            SlideData(title="Two Col Bullets", content=["A", "B", "C", "D"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_bullets_2col")
+        image_paths = create_slide_images(slides_data, images_dir, theme=SlideTheme.SUNSET)
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+
+class TestSectionSlideEnhanced:
+    """Tests for enhanced section slide styling (v7)."""
+
+    def test_section_slide_gradient(self):
+        """Section slide should render with gradient background."""
+        slides_data = [
+            SlideData(title="Section Break", content=[], layout=SlideLayout.SECTION),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_section_v7")
+        image_paths = create_slide_images(slides_data, images_dir, theme=SlideTheme.DARK)
+        assert len(image_paths) == 1
+        # Check that section slide has dark gradient (header color)
+        from PIL import Image
+        img = Image.open(image_paths[0])
+        top_px = img.getpixel((100, 10))
+        assert top_px[0] < 50  # Dark theme header should be very dark
+
+    def test_section_slide_all_themes(self):
+        """Section slides should render correctly across all themes."""
+        slides_data = [
+            SlideData(title="Theme Test", content=[], layout=SlideLayout.SECTION),
+        ]
+        for theme in SlideTheme:
+            images_dir = os.path.join(OUTPUT_DIR, f"images_section_{theme.value}")
+            image_paths = create_slide_images(slides_data, images_dir, theme=theme)
+            assert len(image_paths) == 1
+            assert os.path.getsize(image_paths[0]) > 0
+
+    def test_section_with_background_image(self):
+        """Section slide with background image should render without error."""
+        slides_data = [
+            SlideData(title="BG Section", content=[], layout=SlideLayout.SECTION),
+        ]
+        bg_path = os.path.join(OUTPUT_DIR, "bg_section.png")
+        _create_test_bg_image(bg_path)
+        images_dir = os.path.join(OUTPUT_DIR, "images_section_bg")
+        image_paths = create_slide_images(
+            slides_data, images_dir, background_images={0: bg_path},
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+
+class TestSpeakerNotesEnhanced:
+    """Tests for improved mock speaker notes (v7)."""
+
+    def test_build_speaker_notes_english(self):
+        """English speaker notes should include transition phrases."""
+        notes = _build_speaker_notes("AI Overview", ["Machine learning", "Deep learning"],
+                                     0, 5, Language.ENGLISH)
+        assert len(notes) > 0
+        assert "AI Overview" in notes or "Machine learning" in notes
+
+    def test_build_speaker_notes_chinese(self):
+        """Chinese speaker notes should use Chinese phrases."""
+        notes = _build_speaker_notes("AI\u6982\u8ff0", ["\u673a\u5668\u5b66\u4e60"],
+                                     0, 5, Language.CHINESE)
+        assert len(notes) > 0
+
+    def test_build_speaker_notes_last_slide(self):
+        """Last slide notes should use wrap-up phrasing."""
+        notes = _build_speaker_notes("Summary", ["Point A"], 4, 5, Language.ENGLISH)
+        assert "wrap up" in notes.lower() or "key points" in notes.lower()
+
+    def test_mock_notes_have_transitions(self):
+        """Mock-generated slides should have structured speaker notes."""
+        text = "AI transforms healthcare. ML improves diagnostics. NLP reads records. " * 10
+        slides = mock_generate_content(text, num_slides=5)
+        for slide in slides:
+            assert len(slide.speaker_notes) > 0
+
+    def test_transition_phrases_all_languages(self):
+        """Transition phrases should exist for key languages."""
+        for lang in [Language.ENGLISH, Language.CHINESE, Language.JAPANESE]:
+            assert lang in _TRANSITION_PHRASES
+            assert len(_TRANSITION_PHRASES[lang]) >= 3
+
+
+class TestFooterBranding:
+    """Tests for footer branding in slide images (v7)."""
+
+    def test_slide_images_with_company(self):
+        """Slide images with company branding should render without error."""
+        slides_data = [
+            SlideData(title="Branded Slide", content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_branded")
+        image_paths = create_slide_images(
+            slides_data, images_dir, footer_company="ACME Corp",
+        )
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_slide_images_with_full_branding(self):
+        """Slide images with company + author should render correctly."""
+        slides_data = [
+            SlideData(title="Full Brand", content=["X", "Y"], layout=SlideLayout.CONTENT),
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_full_brand")
+        image_paths = create_slide_images(
+            slides_data, images_dir,
+            footer_company="Test Corp", footer_author="John Smith",
+        )
+        assert len(image_paths) == 2
+        for p in image_paths:
+            assert os.path.getsize(p) > 0
+
+    def test_config_footer_defaults(self):
+        """PresentationConfig should have empty footer fields by default."""
+        config = PresentationConfig()
+        assert config.footer_company == ""
+        assert config.footer_author == ""
+
+    def test_config_footer_custom(self):
+        """PresentationConfig should accept custom footer values."""
+        config = PresentationConfig(footer_company="My Co", footer_author="Jane")
+        assert config.footer_company == "My Co"
+        assert config.footer_author == "Jane"
+
+    def test_draw_slide_footer_function(self):
+        """The _draw_slide_footer helper should not raise."""
+        from PIL import Image, ImageDraw
+        img = Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), (255, 255, 255))
+        draw = ImageDraw.Draw(img)
+        font = _get_font("DejaVuSans.ttf", 30, Language.ENGLISH)
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _draw_slide_footer(draw, font, colors, 0, 5, False, False,
+                          footer_company="Test", footer_author="Author")
 
 
 if __name__ == "__main__":

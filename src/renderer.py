@@ -13,6 +13,7 @@ from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
+from pptx.oxml.ns import qn
 from PIL import Image, ImageDraw, ImageFont
 
 from src.models import SlideData, SlideLayout, SlideTheme, Language, ThemeColors, THEMES
@@ -43,6 +44,9 @@ _SHADOW_COLOR = (0, 0, 0)
 # Responsive font sizing bounds
 _MIN_CONTENT_FONT_SIZE = 24
 _FONT_SIZE_STEP = 3
+
+# Bullet styling: themed icons cycle per bullet index
+_BULLET_ICONS = ["\u25B8", "\u25B8", "\u25B8", "\u25B8"]  # Right-pointing triangles
 
 # CJK language set and font paths
 _CJK_LANGUAGES = {Language.CHINESE, Language.JAPANESE, Language.KOREAN}
@@ -339,11 +343,91 @@ def _set_pptx_slide_background(slide, color: tuple):
         logger.debug("Could not set slide background: %s", e)
 
 
+def _add_pptx_slide_transition(slide, duration_ms: int = 700):
+    """Add a fade transition to a PPTX slide."""
+    try:
+        transition_xml = (
+            f'<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"'
+            f' xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main">'
+            f'<mc:Choice Requires="p14">'
+            f'<p:transition xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+            f' spd="med" advClick="1">'
+            f'<p:fade />'
+            f'</p:transition>'
+            f'</mc:Choice>'
+            f'</mc:AlternateContent>'
+        )
+        # Use simple transition element directly
+        from lxml import etree
+        nsmap = {"p": "http://schemas.openxmlformats.org/presentationml/2006/main"}
+        transition = etree.SubElement(
+            slide._element,
+            qn("p:transition"),
+            attrib={"spd": "med", "advClick": "1"},
+        )
+        etree.SubElement(transition, qn("p:fade"))
+    except Exception as e:
+        logger.debug("Could not add slide transition: %s", e)
+
+
+def _add_pptx_slide_number(slide, slide_index: int, total_slides: int, colors: ThemeColors,
+                           footer_company: str = "", footer_author: str = ""):
+    """Add a slide number and optional branding footer to a PPTX slide."""
+    try:
+        from pptx.util import Inches, Pt, Emu
+
+        # Footer text box: right-aligned slide number
+        footer_text = f"Slide {slide_index + 1} / {total_slides}"
+
+        # Slide number at bottom-right
+        txBox = slide.shapes.add_textbox(
+            Inches(10.5), Inches(6.9), Inches(2.5), Inches(0.4),
+        )
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.RIGHT
+        run = p.add_run()
+        run.text = footer_text
+        run.font.size = Pt(10)
+        run.font.color.rgb = _rgb_color(colors.footer)
+
+        # Company branding at bottom-left
+        if footer_company:
+            txBox2 = slide.shapes.add_textbox(
+                Inches(0.4), Inches(6.9), Inches(4.0), Inches(0.4),
+            )
+            tf2 = txBox2.text_frame
+            p2 = tf2.paragraphs[0]
+            p2.alignment = PP_ALIGN.LEFT
+            run2 = p2.add_run()
+            run2.text = footer_company
+            run2.font.size = Pt(10)
+            run2.font.color.rgb = _rgb_color(colors.footer)
+
+        # Author at bottom-center
+        if footer_author:
+            txBox3 = slide.shapes.add_textbox(
+                Inches(4.5), Inches(6.9), Inches(4.0), Inches(0.4),
+            )
+            tf3 = txBox3.text_frame
+            p3 = tf3.paragraphs[0]
+            p3.alignment = PP_ALIGN.CENTER
+            run3 = p3.add_run()
+            run3.text = footer_author
+            run3.font.size = Pt(10)
+            run3.font.color.rgb = _rgb_color(colors.footer)
+    except Exception as e:
+        logger.debug("Could not add slide number: %s", e)
+
+
 def create_pptx_file(
     slides_data: List[SlideData],
     output_path: str,
     theme: SlideTheme = SlideTheme.PROFESSIONAL,
     background_images: Optional[dict] = None,
+    footer_company: str = "",
+    footer_author: str = "",
 ) -> str:
     """Create a themed PowerPoint file from slide data with optional AI backgrounds."""
     prs = Presentation()
@@ -353,12 +437,12 @@ def create_pptx_file(
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
 
+    total_slides = len(slides_data)
     for i, slide_data in enumerate(slides_data):
         layout = slide_data.layout
 
         if layout == SlideLayout.TITLE:
             _add_title_slide(prs, slide_data, colors)
-            # Title slides use header color as background
             _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.header)
         elif layout == SlideLayout.SECTION:
             _add_section_slide(prs, slide_data, colors)
@@ -374,6 +458,14 @@ def create_pptx_file(
         if background_images and i in background_images:
             slide = prs.slides[len(prs.slides) - 1]
             _add_pptx_background(slide, background_images[i], prs)
+
+        # Add slide transition and footer
+        current_slide = prs.slides[len(prs.slides) - 1]
+        _add_pptx_slide_transition(current_slide)
+        _add_pptx_slide_number(
+            current_slide, i, total_slides, colors,
+            footer_company=footer_company, footer_author=footer_author,
+        )
 
     prs.save(output_path)
     logger.info("PPTX saved: %s (%d slides, theme: %s)", output_path, len(slides_data), theme.value)
@@ -516,6 +608,46 @@ def _draw_decorative_elements(draw: ImageDraw.Draw, theme: ThemeColors, slide_in
         draw.rectangle([(0, bar_y), (int(SLIDE_WIDTH * progress), SLIDE_HEIGHT)], fill=theme.accent)
 
 
+def _draw_slide_footer(
+    draw: ImageDraw.Draw,
+    footer_font: ImageFont.FreeTypeFont,
+    colors: ThemeColors,
+    slide_index: int,
+    total_slides: int,
+    has_bg_image: bool = False,
+    shadow: bool = False,
+    footer_company: str = "",
+    footer_author: str = "",
+):
+    """Draw the footer area with slide number and optional branding."""
+    footer_color = (200, 200, 200) if has_bg_image else colors.footer
+
+    # Right: slide number
+    footer_text = f"Slide {slide_index + 1} / {total_slides}"
+    bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
+    footer_w = bbox[2] - bbox[0]
+    _draw_text(
+        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
+        footer_text, footer_font, footer_color, shadow=shadow,
+    )
+
+    # Left: company branding
+    if footer_company:
+        _draw_text(
+            draw, (MARGIN_X, SLIDE_HEIGHT - 45),
+            footer_company, footer_font, footer_color, shadow=shadow,
+        )
+
+    # Center: author
+    if footer_author:
+        bbox_a = draw.textbbox((0, 0), footer_author, font=footer_font)
+        author_w = bbox_a[2] - bbox_a[0]
+        _draw_text(
+            draw, ((SLIDE_WIDTH - author_w) // 2, SLIDE_HEIGHT - 45),
+            footer_author, footer_font, footer_color, shadow=shadow,
+        )
+
+
 def _render_title_layout(
     draw: ImageDraw.Draw,
     slide_data: SlideData,
@@ -573,14 +705,7 @@ def _render_title_layout(
         _draw_text(draw, (sub_x, accent_y + 30), subtitle, content_font, colors.accent, shadow=shadow)
 
     # Footer
-    footer_text = f"Slide {slide_index + 1} / {total_slides}"
-    bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
-    footer_w = bbox[2] - bbox[0]
-    footer_color = (200, 200, 200) if has_bg_image else (*colors.title[:2], colors.title[2] // 2)
-    _draw_text(
-        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
-        footer_text, footer_font, footer_color, shadow=shadow,
-    )
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
 
 
 def _render_section_layout(
@@ -595,13 +720,33 @@ def _render_section_layout(
     has_bg_image: bool = False,
     language: Language = Language.ENGLISH,
 ):
-    """Render a section divider slide."""
+    """Render a section divider slide with gradient background and accent styling."""
     shadow = has_bg_image
 
-    # Left accent bar
-    draw.rectangle([(0, 0), (20, SLIDE_HEIGHT)], fill=colors.accent)
+    if not has_bg_image:
+        # Full-slide gradient from header color to slightly lighter
+        r, g, b = colors.header
+        lighter = (min(r + 50, 255), min(g + 50, 255), min(b + 50, 255))
+        _draw_gradient_rect(draw._image, (0, 0, SLIDE_WIDTH, SLIDE_HEIGHT), colors.header, lighter)
 
-    # Centered large title (uses language-aware font!)
+    # Left accent bar (wider than before)
+    draw.rectangle([(0, 0), (12, SLIDE_HEIGHT)], fill=colors.accent)
+
+    # Large section number in faded accent behind title
+    section_num_font = _get_font("DejaVuSans-Bold.ttf", 200, language)
+    section_num = str(slide_index + 1)
+    bbox_num = draw.textbbox((0, 0), section_num, font=section_num_font)
+    num_w = bbox_num[2] - bbox_num[0]
+    # Faded number at right side
+    faded_color = (*colors.accent, 60) if has_bg_image else (
+        min(colors.header[0] + 20, 255),
+        min(colors.header[1] + 20, 255),
+        min(colors.header[2] + 20, 255),
+    )
+    _draw_text(draw, (SLIDE_WIDTH - num_w - 80, SLIDE_HEIGHT // 2 - 120), section_num,
+               section_num_font, faded_color, shadow=False)
+
+    # Centered large title
     title = slide_data.title
     large_font = _get_font("DejaVuSans-Bold.ttf", 90, language)
     bbox = draw.textbbox((0, 0), title, font=large_font)
@@ -609,24 +754,17 @@ def _render_section_layout(
     title_h = bbox[3] - bbox[1]
     title_x = (SLIDE_WIDTH - title_w) // 2
     title_y = (SLIDE_HEIGHT - title_h) // 2 - 20
-    title_color = (255, 255, 255) if has_bg_image else colors.header
+    title_color = (255, 255, 255) if has_bg_image else colors.title
     _draw_text(draw, (title_x, title_y), title, large_font, title_color, shadow=shadow)
 
-    # Subtle underline
-    line_y = title_y + title_h + 20
-    line_w = min(title_w, 600)
+    # Accent underline
+    line_y = title_y + title_h + 25
+    line_w = min(title_w + 60, 700)
     line_x = (SLIDE_WIDTH - line_w) // 2
-    draw.rectangle([(line_x, line_y), (line_x + line_w, line_y + 4)], fill=colors.accent)
+    draw.rectangle([(line_x, line_y), (line_x + line_w, line_y + 5)], fill=colors.accent)
 
     # Footer
-    footer_text = f"Slide {slide_index + 1} / {total_slides}"
-    bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
-    footer_w = bbox[2] - bbox[0]
-    footer_color = (200, 200, 200) if has_bg_image else colors.footer
-    _draw_text(
-        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
-        footer_text, footer_font, footer_color, shadow=shadow,
-    )
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
 
 
 def _render_two_column_layout(
@@ -690,27 +828,25 @@ def _render_two_column_layout(
     for col_idx, (items, start_x) in enumerate([(left_items, MARGIN_X), (right_items, mid_x + 40)]):
         y = CONTENT_START_Y
         max_y = SLIDE_HEIGHT - FOOTER_AREA
-        for point in items:
+        for bi, point in enumerate(items):
             if y >= max_y:
                 break
             wrapped = _wrap_text(point, content_font, COLUMN_MAX_WIDTH)
+            bullet_icon = _BULLET_ICONS[bi % len(_BULLET_ICONS)]
             for j, line in enumerate(wrapped):
                 if y >= max_y:
                     break
-                prefix = "\u2022 " if j == 0 else "  "
-                _draw_text(draw, (start_x, y), f"{prefix}{line}", content_font, colors.text, shadow=shadow)
+                if j == 0:
+                    _draw_text(draw, (start_x, y), bullet_icon, content_font, colors.accent, shadow=shadow)
+                    bullet_w = _text_pixel_width(bullet_icon + " ", content_font)
+                    _draw_text(draw, (start_x + bullet_w, y), line, content_font, colors.text, shadow=shadow)
+                else:
+                    _draw_text(draw, (start_x, y), f"  {line}", content_font, colors.text, shadow=shadow)
                 y += line_spacing
             y += 10
 
-    # Footer
-    footer_text = f"Slide {slide_index + 1} / {total_slides}"
-    bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
-    footer_w = bbox[2] - bbox[0]
-    footer_color = (200, 200, 200) if has_bg_image else colors.footer
-    _draw_text(
-        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
-        footer_text, footer_font, footer_color, shadow=shadow,
-    )
+    # Footer with branding
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
 
 
 def _render_content_layout(
@@ -758,31 +894,30 @@ def _render_content_layout(
         content_font = _get_font("DejaVuSans.ttf", font_size, language)
     line_spacing = int(font_size * 1.67)
 
-    # Content with CJK-aware wrapping
+    # Content with CJK-aware wrapping and themed bullets
     y = CONTENT_START_Y
     max_y = SLIDE_HEIGHT - FOOTER_AREA
-    for point in slide_data.content:
+    for bi, point in enumerate(slide_data.content):
         if y >= max_y:
             break
         wrapped = _wrap_text(point, content_font, CONTENT_MAX_WIDTH)
+        bullet_icon = _BULLET_ICONS[bi % len(_BULLET_ICONS)]
         for j, line in enumerate(wrapped):
             if y >= max_y:
                 break
-            prefix = "\u2022 " if j == 0 else "  "
-            x = MARGIN_X if j == 0 else MARGIN_X + BULLET_INDENT
-            _draw_text(draw, (x, y), f"{prefix}{line}", content_font, colors.text, shadow=shadow)
+            if j == 0:
+                # Draw accent-colored bullet icon
+                _draw_text(draw, (MARGIN_X, y), bullet_icon, content_font, colors.accent, shadow=shadow)
+                bullet_w = _text_pixel_width(bullet_icon + " ", content_font)
+                _draw_text(draw, (MARGIN_X + bullet_w, y), line, content_font, colors.text, shadow=shadow)
+            else:
+                x = MARGIN_X + BULLET_INDENT
+                _draw_text(draw, (x, y), f"  {line}", content_font, colors.text, shadow=shadow)
             y += line_spacing
         y += 10
 
-    # Footer
-    footer_text = f"Slide {slide_index + 1} / {total_slides}"
-    bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
-    footer_w = bbox[2] - bbox[0]
-    footer_color = (200, 200, 200) if has_bg_image else colors.footer
-    _draw_text(
-        draw, (SLIDE_WIDTH - footer_w - 50, SLIDE_HEIGHT - 45),
-        footer_text, footer_font, footer_color, shadow=shadow,
-    )
+    # Footer with branding
+    _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow)
 
 
 # Layout renderer dispatch
@@ -801,11 +936,13 @@ def create_slide_images(
     background_images: Optional[dict] = None,
     language: Language = Language.ENGLISH,
     overlay_opacity: int = BG_OVERLAY_OPACITY,
+    footer_company: str = "",
+    footer_author: str = "",
 ) -> List[str]:
     """
     Render high-quality slide images using Pillow.
     Supports themes, layouts, AI background images, CJK fonts, text shadows,
-    and responsive font sizing.
+    responsive font sizing, and footer branding.
     """
     os.makedirs(output_dir, exist_ok=True)
     colors = THEMES.get(theme, THEMES[SlideTheme.PROFESSIONAL])

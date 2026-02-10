@@ -126,6 +126,20 @@ enable_ai_images = st.sidebar.checkbox(
     help="Generate AI background images for each slide (requires API key, adds generation time).",
 )
 
+# Footer branding
+st.sidebar.divider()
+st.sidebar.subheader("Footer Branding")
+footer_company = st.sidebar.text_input(
+    "Company Name",
+    value="",
+    help="Company or branding text shown at bottom-left of slides.",
+)
+footer_author = st.sidebar.text_input(
+    "Author",
+    value="",
+    help="Author name shown at bottom-center of slides.",
+)
+
 # Advanced
 with st.sidebar.expander("Advanced Options"):
     custom_prompt = st.text_area(
@@ -187,6 +201,8 @@ if uploaded_file:
         custom_prompt=custom_prompt if custom_prompt else "",
         overlay_opacity=overlay_opacity,
         speaking_rate=speaking_rate,
+        footer_company=footer_company,
+        footer_author=footer_author,
         export_formats=export_formats,
     )
 
@@ -394,6 +410,8 @@ if uploaded_file:
                     create_pptx_file(
                         slides, pptx_path, theme=config.theme,
                         background_images=ai_bg_images if ai_bg_images else None,
+                        footer_company=config.footer_company,
+                        footer_author=config.footer_author,
                     )
 
                 # Slide Images (needed for PDF and video)
@@ -405,6 +423,8 @@ if uploaded_file:
                     background_images=ai_bg_images if ai_bg_images else None,
                     language=config.language,
                     overlay_opacity=config.overlay_opacity,
+                    footer_company=config.footer_company,
+                    footer_author=config.footer_author,
                 )
 
                 # PDF
@@ -535,6 +555,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v6.0")
+st.sidebar.caption("AutoPresentation AI v7.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")
