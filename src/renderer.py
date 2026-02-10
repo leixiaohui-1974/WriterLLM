@@ -473,6 +473,8 @@ def create_pptx_file(
 
         # Add bullet-by-bullet entrance animations for content slides
         if enable_animations and layout in (SlideLayout.CONTENT, SlideLayout.TWO_COLUMN):
+            # For content slides, animate placeholder[1]; for two-column, animate text boxes
+            animated = False
             if len(current_slide.placeholders) > 1:
                 ph = current_slide.placeholders[1]
                 if ph.has_text_frame:
@@ -481,6 +483,17 @@ def create_pptx_file(
                         _add_pptx_entrance_animations(
                             current_slide, ph.shape_id, num_paras,
                         )
+                        animated = True
+            # Fallback: animate text box shapes (for blank-layout two-column)
+            if not animated:
+                for shape in current_slide.shapes:
+                    if shape.has_text_frame and shape.text_frame.text.strip():
+                        num_paras = len(shape.text_frame.paragraphs)
+                        if num_paras > 1:
+                            _add_pptx_entrance_animations(
+                                current_slide, shape.shape_id, num_paras,
+                            )
+                            break  # animate the first multi-paragraph text box
 
     prs.save(output_path)
     logger.info("PPTX saved: %s (%d slides, theme: %s)", output_path, len(slides_data), theme.value)
@@ -589,6 +602,34 @@ def _add_pptx_entrance_animations(slide, content_shape_id: int, num_paragraphs: 
         logger.debug("Could not add entrance animations: %s", e)
 
 
+def _add_pptx_header_bar(slide, colors: ThemeColors):
+    """Add a header bar shape with accent line to a PPTX slide for visual parity with image renderer."""
+    try:
+        # Header rectangle (~1.4 inches matches 200/1080 ratio of image renderer)
+        header_bar = slide.shapes.add_shape(
+            1,  # MSO_SHAPE.RECTANGLE
+            Inches(0), Inches(0), Inches(13.333), Inches(1.4),
+        )
+        header_bar.fill.solid()
+        header_bar.fill.fore_color.rgb = _rgb_color(colors.header)
+        header_bar.line.fill.background()
+        # Move header to back
+        sp = header_bar._element
+        sp.getparent().remove(sp)
+        slide.shapes._spTree.insert(2, sp)
+
+        # Accent line below header
+        accent_line = slide.shapes.add_shape(
+            1,  # MSO_SHAPE.RECTANGLE
+            Inches(0), Inches(1.4), Inches(13.333), Inches(0.03),
+        )
+        accent_line.fill.solid()
+        accent_line.fill.fore_color.rgb = _rgb_color(colors.accent)
+        accent_line.line.fill.background()
+    except Exception:
+        pass
+
+
 def _format_pptx_bullet(paragraph, colors: ThemeColors):
     """Apply accent-colored bullet formatting to a PPTX paragraph."""
     try:
@@ -614,15 +655,18 @@ def _format_pptx_bullet(paragraph, colors: ThemeColors):
 
 
 def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a standard content slide with themed colors and accent bullets."""
+    """Add a standard content slide with themed colors, header bar, and accent bullets."""
     slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
+
+    # Gradient-style header bar for visual parity with image renderer
+    _add_pptx_header_bar(slide, colors)
 
     if slide.shapes.title:
         slide.shapes.title.text = slide_data.title
         for paragraph in slide.shapes.title.text_frame.paragraphs:
             for run in paragraph.runs:
-                run.font.color.rgb = _rgb_color(colors.header)
+                run.font.color.rgb = _rgb_color(colors.title)
                 run.font.bold = True
                 run.font.size = Pt(32)
 
@@ -720,11 +764,14 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
 
 
 def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a two-column layout slide with dual text boxes and divider."""
+    """Add a two-column layout slide with header bar, dual text boxes and divider."""
     slide_layout = prs.slide_layouts[5]  # blank layout
     slide = prs.slides.add_slide(slide_layout)
 
     _set_pptx_slide_background(slide, colors.background)
+
+    # Header bar for visual parity with image renderer
+    _add_pptx_header_bar(slide, colors)
 
     # Title text box
     from pptx.util import Inches, Pt, Emu
@@ -735,7 +782,7 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
     title_box.text_frame.text = slide_data.title
     for paragraph in title_box.text_frame.paragraphs:
         for run in paragraph.runs:
-            run.font.color.rgb = _rgb_color(colors.header)
+            run.font.color.rgb = _rgb_color(colors.title)
             run.font.bold = True
             run.font.size = Pt(32)
 

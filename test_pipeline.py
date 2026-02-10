@@ -7,6 +7,7 @@ import docx
 
 from pptx import Presentation
 from pptx.util import Inches
+from pptx.dml.color import RGBColor
 
 from src.parser import parse_document
 from src.generator import generate_slides
@@ -26,7 +27,7 @@ from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations, PPTX_TRANSITION_TYPES
+from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, PPTX_TRANSITION_TYPES
 
 
 OUTPUT_DIR = "test_output"
@@ -1827,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "12.0"
+        assert proj["version"] == "14.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2185,6 +2186,166 @@ class TestSlideDurationOverride:
         loaded_slides, _ = deserialize_project(proj)
         assert loaded_slides[0].duration_override == 5.0
         assert loaded_slides[1].duration_override is None
+
+
+class TestPPTXHeaderBar:
+    """Tests for PPTX header bar shapes (v14)."""
+
+    def test_header_bar_does_not_raise(self):
+        """Adding a header bar to a slide should not raise."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_pptx_header_bar(slide, colors)
+
+    def test_header_bar_adds_shapes(self):
+        """Header bar should add header rectangle + accent line shapes."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        shapes_before = len(slide.shapes)
+        colors = THEMES[SlideTheme.OCEAN]
+        _add_pptx_header_bar(slide, colors)
+        # Should have 2 additional shapes (header rect + accent line)
+        assert len(slide.shapes) >= shapes_before + 2
+
+    def test_content_slide_has_header_bar(self):
+        """Content slides should include header bar shapes."""
+        slides_data = [
+            SlideData(title="Header Test", content=["A", "B"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "header_content.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Count non-textframe shapes (rectangles for header bar + accent line)
+        rect_shapes = [s for s in slide.shapes if not s.has_text_frame or not s.text_frame.text.strip()]
+        assert len(rect_shapes) >= 2
+
+    def test_two_column_has_header_bar(self):
+        """Two-column slides should include header bar shapes."""
+        slides_data = [
+            SlideData(title="Two Col Header", content=["L1", "L2", "R1", "R2"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "header_two_col.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Should have header bar, accent line, divider = at least 3 non-text shapes
+        total_shapes = len(slide.shapes)
+        assert total_shapes >= 6  # header + accent + title + divider + left + right
+
+    def test_header_bar_all_themes(self):
+        """Header bar should work across all themes."""
+        slides_data = [
+            SlideData(title="Theme Header", content=["X"], layout=SlideLayout.CONTENT),
+        ]
+        for theme in SlideTheme:
+            path = os.path.join(OUTPUT_DIR, f"header_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
+            assert os.path.getsize(path) > 0
+
+    def test_content_slide_title_uses_title_color(self):
+        """Content slide title text should use theme title color for readability on header bar."""
+        slides_data = [
+            SlideData(title="White Title", content=["Point"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "title_color.pptx")
+        create_pptx_file(slides_data, path, theme=SlideTheme.PROFESSIONAL)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        # Title should be white (255,255,255) for PROFESSIONAL theme
+        if slide.shapes.title:
+            for p in slide.shapes.title.text_frame.paragraphs:
+                for run in p.runs:
+                    assert run.font.color.rgb == RGBColor(255, 255, 255)
+
+
+class TestTwoColumnAnimationFallback:
+    """Tests for two-column animation fallback to text boxes (v14)."""
+
+    def test_two_column_animation_produces_timing(self):
+        """Two-column slides with animations should have p:timing XML."""
+        from pptx.oxml.ns import qn as _qn
+        slides_data = [
+            SlideData(title="Anim Test", content=["A", "B", "C", "D"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "two_col_anim.pptx")
+        create_pptx_file(slides_data, path, enable_animations=True)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        timing = slide._element.findall(_qn("p:timing"))
+        assert len(timing) >= 1
+
+    def test_two_column_no_animation_when_disabled(self):
+        """Two-column slides without animations should have no p:timing."""
+        from pptx.oxml.ns import qn as _qn
+        slides_data = [
+            SlideData(title="No Anim", content=["A", "B", "C", "D"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "two_col_no_anim.pptx")
+        create_pptx_file(slides_data, path, enable_animations=False)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        timing = slide._element.findall(_qn("p:timing"))
+        assert len(timing) == 0
+
+    def test_content_slide_animation_still_works(self):
+        """Content slides should still have animations via placeholder."""
+        from pptx.oxml.ns import qn as _qn
+        slides_data = [
+            SlideData(title="Content Anim", content=["A", "B", "C"],
+                      layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "content_anim.pptx")
+        create_pptx_file(slides_data, path, enable_animations=True)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        timing = slide._element.findall(_qn("p:timing"))
+        assert len(timing) >= 1
+
+    def test_mixed_layouts_animation(self):
+        """Mixed layout deck with animations should not crash."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A", "B"], layout=SlideLayout.CONTENT),
+            SlideData(title="Section", content=[], layout=SlideLayout.SECTION),
+            SlideData(title="Two Col", content=["L1", "L2", "R1", "R2"],
+                      layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "mixed_anim.pptx")
+        create_pptx_file(slides_data, path, enable_animations=True)
+        assert os.path.exists(path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 4
+
+
+class TestProjectVersionString:
+    """Tests for project serialization version (v14)."""
+
+    def test_serialize_version_is_14(self):
+        """Serialized project should have version 14.0."""
+        slides = [SlideData(title="T", content=["A"])]
+        proj = serialize_project(slides, language="en")
+        assert proj["version"] == "14.0"
+
+    def test_deserialize_ignores_version(self):
+        """Deserialization should work regardless of version string."""
+        data = {
+            "version": "99.0",
+            "settings": {"language": "en"},
+            "slides": [{"title": "T", "content": ["X"]}],
+        }
+        slides, settings = deserialize_project(data)
+        assert len(slides) == 1
+        assert slides[0].title == "T"
 
 
 if __name__ == "__main__":
