@@ -24,7 +24,7 @@ from src.renderer import (
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES
-from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, validate_content
+from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content
 from src.video import generate_srt_subtitles, _format_srt_timestamp
 from src.renderer import _add_pptx_entrance_animations
 
@@ -1514,6 +1514,120 @@ class TestContentValidation:
         ]
         warnings = validate_content(slides)
         assert not any("no content" in w for w in warnings)
+
+
+class TestTransitionDurationFix:
+    """Tests for fixed transition duration (v10 - was ignored before)."""
+
+    def test_transition_uses_dur_attribute(self):
+        """Transition element should have dur attribute matching duration_ms."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        _add_pptx_slide_transition(slide, duration_ms=1500)
+        # Check the transition XML has dur="1500"
+        from lxml import etree
+        from pptx.oxml.ns import qn
+        trans = slide._element.findall(qn("p:transition"))
+        assert len(trans) == 1
+        assert trans[0].get("dur") == "1500"
+
+    def test_transition_default_duration(self):
+        """Default transition should use 700ms."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        _add_pptx_slide_transition(slide)
+        from lxml import etree
+        from pptx.oxml.ns import qn
+        trans = slide._element.findall(qn("p:transition"))
+        assert trans[0].get("dur") == "700"
+
+    def test_transition_no_spd_attribute(self):
+        """Transition should use dur, not the deprecated spd attribute."""
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[0])
+        _add_pptx_slide_transition(slide, duration_ms=1000)
+        from pptx.oxml.ns import qn
+        trans = slide._element.findall(qn("p:transition"))
+        assert trans[0].get("spd") is None  # deprecated attribute should not be present
+
+
+class TestSpeakerNotesEnhancedV10:
+    """Tests for improved speaker notes quality (v10)."""
+
+    def test_closing_phrases_all_languages(self):
+        """All 7 languages should have closing phrases."""
+        for lang in Language:
+            assert lang in _CLOSING_PHRASES, f"Missing closing phrase for {lang}"
+            assert len(_CLOSING_PHRASES[lang]) > 10  # minimum length
+
+    def test_emphasis_connectors_all_languages(self):
+        """All 7 languages should have emphasis connectors."""
+        for lang in Language:
+            assert lang in _EMPHASIS_CONNECTORS, f"Missing connectors for {lang}"
+            assert len(_EMPHASIS_CONNECTORS[lang]) >= 3
+
+    def test_notes_use_connectors_for_middle_slides(self):
+        """Middle slides should include emphasis connectors in notes."""
+        notes = _build_speaker_notes("Test Topic", ["Point A", "Point B"], 2, 5, Language.ENGLISH)
+        # Should contain one of the English connectors
+        connectors = _EMPHASIS_CONNECTORS[Language.ENGLISH]
+        assert any(c in notes for c in connectors)
+
+    def test_notes_use_closing_for_last_slide(self):
+        """Last slide should use closing phrase."""
+        notes = _build_speaker_notes("Summary", ["Key point"], 4, 5, Language.FRENCH)
+        assert _CLOSING_PHRASES[Language.FRENCH][:15] in notes
+
+    def test_notes_longer_than_before(self):
+        """Notes should allow up to 500 chars (up from 400)."""
+        long_content = [f"This is a fairly long bullet point number {i}" for i in range(5)]
+        notes = _build_speaker_notes("Detailed Topic", long_content, 1, 5, Language.ENGLISH)
+        # Notes should be allowed up to 500 chars
+        assert len(notes) <= 500
+
+    def test_notes_korean_closing(self):
+        """Korean closing phrase should be used for last slide."""
+        notes = _build_speaker_notes("요약", ["핵심 내용"], 4, 5, Language.KOREAN)
+        assert _CLOSING_PHRASES[Language.KOREAN][:5] in notes
+
+    def test_notes_german_connector(self):
+        """German middle slide should use German connector."""
+        notes = _build_speaker_notes("Thema", ["Punkt A"], 2, 5, Language.GERMAN)
+        connectors = _EMPHASIS_CONNECTORS[Language.GERMAN]
+        assert any(c in notes for c in connectors)
+
+    def test_notes_spanish_closing(self):
+        """Spanish closing phrase should be used for last slide."""
+        notes = _build_speaker_notes("Resumen", ["Punto clave"], 4, 5, Language.SPANISH)
+        assert _CLOSING_PHRASES[Language.SPANISH][:10] in notes
+
+
+class TestPPTXTransitionDurationIntegration:
+    """Integration tests for transition duration flowing through PPTX creation."""
+
+    def test_pptx_file_with_fast_transitions(self):
+        """PPTX with fast transitions (200ms) should be valid."""
+        slides_data = [
+            SlideData(title="Fast", content=["Quick transitions"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "fast_trans.pptx")
+        create_pptx_file(slides_data, path, transition_duration_ms=200)
+        assert os.path.exists(path)
+
+    def test_pptx_file_with_slow_transitions(self):
+        """PPTX with slow transitions (2000ms) should be valid."""
+        slides_data = [
+            SlideData(title="Slow", content=["Slow transitions"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "slow_trans.pptx")
+        create_pptx_file(slides_data, path, transition_duration_ms=2000)
+        assert os.path.exists(path)
 
 
 if __name__ == "__main__":

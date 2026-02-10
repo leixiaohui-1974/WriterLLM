@@ -344,26 +344,13 @@ def _set_pptx_slide_background(slide, color: tuple):
 
 
 def _add_pptx_slide_transition(slide, duration_ms: int = 700):
-    """Add a fade transition to a PPTX slide."""
+    """Add a fade transition to a PPTX slide with configurable duration."""
     try:
-        transition_xml = (
-            f'<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"'
-            f' xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main">'
-            f'<mc:Choice Requires="p14">'
-            f'<p:transition xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
-            f' spd="med" advClick="1">'
-            f'<p:fade />'
-            f'</p:transition>'
-            f'</mc:Choice>'
-            f'</mc:AlternateContent>'
-        )
-        # Use simple transition element directly
         from lxml import etree
-        nsmap = {"p": "http://schemas.openxmlformats.org/presentationml/2006/main"}
         transition = etree.SubElement(
             slide._element,
             qn("p:transition"),
-            attrib={"spd": "med", "advClick": "1"},
+            attrib={"advClick": "1", "dur": str(duration_ms)},
         )
         etree.SubElement(transition, qn("p:fade"))
     except Exception as e:

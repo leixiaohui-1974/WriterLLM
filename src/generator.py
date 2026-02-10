@@ -294,32 +294,51 @@ _TRANSITION_PHRASES = {
 }
 
 
+_CLOSING_PHRASES = {
+    Language.ENGLISH: "Finally, let's wrap up with the key points.",
+    Language.CHINESE: "\u6700\u540e\uff0c\u8ba9\u6211\u4eec\u603b\u7ed3\u4e00\u4e0b\u3002",
+    Language.JAPANESE: "\u6700\u5f8c\u306b\u3001\u307e\u3068\u3081\u307e\u3057\u3087\u3046\u3002",
+    Language.KOREAN: "\ub9c8\uc9c0\ub9c9\uc73c\ub85c \ud575\uc2ec \ub0b4\uc6a9\uc744 \uc815\ub9ac\ud558\uaca0\uc2b5\ub2c8\ub2e4.",
+    Language.FRENCH: "Pour conclure, r\u00e9sumons les points cl\u00e9s.",
+    Language.GERMAN: "Zum Abschluss fassen wir die wichtigsten Punkte zusammen.",
+    Language.SPANISH: "Para concluir, repasemos los puntos clave.",
+}
+
+_EMPHASIS_CONNECTORS = {
+    Language.ENGLISH: ["This is important because", "In particular,", "As we can see,"],
+    Language.CHINESE: ["\u8fd9\u5f88\u91cd\u8981\uff0c\u56e0\u4e3a", "\u7279\u522b\u662f\uff0c", "\u6b63\u5982\u6211\u4eec\u6240\u770b\u5230\u7684\uff0c"],
+    Language.JAPANESE: ["\u3053\u308c\u304c\u91cd\u8981\u306a\u306e\u306f", "\u7279\u306b\u3001", "\u898b\u3066\u306e\u901a\u308a\u3001"],
+    Language.KOREAN: ["\uc774\uac83\uc774 \uc911\uc694\ud55c \uc774\uc720\ub294", "\ud2b9\ud788,", "\ubcf4\uc2dc\ub2e4\uc2dc\ud53c,"],
+    Language.FRENCH: ["Ceci est important car", "En particulier,", "Comme on peut le voir,"],
+    Language.GERMAN: ["Das ist wichtig, weil", "Insbesondere", "Wie wir sehen k\u00f6nnen,"],
+    Language.SPANISH: ["Esto es importante porque", "En particular,", "Como podemos ver,"],
+}
+
+
 def _build_speaker_notes(title: str, content: list, slide_idx: int,
                          total_content_slides: int, language: Language) -> str:
     """Build structured, conversational speaker notes for a slide."""
     phrases = _TRANSITION_PHRASES.get(language, _TRANSITION_PHRASES[Language.ENGLISH])
     transition = phrases[slide_idx % len(phrases)]
+    connectors = _EMPHASIS_CONNECTORS.get(language, _EMPHASIS_CONNECTORS[Language.ENGLISH])
+    connector = connectors[slide_idx % len(connectors)]
 
     # Build the main talking points from content
-    points_text = " ".join(c[:80] for c in content[:3] if c and c != "Content placeholder")
-    if not points_text:
-        points_text = title
+    points = [c[:80] for c in content[:4] if c and c != "Content placeholder"]
+    points_text = " ".join(points) if points else title
 
     if slide_idx == 0:
         # First content slide (title slide)
         notes = f"{transition} {title}. {points_text}."
     elif slide_idx >= total_content_slides - 1:
-        # Last content slide
-        if language == Language.CHINESE:
-            notes = f"\u6700\u540e\uff0c\u8ba9\u6211\u4eec\u603b\u7ed3\u4e00\u4e0b\u3002{points_text}"
-        elif language == Language.JAPANESE:
-            notes = f"\u6700\u5f8c\u306b\u3001\u307e\u3068\u3081\u307e\u3057\u3087\u3046\u3002{points_text}"
-        else:
-            notes = f"Finally, let's wrap up with the key points. {points_text}"
+        # Last content slide - use language-specific closing
+        closing = _CLOSING_PHRASES.get(language, _CLOSING_PHRASES[Language.ENGLISH])
+        notes = f"{closing} {points_text}"
     else:
-        notes = f"{transition} {title}. {points_text}"
+        # Middle slides - add emphasis connector for richer notes
+        notes = f"{transition} {title}. {connector} {points_text}."
 
-    return notes[:400]
+    return notes[:500]
 
 
 def validate_content(slides: List[SlideData]) -> List[str]:

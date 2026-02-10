@@ -371,6 +371,18 @@ if uploaded_file:
                 with action_cols[2]:
                     if len(slides) > 1 and st.button("\u2717 Delete", key=f"del_{i}"):
                         slides_to_delete.append(i)
+                with action_cols[3]:
+                    if st.button("\u2398 Duplicate", key=f"dup_{i}"):
+                        dup = SlideData(
+                            title=slide.title + " (copy)",
+                            content=list(slide.content),
+                            speaker_notes=slide.speaker_notes,
+                            image_prompt=slide.image_prompt,
+                            layout=slide.layout,
+                        )
+                        slides.insert(i + 1, dup)
+                        st.session_state.slides_data = slides
+                        st.rerun()
 
         # Process deletions
         if slides_to_delete:
@@ -531,6 +543,14 @@ if uploaded_file:
                                 if idx < len(slides) and slides[idx].speaker_notes:
                                     st.caption(slides[idx].speaker_notes[:150])
 
+                # Speaker notes overview
+                if slides:
+                    with st.expander("Speaker Notes (all slides)", expanded=False):
+                        for idx, s in enumerate(slides):
+                            st.markdown(f"**Slide {idx + 1}: {s.title}**")
+                            st.text(s.speaker_notes if s.speaker_notes else "(no notes)")
+                            st.divider()
+
                 # AI-generated background previews
                 if ai_bg_images:
                     with st.expander("AI Generated Backgrounds", expanded=False):
@@ -576,16 +596,42 @@ if uploaded_file:
                                 use_container_width=True,
                             )
 
-                # SRT subtitle download
-                srt_path = st.session_state.srt_path
-                if srt_path and os.path.exists(srt_path):
-                    with open(srt_path, "r", encoding="utf-8") as f:
-                        st.download_button(
-                            "Download Subtitles (SRT)",
-                            f.read(),
-                            file_name="presentation.srt",
-                            mime="text/plain",
-                        )
+                # Additional downloads row
+                extra_cols = st.columns(3)
+                with extra_cols[0]:
+                    # Outline / Markdown export
+                    outline_lines = []
+                    for idx, s in enumerate(slides):
+                        outline_lines.append(f"## Slide {idx + 1}: {s.title}")
+                        outline_lines.append(f"*Layout: {s.layout.value}*\n")
+                        if s.content:
+                            for bullet in s.content:
+                                outline_lines.append(f"- {bullet}")
+                            outline_lines.append("")
+                        if s.speaker_notes:
+                            outline_lines.append(f"**Speaker Notes:** {s.speaker_notes}\n")
+                        outline_lines.append("---\n")
+                    outline_text = "\n".join(outline_lines)
+                    st.download_button(
+                        "Download Outline (MD)",
+                        outline_text,
+                        file_name="presentation_outline.md",
+                        mime="text/markdown",
+                        use_container_width=True,
+                    )
+
+                with extra_cols[1]:
+                    # SRT subtitle download
+                    srt_path = st.session_state.srt_path
+                    if srt_path and os.path.exists(srt_path):
+                        with open(srt_path, "r", encoding="utf-8") as f:
+                            st.download_button(
+                                "Download Subtitles (SRT)",
+                                f.read(),
+                                file_name="presentation.srt",
+                                mime="text/plain",
+                                use_container_width=True,
+                            )
 
                 # Video player
                 if video_path and os.path.exists(video_path):
@@ -594,6 +640,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v9.0")
+st.sidebar.caption("AutoPresentation AI v10.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")
