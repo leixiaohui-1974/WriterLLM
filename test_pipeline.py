@@ -23,7 +23,7 @@ from src.renderer import (
     SLIDE_HEIGHT, SLIDE_WIDTH, HEADER_HEIGHT, TITLE_FONT_SIZE,
 )
 from src.image_gen import generate_slide_image, generate_slide_images_batch
-from src.models import ThemeColors, THEMES
+from src.models import ThemeColors, THEMES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content
 from src.video import generate_srt_subtitles, _format_srt_timestamp
 from src.renderer import _add_pptx_entrance_animations, PPTX_TRANSITION_TYPES
@@ -1814,6 +1814,207 @@ class TestPresentationStatistics:
         assert layout_counts["title"] == 1
         assert layout_counts["content"] == 2
         assert layout_counts["section"] == 1
+
+
+class TestProjectSerialize:
+    """Tests for JSON project export/import (v12)."""
+
+    def test_serialize_basic(self):
+        """Serialize slides to a project dict."""
+        slides = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A", "B"], speaker_notes="Notes",
+                      layout=SlideLayout.CONTENT),
+        ]
+        proj = serialize_project(slides, language="en", theme="professional")
+        assert proj["version"] == "12.0"
+        assert len(proj["slides"]) == 2
+        assert proj["settings"]["language"] == "en"
+        assert proj["settings"]["theme"] == "professional"
+
+    def test_serialize_with_extra_kwargs(self):
+        """Extra settings should be preserved."""
+        slides = [SlideData(title="T", content=["A"])]
+        proj = serialize_project(slides, language="zh", theme="dark",
+                                 footer_company="ACME", footer_author="Jane")
+        assert proj["settings"]["footer_company"] == "ACME"
+        assert proj["settings"]["footer_author"] == "Jane"
+
+    def test_deserialize_basic(self):
+        """Deserialize project dict back to slides."""
+        data = {
+            "version": "12.0",
+            "settings": {"language": "en", "theme": "ocean"},
+            "slides": [
+                {"title": "S1", "content": ["A"], "layout": "content"},
+                {"title": "S2", "content": ["B", "C"], "layout": "title"},
+            ],
+        }
+        slides, settings = deserialize_project(data)
+        assert len(slides) == 2
+        assert slides[0].title == "S1"
+        assert slides[1].layout == SlideLayout.TITLE
+        assert settings["theme"] == "ocean"
+
+    def test_roundtrip(self):
+        """Serialize then deserialize should preserve data."""
+        original = [
+            SlideData(title="Intro", content=["Welcome"], speaker_notes="Hello",
+                      image_prompt="bg", layout=SlideLayout.TITLE),
+            SlideData(title="Body", content=["X", "Y"], speaker_notes="Main",
+                      layout=SlideLayout.CONTENT),
+        ]
+        proj = serialize_project(original, language="fr", theme="sunset")
+        slides, settings = deserialize_project(proj)
+        assert len(slides) == len(original)
+        for orig, loaded in zip(original, slides):
+            assert orig.title == loaded.title
+            assert orig.content == loaded.content
+            assert orig.speaker_notes == loaded.speaker_notes
+            assert orig.layout == loaded.layout
+
+    def test_deserialize_empty(self):
+        """Empty project should return empty lists."""
+        slides, settings = deserialize_project({})
+        assert slides == []
+        assert settings == {}
+
+    def test_serialize_json_compatible(self):
+        """Output should be JSON-serializable."""
+        import json
+        slides = [SlideData(title="CJK \u4eba\u5de5\u667a\u80fd", content=["\u673a\u5668\u5b66\u4e60"])]
+        proj = serialize_project(slides, language="zh")
+        json_str = json.dumps(proj, ensure_ascii=False)
+        assert "\u4eba\u5de5\u667a\u80fd" in json_str
+        loaded = json.loads(json_str)
+        assert loaded["slides"][0]["title"] == "CJK \u4eba\u5de5\u667a\u80fd"
+
+
+class TestTwoColumnOverflow:
+    """Tests for two-column overflow protection (v12)."""
+
+    def test_many_items_two_column_renders(self):
+        """Two-column slide with many items should render without error."""
+        slides_data = [
+            SlideData(
+                title="Dense Two Column",
+                content=[f"Long bullet point number {i} with lots of text in it" for i in range(20)],
+                layout=SlideLayout.TWO_COLUMN,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_2col_overflow")
+        image_paths = create_slide_images(slides_data, images_dir)
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_long_text_two_column_renders(self):
+        """Two-column with very long bullet text should render with truncation."""
+        long_text = "This is an extremely long bullet point that goes on and on " * 5
+        slides_data = [
+            SlideData(
+                title="Long Text Columns",
+                content=[long_text, long_text, "Short", "Also short",
+                         long_text, long_text],
+                layout=SlideLayout.TWO_COLUMN,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_2col_long")
+        image_paths = create_slide_images(slides_data, images_dir)
+        assert len(image_paths) == 1
+        assert os.path.getsize(image_paths[0]) > 0
+
+    def test_two_column_all_themes_overflow(self):
+        """Overflow protection should work across all themes."""
+        slides_data = [
+            SlideData(
+                title="Theme Overflow",
+                content=[f"Item {i}" for i in range(16)],
+                layout=SlideLayout.TWO_COLUMN,
+            ),
+        ]
+        for theme in [SlideTheme.DARK, SlideTheme.TECH, SlideTheme.FOREST]:
+            images_dir = os.path.join(OUTPUT_DIR, f"images_2col_{theme.value}")
+            image_paths = create_slide_images(slides_data, images_dir, theme=theme)
+            assert len(image_paths) == 1
+
+
+class TestSlideSearchFilter:
+    """Tests for slide search/filter logic (v12)."""
+
+    def test_filter_by_title(self):
+        """Filtering slides by title keyword should return matching indices."""
+        slides = [
+            SlideData(title="Introduction", content=["A"]),
+            SlideData(title="Methods", content=["B"]),
+            SlideData(title="Results and Analysis", content=["C"]),
+        ]
+        q = "method"
+        indices = [i for i, s in enumerate(slides)
+                   if q in s.title.lower() or any(q in b.lower() for b in s.content)]
+        assert indices == [1]
+
+    def test_filter_by_content(self):
+        """Filtering by content text should match."""
+        slides = [
+            SlideData(title="T1", content=["Machine learning is powerful"]),
+            SlideData(title="T2", content=["Deep learning intro"]),
+        ]
+        q = "machine"
+        indices = [i for i, s in enumerate(slides)
+                   if q in s.title.lower() or any(q in b.lower() for b in s.content)]
+        assert indices == [0]
+
+    def test_filter_empty_query_shows_all(self):
+        """Empty search query should show all slides."""
+        slides = [SlideData(title="A", content=[]), SlideData(title="B", content=[])]
+        q = ""
+        if q.strip():
+            indices = [i for i, s in enumerate(slides) if q in s.title.lower()]
+        else:
+            indices = list(range(len(slides)))
+        assert len(indices) == 2
+
+    def test_filter_no_match(self):
+        """Non-matching query should return empty."""
+        slides = [SlideData(title="Hello", content=["World"])]
+        q = "zzzzz"
+        indices = [i for i, s in enumerate(slides)
+                   if q in s.title.lower() or any(q in b.lower() for b in s.content)]
+        assert indices == []
+
+
+class TestPresenterNotesExport:
+    """Tests for presenter notes TXT export (v12)."""
+
+    def test_notes_export_format(self):
+        """Notes export should produce correct format."""
+        slides = [
+            SlideData(title="Slide 1", content=["A"], speaker_notes="Welcome everyone"),
+            SlideData(title="Slide 2", content=["B"], speaker_notes=""),
+        ]
+        notes_lines = []
+        for idx, s in enumerate(slides):
+            notes_lines.append(f"--- Slide {idx + 1}: {s.title} ---")
+            notes_lines.append(s.speaker_notes if s.speaker_notes else "(no notes)")
+            notes_lines.append("")
+        notes_text = "\n".join(notes_lines)
+        assert "--- Slide 1: Slide 1 ---" in notes_text
+        assert "Welcome everyone" in notes_text
+        assert "(no notes)" in notes_text
+
+    def test_notes_export_cjk(self):
+        """Notes export should handle CJK text."""
+        slides = [
+            SlideData(title="\u4eba\u5de5\u667a\u80fd", content=[],
+                      speaker_notes="\u6b22\u8fce\u5927\u5bb6"),
+        ]
+        notes_lines = []
+        for idx, s in enumerate(slides):
+            notes_lines.append(f"--- Slide {idx + 1}: {s.title} ---")
+            notes_lines.append(s.speaker_notes if s.speaker_notes else "(no notes)")
+            notes_lines.append("")
+        notes_text = "\n".join(notes_lines)
+        assert "\u6b22\u8fce\u5927\u5bb6" in notes_text
 
 
 if __name__ == "__main__":

@@ -1005,13 +1005,24 @@ def _render_two_column_layout(
     for col_idx, (items, start_x) in enumerate([(left_items, MARGIN_X), (right_items, mid_x + 40)]):
         y = CONTENT_START_Y
         max_y = SLIDE_HEIGHT - FOOTER_AREA
+        overflow = False
         for bi, point in enumerate(items):
             if y >= max_y:
+                overflow = True
                 break
             wrapped = _wrap_text(point, content_font, COLUMN_MAX_WIDTH)
             bullet_icon = _BULLET_ICONS[bi % len(_BULLET_ICONS)]
             for j, line in enumerate(wrapped):
-                if y >= max_y:
+                if y + line_spacing > max_y:
+                    # Truncate last visible line with ellipsis
+                    trunc = line[:40] + "\u2026" if len(line) > 40 else line + "\u2026"
+                    if j == 0:
+                        _draw_text(draw, (start_x, y), bullet_icon, content_font, colors.accent, shadow=shadow)
+                        bullet_w = _text_pixel_width(bullet_icon + " ", content_font)
+                        _draw_text(draw, (start_x + bullet_w, y), trunc, content_font, colors.text, shadow=shadow)
+                    else:
+                        _draw_text(draw, (start_x, y), f"  {trunc}", content_font, colors.text, shadow=shadow)
+                    overflow = True
                     break
                 if j == 0:
                     _draw_text(draw, (start_x, y), bullet_icon, content_font, colors.accent, shadow=shadow)
@@ -1020,7 +1031,11 @@ def _render_two_column_layout(
                 else:
                     _draw_text(draw, (start_x, y), f"  {line}", content_font, colors.text, shadow=shadow)
                 y += line_spacing
+            if overflow:
+                break
             y += 10
+        if overflow:
+            logger.debug("Two-column col %d overflowed at slide %d", col_idx, slide_index)
 
     # Footer with branding
     _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow,

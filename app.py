@@ -4,6 +4,7 @@ Transforms documents into professional presentations, PDFs, and videos.
 Features: multi-language, themes, layouts, AI image generation, slide editor,
 fade transitions, CJK support, and partial recovery.
 """
+import json
 import os
 import shutil
 import logging
@@ -13,7 +14,8 @@ import streamlit as st
 from src.config import setup_logging, DEFAULT_API_KEY, DEFAULT_BASE_URL, DEFAULT_MODEL
 from src.models import (
     Language, SlideTheme, SlideData, SlideLayout, PresentationConfig, ExportFormat,
-    MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES,
+    MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES, THEMES,
+    serialize_project, deserialize_project,
 )
 from src.parser import parse_document, SUPPORTED_EXTENSIONS
 from src.generator import generate_slides, validate_content
@@ -67,21 +69,31 @@ selected_lang = st.sidebar.selectbox(
 )
 language = language_options[selected_lang]
 
-# Theme
-theme_labels = {
-    "professional": "Professional (Blue)",
-    "dark": "Dark Mode",
-    "ocean": "Ocean",
-    "sunset": "Sunset",
-    "minimal": "Minimal",
-    "forest": "Forest (Green)",
-    "royal": "Royal (Purple)",
-    "tech": "Tech (Cyan)",
-}
+# Theme with color swatches
+def _theme_label_with_swatch(key: str) -> str:
+    """Generate a theme label with color swatch indicators."""
+    _labels = {
+        "professional": "Professional (Blue)",
+        "dark": "Dark Mode",
+        "ocean": "Ocean",
+        "sunset": "Sunset",
+        "minimal": "Minimal",
+        "forest": "Forest (Green)",
+        "royal": "Royal (Purple)",
+        "tech": "Tech (Cyan)",
+    }
+    label = _labels.get(key, key)
+    colors = THEMES.get(SlideTheme(key))
+    if colors:
+        h, a = colors.header, colors.accent
+        label = f"\u25A0 {label}"
+    return label
+
+theme_options = [t.value for t in SlideTheme]
 selected_theme = st.sidebar.selectbox(
     "Slide Theme",
-    options=list(theme_labels.keys()),
-    format_func=lambda x: theme_labels[x],
+    options=theme_options,
+    format_func=_theme_label_with_swatch,
     index=0,
 )
 theme = SlideTheme(selected_theme)
@@ -182,6 +194,28 @@ with st.sidebar.expander("Advanced Options"):
 # -- Main Content --
 st.title("AutoPresentation AI")
 st.markdown("Transform your documents into professional presentations, PDFs, and videos with AI.")
+
+# Project import
+with st.expander("Import Saved Project", expanded=False):
+    project_file = st.file_uploader(
+        "Load a previously saved .json project file",
+        type=["json"],
+        key="project_import",
+    )
+    if project_file:
+        try:
+            project_data = json.loads(project_file.read().decode("utf-8"))
+            imported_slides, imported_settings = deserialize_project(project_data)
+            if imported_slides:
+                st.session_state.slides_data = imported_slides
+                st.session_state.phase = "edit"
+                st.session_state.extracted_text = imported_settings.get("extracted_text", "")
+                st.success(f"Loaded project with {len(imported_slides)} slides.")
+                st.rerun()
+            else:
+                st.warning("Project file contains no slides.")
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            st.error(f"Invalid project file: {e}")
 
 # File upload
 file_types = list(SUPPORTED_EXTENSIONS)
@@ -329,6 +363,14 @@ if uploaded_file:
         st.subheader("Slide Editor")
         st.caption("Edit slide content below, then click 'Create Presentation' to render.")
 
+        # Slide search/filter
+        search_query = st.text_input(
+            "Search slides (title or content)",
+            value="",
+            key="search_slides",
+            placeholder="Type to filter slides...",
+        )
+
         # Layout label mapping
         layout_options = {
             SlideLayout.TITLE: "Title",
@@ -342,9 +384,22 @@ if uploaded_file:
         # Track slides to delete
         slides_to_delete = []
 
-        for i, slide in enumerate(slides):
+        # Filter slides by search query
+        if search_query.strip():
+            q = search_query.strip().lower()
+            visible_indices = [
+                i for i, s in enumerate(slides)
+                if q in s.title.lower() or any(q in b.lower() for b in s.content)
+                or q in s.speaker_notes.lower()
+            ]
+            st.caption(f"Showing {len(visible_indices)} of {len(slides)} slides")
+        else:
+            visible_indices = list(range(len(slides)))
+
+        for i in visible_indices:
+            slide = slides[i]
             layout_badge = f"`{slide.layout.value}`"
-            with st.expander(f"Slide {i + 1}: {slide.title} {layout_badge}", expanded=(i == 0)):
+            with st.expander(f"Slide {i + 1}: {slide.title} {layout_badge}", expanded=(i == 0 and not search_query)):
                 col1, col2 = st.columns([3, 1])
 
                 with col1:
@@ -666,6 +721,45 @@ if uploaded_file:
                                 use_container_width=True,
                             )
 
+                with extra_cols[2]:
+                    # Presenter notes TXT export
+                    notes_lines = []
+                    for idx, s in enumerate(slides):
+                        notes_lines.append(f"--- Slide {idx + 1}: {s.title} ---")
+                        notes_lines.append(s.speaker_notes if s.speaker_notes else "(no notes)")
+                        notes_lines.append("")
+                    notes_text = "\n".join(notes_lines)
+                    st.download_button(
+                        "Download Notes (TXT)",
+                        notes_text,
+                        file_name="presenter_notes.txt",
+                        mime="text/plain",
+                        use_container_width=True,
+                    )
+
+                # Project save (JSON export)
+                project_cols = st.columns(3)
+                with project_cols[0]:
+                    project_json = json.dumps(
+                        serialize_project(
+                            slides,
+                            language=config.language.value,
+                            theme=config.theme.value,
+                            footer_company=config.footer_company,
+                            footer_author=config.footer_author,
+                            extracted_text=st.session_state.extracted_text or "",
+                        ),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    st.download_button(
+                        "Save Project (JSON)",
+                        project_json,
+                        file_name="presentation_project.json",
+                        mime="application/json",
+                        use_container_width=True,
+                    )
+
                 # Video player
                 if video_path and os.path.exists(video_path):
                     st.subheader("Video Preview")
@@ -673,6 +767,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v11.0")
+st.sidebar.caption("AutoPresentation AI v12.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

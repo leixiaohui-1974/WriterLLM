@@ -208,3 +208,27 @@ THEMES = {
 # Max upload file size (50 MB)
 MAX_UPLOAD_SIZE_MB = 50
 MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+
+def serialize_project(slides: List[SlideData], language: str = "en",
+                      theme: str = "professional", **kwargs) -> dict:
+    """Serialize slides and settings to a JSON-compatible dict for project save."""
+    return {
+        "version": "12.0",
+        "settings": {
+            "language": language,
+            "theme": theme,
+            **kwargs,
+        },
+        "slides": [s.to_dict() for s in slides],
+    }
+
+
+def deserialize_project(data: dict) -> tuple:
+    """
+    Deserialize a project dict back to slides and settings.
+    Returns (slides: List[SlideData], settings: dict).
+    """
+    slides = [SlideData.from_dict(s) for s in data.get("slides", [])]
+    settings = data.get("settings", {})
+    return slides, settings
