@@ -398,7 +398,7 @@ def _add_pptx_slide_number(slide, slide_index: int, total_slides: int, colors: T
 
         # Company branding at bottom-left (truncate long names)
         if footer_company:
-            company_text = (footer_company[:45] + "\u2026") if len(footer_company) > 48 else footer_company
+            company_text = _truncate_footer_text(footer_company)
             txBox2 = slide.shapes.add_textbox(
                 Inches(0.4), Inches(6.9), Inches(4.0), Inches(0.4),
             )
@@ -414,7 +414,7 @@ def _add_pptx_slide_number(slide, slide_index: int, total_slides: int, colors: T
 
         # Author at bottom-center (truncate long names)
         if footer_author:
-            author_text = (footer_author[:45] + "\u2026") if len(footer_author) > 48 else footer_author
+            author_text = _truncate_footer_text(footer_author)
             txBox3 = slide.shapes.add_textbox(
                 Inches(4.5), Inches(6.9), Inches(4.0), Inches(0.4),
             )
@@ -615,6 +615,26 @@ def _add_pptx_entrance_animations(slide, content_shape_id: int, num_paragraphs: 
         logger.debug("Could not add entrance animations: %s", e)
 
 
+def _build_gradient_xml(r: int, g: int, b: int, r2: int, g2: int, b2: int) -> str:
+    """Build OpenXML gradient fill XML string for PPTX shapes."""
+    return (
+        f'<a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+        f'<a:gsLst>'
+        f'<a:gs pos="0"><a:srgbClr val="{r:02X}{g:02X}{b:02X}"/></a:gs>'
+        f'<a:gs pos="100000"><a:srgbClr val="{r2:02X}{g2:02X}{b2:02X}"/></a:gs>'
+        f'</a:gsLst>'
+        f'<a:lin ang="5400000" scaled="1"/>'
+        f'</a:gradFill>'
+    )
+
+
+def _truncate_footer_text(text: str, max_len: int = 48) -> str:
+    """Truncate footer text with ellipsis if it exceeds max_len."""
+    if len(text) > max_len:
+        return text[:max_len - 3] + "\u2026"
+    return text
+
+
 def _add_pptx_header_bar(slide, colors: ThemeColors):
     """Add a header bar shape with gradient fill and accent line to a PPTX slide."""
     try:
@@ -643,17 +663,7 @@ def _add_pptx_header_bar(slide, colors: ThemeColors):
             tag_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
             if tag_local in ("solidFill", "gradFill", "noFill"):
                 sp_pr.remove(child)
-        grad_xml = (
-            f'<a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
-            f'<a:gsLst>'
-            f'<a:gs pos="0"><a:srgbClr val="{r:02X}{g:02X}{b:02X}"/></a:gs>'
-            f'<a:gs pos="100000"><a:srgbClr val="{r2:02X}{g2:02X}{b2:02X}"/></a:gs>'
-            f'</a:gsLst>'
-            f'<a:lin ang="5400000" scaled="1"/>'
-            f'</a:gradFill>'
-        )
-        grad_elem = etree.fromstring(grad_xml)
-        sp_pr.append(grad_elem)
+        sp_pr.append(etree.fromstring(_build_gradient_xml(r, g, b, r2, g2, b2)))
 
         # Move header to back
         sp = header_bar._element
@@ -847,16 +857,7 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
                 tag_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
                 if tag_local in ("solidFill", "gradFill", "noFill"):
                     sp_pr.remove(child)
-            grad_xml = (
-                f'<a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
-                f'<a:gsLst>'
-                f'<a:gs pos="0"><a:srgbClr val="{r:02X}{g:02X}{b:02X}"/></a:gs>'
-                f'<a:gs pos="100000"><a:srgbClr val="{r2:02X}{g2:02X}{b2:02X}"/></a:gs>'
-                f'</a:gsLst>'
-                f'<a:lin ang="5400000" scaled="1"/>'
-                f'</a:gradFill>'
-            )
-            sp_pr.append(etree.fromstring(grad_xml))
+            sp_pr.append(etree.fromstring(_build_gradient_xml(r, g, b, r2, g2, b2)))
         sp = bg_rect._element
         sp.getparent().remove(sp)
         slide.shapes._spTree.insert(2, sp)
@@ -931,16 +932,7 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
                 tag_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
                 if tag_local in ("solidFill", "gradFill", "noFill"):
                     sp_pr.remove(child)
-            grad_xml = (
-                f'<a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
-                f'<a:gsLst>'
-                f'<a:gs pos="0"><a:srgbClr val="{r:02X}{g:02X}{b:02X}"/></a:gs>'
-                f'<a:gs pos="100000"><a:srgbClr val="{r2:02X}{g2:02X}{b2:02X}"/></a:gs>'
-                f'</a:gsLst>'
-                f'<a:lin ang="5400000" scaled="1"/>'
-                f'</a:gradFill>'
-            )
-            sp_pr.append(etree.fromstring(grad_xml))
+            sp_pr.append(etree.fromstring(_build_gradient_xml(r, g, b, r2, g2, b2)))
         # Move background to back
         sp = bg_rect._element
         sp.getparent().remove(sp)
@@ -1130,7 +1122,7 @@ def _draw_slide_footer(
 
     # Left: company branding (truncate long names for parity with PPTX)
     if footer_company:
-        display_company = (footer_company[:45] + "\u2026") if len(footer_company) > 48 else footer_company
+        display_company = _truncate_footer_text(footer_company)
         _draw_text(
             draw, (MARGIN_X, SLIDE_HEIGHT - 45),
             display_company, footer_font, footer_color, shadow=shadow,
@@ -1138,7 +1130,7 @@ def _draw_slide_footer(
 
     # Center: author (truncate long names for parity with PPTX)
     if footer_author:
-        display_author = (footer_author[:45] + "\u2026") if len(footer_author) > 48 else footer_author
+        display_author = _truncate_footer_text(footer_author)
         bbox_a = draw.textbbox((0, 0), display_author, font=footer_font)
         author_w = bbox_a[2] - bbox_a[0]
         _draw_text(
@@ -1520,6 +1512,7 @@ def create_slide_images(
         filename = f"slide_{i + 1:03d}.png"
         path = os.path.join(output_dir, filename)
         img.save(path, "PNG", optimize=True)
+        img.close()
         image_paths.append(path)
 
     bg_count = len(background_images) if background_images else 0
@@ -1564,6 +1557,10 @@ def create_pdf_from_images(
     save_kwargs["creator"] = "AutoPresentation AI"
 
     images[0].save(output_path, **save_kwargs)
+
+    # Release image resources
+    for _img in images:
+        _img.close()
 
     logger.info("PDF saved: %s (%d pages)", output_path, len(images))
     return output_path

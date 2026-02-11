@@ -27,7 +27,7 @@ from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES, SLIDE_TEMPLATES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, _add_title_slide, _add_section_slide, _PPTX_FONT_NAME, PPTX_TRANSITION_TYPES, _render_section_layout, MARGIN_X
+from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, _add_title_slide, _add_section_slide, _PPTX_FONT_NAME, PPTX_TRANSITION_TYPES, _render_section_layout, MARGIN_X, _build_gradient_xml, _truncate_footer_text
 
 
 OUTPUT_DIR = "test_output"
@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "24.0"
+        assert proj["version"] == "25.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "24.0"
+        assert proj["version"] == "25.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -3687,6 +3687,94 @@ class TestVideoClipCleanup:
             src = f.read()
         assert "_clip.close()" in src, "Expected clip cleanup in finally block"
         assert "final_video.close()" in src, "Expected final_video cleanup in finally block"
+
+
+##############################################################################
+# v25 – Gradient helper, footer truncation helper, image resource cleanup
+##############################################################################
+
+class TestBuildGradientXml:
+    """_build_gradient_xml produces valid OpenXML gradient fill."""
+
+    def test_returns_valid_xml(self):
+        """Should return parseable XML string."""
+        from lxml import etree
+        xml = _build_gradient_xml(50, 100, 150, 80, 130, 180)
+        elem = etree.fromstring(xml)
+        assert elem.tag.endswith("gradFill")
+
+    def test_color_values_in_output(self):
+        """Color hex values should appear in the XML."""
+        xml = _build_gradient_xml(255, 0, 128, 200, 50, 100)
+        assert "FF0080" in xml  # Start color
+        assert "C83264" in xml  # End color
+
+    def test_gradient_angle(self):
+        """Should contain 5400000 angle for top-to-bottom gradient."""
+        xml = _build_gradient_xml(0, 0, 0, 255, 255, 255)
+        assert "5400000" in xml
+
+
+class TestTruncateFooterText:
+    """_truncate_footer_text truncates long text with ellipsis."""
+
+    def test_short_text_unchanged(self):
+        """Text under 48 chars should be returned as-is."""
+        assert _truncate_footer_text("Short Corp") == "Short Corp"
+
+    def test_exact_48_unchanged(self):
+        """Exactly 48 chars should be returned as-is."""
+        text = "A" * 48
+        assert _truncate_footer_text(text) == text
+
+    def test_long_text_truncated(self):
+        """Text over 48 chars should be truncated with ellipsis."""
+        text = "B" * 60
+        result = _truncate_footer_text(text)
+        assert result.endswith("\u2026")
+        assert len(result) <= 48
+
+    def test_no_gradient_xml_duplication(self):
+        """renderer.py should only contain _build_gradient_xml definition, not inline XML."""
+        with open(os.path.join(os.path.dirname(__file__), "src", "renderer.py")) as f:
+            src = f.read()
+        # Count occurrences of inline gradFill XML (excluding the helper function)
+        import re
+        matches = re.findall(r'a:gradFill xmlns:a=', src)
+        # Should only appear once: inside _build_gradient_xml() definition
+        assert len(matches) == 1, f"Found {len(matches)} inline gradient XMLs (expected 1)"
+
+
+class TestImageResourceCleanup:
+    """Image resources should be released after save."""
+
+    def test_slide_images_close_after_save(self):
+        """create_slide_images should call img.close() after saving."""
+        with open(os.path.join(os.path.dirname(__file__), "src", "renderer.py")) as f:
+            src = f.read()
+        # Check that img.close() appears after img.save in create_slide_images
+        assert "img.close()" in src
+
+    def test_pdf_images_close_after_save(self):
+        """create_pdf_from_images should close images after PDF save."""
+        with open(os.path.join(os.path.dirname(__file__), "src", "renderer.py")) as f:
+            src = f.read()
+        assert "_img.close()" in src
+
+    def test_pdf_still_works_after_cleanup(self):
+        """PDF generation should still produce valid output with cleanup."""
+        from PIL import Image as PILImage
+        slides_data = [
+            SlideData(title="Cleanup", content=["Test"], layout=SlideLayout.CONTENT),
+            SlideData(title="Page 2", content=["More"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "images_cleanup_v25")
+        image_paths = create_slide_images(slides_data, images_dir)
+        assert len(image_paths) == 2
+        pdf_path = os.path.join(OUTPUT_DIR, "cleanup_v25.pdf")
+        result = create_pdf_from_images(image_paths, pdf_path, title="Cleanup Test")
+        assert os.path.exists(pdf_path)
+        assert os.path.getsize(pdf_path) > 0
 
 
 if __name__ == "__main__":

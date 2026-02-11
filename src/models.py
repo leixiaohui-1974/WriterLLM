@@ -266,7 +266,7 @@ def serialize_project(slides: List[SlideData], language: str = "en",
                       theme: str = "professional", **kwargs) -> dict:
     """Serialize slides and settings to a JSON-compatible dict for project save."""
     return {
-        "version": "24.0",
+        "version": "25.0",
         "settings": {
             "language": language,
             "theme": theme,
