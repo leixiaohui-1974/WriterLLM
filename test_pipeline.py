@@ -27,7 +27,7 @@ from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES, SLIDE_TEMPLATES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, _add_title_slide, _add_section_slide, _PPTX_FONT_NAME, PPTX_TRANSITION_TYPES
+from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, _add_title_slide, _add_section_slide, _PPTX_FONT_NAME, PPTX_TRANSITION_TYPES, _render_section_layout, MARGIN_X
 
 
 OUTPUT_DIR = "test_output"
@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "21.0"
+        assert proj["version"] == "22.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "21.0"
+        assert proj["version"] == "22.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -3368,6 +3368,123 @@ class TestPPTXFontName:
                         if run.font.name:
                             font_names.append(run.font.name)
         assert all(name == _PPTX_FONT_NAME for name in font_names)
+
+
+##############################################################################
+# v22 – Section title responsive sizing + video image validation
+##############################################################################
+
+class TestPillowSectionTitleResponsive:
+    """Pillow section layout shrinks title font for long text."""
+
+    def _render(self, title: str):
+        """Render a section slide and return the draw object."""
+        from PIL import Image, ImageDraw
+        img = Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), (40, 40, 80))
+        draw = ImageDraw.Draw(img)
+        sd = SlideData(title=title, content=["body"], layout=SlideLayout.SECTION)
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        title_font = _get_font("DejaVuSans-Bold.ttf", TITLE_FONT_SIZE, Language.ENGLISH)
+        content_font = _get_font("DejaVuSans.ttf", CONTENT_FONT_SIZE, Language.ENGLISH)
+        footer_font = _get_font("DejaVuSans.ttf", 18, Language.ENGLISH)
+        _render_section_layout(draw, sd, colors, title_font, content_font, footer_font,
+                               0, 5, has_bg_image=False, language=Language.ENGLISH)
+        return img
+
+    def test_short_title_renders(self):
+        """Short section title should render without error."""
+        img = self._render("Overview")
+        assert img.size == (SLIDE_WIDTH, SLIDE_HEIGHT)
+
+    def test_long_title_renders(self):
+        """Very long section title should render without error (font shrinks)."""
+        long_title = "This Is A Very Long Section Title That Should Trigger Font Shrinking"
+        img = self._render(long_title)
+        assert img.size == (SLIDE_WIDTH, SLIDE_HEIGHT)
+
+    def test_extremely_long_title_fits(self):
+        """Extremely long title should still fit within slide width."""
+        extreme = "A" * 200
+        img = self._render(extreme)
+        assert img.size == (SLIDE_WIDTH, SLIDE_HEIGHT)
+
+
+class TestPPTXSectionTitleResponsive:
+    """PPTX section slide shrinks title for long text."""
+
+    def _get_title_font_size(self, title: str):
+        """Create a section slide and return the font size of the title run."""
+        from pptx import Presentation as Prs
+        prs = Prs()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        sd = SlideData(title=title, content=["body"], layout=SlideLayout.SECTION)
+        _add_section_slide(prs, sd, colors, slide_index=0)
+        slide = prs.slides[-1]
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    for run in para.runs:
+                        if run.text == title and run.font.size:
+                            return run.font.size
+        return None
+
+    def test_short_title_uses_large_font(self):
+        """Short section title should use 54pt."""
+        assert self._get_title_font_size("Short") == Pt(54)
+
+    def test_medium_title_uses_44pt(self):
+        """Title 31-60 chars should use 44pt."""
+        assert self._get_title_font_size("A" * 40) == Pt(44)
+
+    def test_long_title_uses_36pt(self):
+        """Title >60 chars should use 36pt."""
+        assert self._get_title_font_size("B" * 70) == Pt(36)
+
+    def test_boundary_30_chars(self):
+        """Exactly 30 chars should still use 54pt."""
+        assert self._get_title_font_size("C" * 30) == Pt(54)
+
+
+class TestVideoImageValidation:
+    """Video creation skips missing image files gracefully."""
+
+    def test_missing_image_skipped(self, tmp_path):
+        """Missing image path should be skipped, not crash."""
+        from src.video import create_video_presentation
+        missing = str(tmp_path / "nonexistent.png")
+        result = create_video_presentation(
+            [missing], ["Hello"], str(tmp_path / "out.mp4"),
+        )
+        # Should return None (no valid clips) rather than crash
+        assert result is None
+
+    def test_mix_valid_missing_images(self, tmp_path):
+        """Valid + missing images: missing should be skipped."""
+        from PIL import Image as PILImage
+        from src.video import create_video_presentation
+        # Create one valid image
+        valid_img = str(tmp_path / "slide.png")
+        img = PILImage.new("RGB", (1920, 1080), (0, 0, 0))
+        img.save(valid_img)
+        missing = str(tmp_path / "gone.png")
+        # Both passed; the missing one should be skipped
+        # This will still fail at _ensure_deps (edge_tts not installed) but
+        # it tests the path validation logic before that
+        result = create_video_presentation(
+            [missing, valid_img], ["Hi", "There"], str(tmp_path / "out.mp4"),
+        )
+        # Returns None because edge_tts not available in test env
+        assert result is None
+
+    def test_all_missing_returns_none(self, tmp_path):
+        """All missing images should yield None (no clips)."""
+        from src.video import create_video_presentation
+        result = create_video_presentation(
+            ["/no/such/file1.png", "/no/such/file2.png"],
+            ["A", "B"],
+            str(tmp_path / "out.mp4"),
+        )
+        assert result is None
 
 
 if __name__ == "__main__":

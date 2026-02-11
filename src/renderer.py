@@ -987,12 +987,15 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
     )
     title_box.text_frame.word_wrap = True
     title_box.text_frame.text = slide_data.title
+    # Responsive section title sizing: shrink for long titles
+    sec_title_len = len(slide_data.title)
+    sec_title_pt = 54 if sec_title_len <= 30 else 44 if sec_title_len <= 60 else 36
     for paragraph in title_box.text_frame.paragraphs:
         paragraph.alignment = PP_ALIGN.CENTER
         for run in paragraph.runs:
             run.font.color.rgb = _rgb_color(colors.title)
             run.font.bold = True
-            run.font.size = Pt(54)
+            run.font.size = Pt(sec_title_pt)
             run.font.name = _PPTX_FONT_NAME
 
     # Accent underline shape (centered below title)
@@ -1243,9 +1246,18 @@ def _render_section_layout(
     _draw_text(draw, (SLIDE_WIDTH - num_w - 80, SLIDE_HEIGHT // 2 - 120), section_num,
                section_num_font, faded_color, shadow=False)
 
-    # Centered large title
+    # Centered large title (responsive sizing for long titles)
     title = slide_data.title
-    large_font = _get_font("DejaVuSans-Bold.ttf", 90, language)
+    title_max_w = SLIDE_WIDTH - 2 * MARGIN_X
+    large_size = 90
+    large_font = _get_font("DejaVuSans-Bold.ttf", large_size, language)
+    # Shrink font if title overflows available width
+    while large_size > 40:
+        bbox = draw.textbbox((0, 0), title, font=large_font)
+        if bbox[2] - bbox[0] <= title_max_w:
+            break
+        large_size -= 8
+        large_font = _get_font("DejaVuSans-Bold.ttf", large_size, language)
     bbox = draw.textbbox((0, 0), title, font=large_font)
     title_w = bbox[2] - bbox[0]
     title_h = bbox[3] - bbox[1]

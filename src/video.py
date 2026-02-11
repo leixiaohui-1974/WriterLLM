@@ -222,6 +222,11 @@ def create_video_presentation(
             if progress_callback:
                 progress_callback(i, total)
 
+            # Validate image file exists before processing
+            if not os.path.exists(img_path):
+                logger.warning("Slide %d: image not found (%s), skipping", i + 1, img_path)
+                continue
+
             audio_path = os.path.join(temp_audio_dir, f"audio_{i:03d}.mp3")
             generated_audio = generate_voiceover(script, audio_path, voice, rate=speaking_rate)
 
