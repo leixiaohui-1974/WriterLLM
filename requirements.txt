@@ -1,25 +1,29 @@
-streamlit
-python-pptx
+# Core framework
+streamlit>=1.28.0
+
+# Document parsing
+python-docx>=0.8.11
+pypdf>=3.0.0
+lxml>=4.9.0
+
+# AI / LLM
+openai>=1.0.0
+
+# Presentation generation
+python-pptx>=0.6.21
+Pillow>=10.0.0
+
+# Video & Audio
 moviepy>=2.0.0
-edge-tts
-python-docx
-pypdf
-Pillow
-openai
-watchdog
-lxml
-openpyxl
-jinja2
-click
-tomli
-protobuf==4.25.3
-numpy
-pandas
-decorator
-imageio
-imageio-ffmpeg
-proglog
-tqdm
-requests
-markdown
-beautifulsoup4
+edge-tts>=6.1.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
+
+# Utilities
+markdown>=3.4.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+tqdm>=4.65.0
+
+# Testing
+pytest>=7.0.0

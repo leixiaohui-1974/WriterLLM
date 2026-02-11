@@ -1,117 +1,816 @@
-import streamlit as st
+"""
+AutoPresentation AI - Main Streamlit Application
+Transforms documents into professional presentations, PDFs, and videos.
+Features: multi-language, themes, layouts, AI image generation, slide editor,
+fade transitions, CJK support, and partial recovery.
+"""
+import json
 import os
 import shutil
-from src.parser import parse_document
-from src.generator import generate_slides
-from src.renderer import create_pptx_file, create_slide_images, create_pdf_from_images
+import logging
+
+import streamlit as st
+
+from src.config import setup_logging, DEFAULT_API_KEY, DEFAULT_BASE_URL, DEFAULT_MODEL
+from src.models import (
+    Language, SlideTheme, SlideData, SlideLayout, PresentationConfig, ExportFormat,
+    MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES, THEMES, SLIDE_TEMPLATES,
+    serialize_project, deserialize_project,
+)
+from src.parser import parse_document, SUPPORTED_EXTENSIONS
+from src.generator import generate_slides, validate_content
+from src.renderer import create_pptx_file, create_slide_images, create_pdf_from_images, PPTX_TRANSITION_TYPES
 from src.video import create_video_presentation
+from src.image_gen import generate_slide_images_batch
 
-st.set_page_config(page_title="AutoPresentation AI", layout="wide")
+# Initialize logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
-st.title("AutoPresentation AI")
-st.markdown("Generates PPT, PDF, and Video from your documents using AI.")
+# -- Page Config --
+st.set_page_config(
+    page_title="AutoPresentation AI",
+    page_icon="\U0001F3AC",
+    layout="wide",
+)
 
-# Sidebar Settings
+# -- Session State Initialization --
+_SESSION_DEFAULTS = {
+    "slides_data": None,
+    "extracted_text": None,
+    "ai_bg_images": {},
+    "phase": "upload",  # upload -> edit -> render
+    "render_complete": False,
+    "pptx_path": None,
+    "pdf_path": None,
+    "video_path": None,
+    "image_paths": [],
+    "srt_path": None,
+    "imported_language": None,
+    "imported_theme": None,
+    "imported_footer_company": None,
+    "imported_footer_author": None,
+}
+for key, default in _SESSION_DEFAULTS.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
+
+# -- Sidebar Settings --
 st.sidebar.header("Settings")
-api_key = st.sidebar.text_input("OpenAI API Key (Optional)", type="password", help="Leave empty to use Mock Mode.")
-base_url = st.sidebar.text_input("API Base URL (Optional)", help="e.g. https://api.doubao.com/v1")
-model_name = st.sidebar.text_input("Model Name (Optional)", value="gpt-3.5-turbo", help="e.g. gpt-4, doubao-pro-4k")
-num_slides = st.sidebar.slider("Number of Slides", 3, 20, 5)
-voice_gender = st.sidebar.selectbox("Voice Gender", ["Male", "Female"])
 
-uploaded_file = st.file_uploader("Upload Document (Word or PDF)", type=['docx', 'pdf'])
+# Language
+language_options = {lang.value: lang for lang in Language}
+language_labels = {
+    "en": "English", "zh": "Chinese / \u4e2d\u6587", "ja": "Japanese / \u65e5\u672c\u8a9e",
+    "ko": "Korean / \ud55c\uad6d\uc5b4", "fr": "French / Fran\u00e7ais",
+    "de": "German / Deutsch", "es": "Spanish / Espa\u00f1ol",
+}
+_lang_keys = list(language_labels.keys())
+_lang_default_idx = 0
+if st.session_state.imported_language and st.session_state.imported_language in _lang_keys:
+    _lang_default_idx = _lang_keys.index(st.session_state.imported_language)
+selected_lang = st.sidebar.selectbox(
+    "Language",
+    options=_lang_keys,
+    format_func=lambda x: language_labels[x],
+    index=_lang_default_idx,
+)
+language = language_options[selected_lang]
+
+# Theme with color swatches
+def _theme_label_with_swatch(key: str) -> str:
+    """Generate a theme label with color swatch indicators."""
+    _labels = {
+        "professional": "Professional (Blue)",
+        "dark": "Dark Mode",
+        "ocean": "Ocean",
+        "sunset": "Sunset",
+        "minimal": "Minimal",
+        "forest": "Forest (Green)",
+        "royal": "Royal (Purple)",
+        "tech": "Tech (Cyan)",
+    }
+    label = _labels.get(key, key)
+    colors = THEMES.get(SlideTheme(key))
+    if colors:
+        h, a = colors.header, colors.accent
+        label = f"\u25A0 {label}"
+    return label
+
+theme_options = [t.value for t in SlideTheme]
+_theme_default_idx = 0
+if st.session_state.imported_theme and st.session_state.imported_theme in theme_options:
+    _theme_default_idx = theme_options.index(st.session_state.imported_theme)
+selected_theme = st.sidebar.selectbox(
+    "Slide Theme",
+    options=theme_options,
+    format_func=_theme_label_with_swatch,
+    index=_theme_default_idx,
+)
+theme = SlideTheme(selected_theme)
+
+# AI Settings
+st.sidebar.divider()
+st.sidebar.subheader("AI Configuration")
+
+api_key = st.sidebar.text_input(
+    "OpenAI API Key",
+    value=DEFAULT_API_KEY,
+    type="password",
+    help="Leave empty to use Mock Mode (no API required).",
+)
+base_url = st.sidebar.text_input(
+    "API Base URL",
+    value=DEFAULT_BASE_URL,
+    help="For OpenAI-compatible endpoints (e.g., Doubao, Ollama).",
+)
+model_name = st.sidebar.text_input(
+    "Model Name",
+    value=DEFAULT_MODEL or "gpt-3.5-turbo",
+)
+
+# Presentation Settings
+st.sidebar.divider()
+st.sidebar.subheader("Presentation")
+num_slides = st.sidebar.slider("Number of Slides", 3, 20, 5)
+voice_gender = st.sidebar.selectbox("Voice Gender", ["Female", "Male"])
+speaking_rate_pct = st.sidebar.slider(
+    "Speaking Rate",
+    min_value=-50, max_value=50, value=0, step=10,
+    help="Adjust TTS speaking speed (-50% slower to +50% faster).",
+)
+speaking_rate = f"+{speaking_rate_pct}%" if speaking_rate_pct >= 0 else f"{speaking_rate_pct}%"
+
+# Export options
+st.sidebar.divider()
+st.sidebar.subheader("Export Options")
+export_pptx = st.sidebar.checkbox("PowerPoint (PPTX)", value=True)
+export_pdf = st.sidebar.checkbox("PDF", value=True)
+export_video = st.sidebar.checkbox("Video (MP4)", value=True)
+enable_ai_images = st.sidebar.checkbox(
+    "AI Slide Images",
+    value=False,
+    help="Generate AI background images for each slide (requires API key, adds generation time).",
+)
+
+# Footer branding
+st.sidebar.divider()
+st.sidebar.subheader("Footer Branding")
+footer_company = st.sidebar.text_input(
+    "Company Name",
+    value=st.session_state.imported_footer_company or "",
+    help="Company or branding text shown at bottom-left of slides.",
+)
+footer_author = st.sidebar.text_input(
+    "Author",
+    value=st.session_state.imported_footer_author or "",
+    help="Author name shown at bottom-center of slides.",
+)
+
+# Advanced
+with st.sidebar.expander("Advanced Options"):
+    custom_prompt = st.text_area(
+        "Custom Instructions",
+        placeholder="e.g., 'Focus on technical details' or 'Use a formal tone'",
+        help="Additional instructions for AI content generation.",
+    )
+    image_model = st.text_input(
+        "Image Model",
+        value="dall-e-3",
+        help="Model for AI image generation (dall-e-3, dall-e-2, etc.).",
+    )
+    overlay_opacity = st.slider(
+        "Background Overlay Opacity",
+        min_value=0, max_value=255, value=130,
+        help="Controls how much the theme overlay covers AI background images (0=transparent, 255=opaque).",
+    )
+    enable_animations = st.checkbox(
+        "Bullet Animations (PPTX)",
+        value=True,
+        help="Enable click-to-appear entrance animations for bullet points in PowerPoint.",
+    )
+    transition_type = st.selectbox(
+        "Transition Type",
+        options=PPTX_TRANSITION_TYPES,
+        format_func=lambda x: x.capitalize(),
+        index=0,
+        help="Slide transition effect in PPTX (fade, push, wipe, cover, split, dissolve).",
+    )
+    transition_duration_ms = st.slider(
+        "Transition Duration (ms)",
+        min_value=200, max_value=2000, value=700, step=100,
+        help="Duration of slide transitions in PPTX.",
+    )
+
+# -- Main Content --
+st.title("AutoPresentation AI")
+st.markdown("Transform your documents into professional presentations, PDFs, and videos with AI.")
+
+# Project import
+with st.expander("Import Saved Project", expanded=False):
+    project_file = st.file_uploader(
+        "Load a previously saved .json project file",
+        type=["json"],
+        key="project_import",
+    )
+    if project_file:
+        try:
+            project_data = json.loads(project_file.read().decode("utf-8"))
+            imported_slides, imported_settings = deserialize_project(project_data)
+            if imported_slides:
+                st.session_state.slides_data = imported_slides
+                st.session_state.phase = "edit"
+                st.session_state.extracted_text = imported_settings.get("extracted_text", "")
+                # Restore sidebar settings so widgets pick up saved values
+                st.session_state.imported_language = imported_settings.get("language")
+                st.session_state.imported_theme = imported_settings.get("theme")
+                st.session_state.imported_footer_company = imported_settings.get("footer_company")
+                st.session_state.imported_footer_author = imported_settings.get("footer_author")
+                st.success(f"Loaded project with {len(imported_slides)} slides.")
+                st.rerun()
+            else:
+                st.warning("Project file contains no slides.")
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            st.error(f"Invalid project file: {e}")
+
+# File upload
+file_types = list(SUPPORTED_EXTENSIONS)
+uploaded_file = st.file_uploader(
+    "Upload Document",
+    type=file_types,
+    help=f"Supported formats: {', '.join('.' + ext for ext in sorted(file_types))} (max {MAX_UPLOAD_SIZE_MB} MB)",
+)
 
 if uploaded_file:
-    if st.button("Generate Presentation"):
-        with st.spinner("Processing Document..."):
-            # 1. Parse
-            try:
-                text = parse_document(uploaded_file)
-                st.success("Document parsed successfully.")
-                with st.expander("View Extracted Text"):
-                    st.text(text[:1000] + "...")
-            except Exception as e:
-                st.error(f"Error parsing document: {e}")
-                st.stop()
+    # File size validation
+    if uploaded_file.size > MAX_UPLOAD_SIZE_BYTES:
+        st.error(f"File too large ({uploaded_file.size / 1024 / 1024:.1f} MB). Maximum: {MAX_UPLOAD_SIZE_MB} MB.")
+        st.stop()
 
-        with st.spinner("Generating Content (AI)..."):
-            # 2. Generate Content
-            try:
+    # Build export format list
+    export_formats = []
+    if export_pptx:
+        export_formats.append(ExportFormat.PPTX)
+    if export_pdf:
+        export_formats.append(ExportFormat.PDF)
+    if export_video:
+        export_formats.append(ExportFormat.VIDEO)
+
+    if not export_formats:
+        st.warning("Please select at least one export format.")
+        st.stop()
+
+    # Build config
+    config = PresentationConfig(
+        num_slides=num_slides,
+        language=language,
+        voice_gender=voice_gender,
+        theme=theme,
+        api_key=api_key if api_key else None,
+        base_url=base_url if base_url else None,
+        model=model_name,
+        custom_prompt=custom_prompt if custom_prompt else "",
+        overlay_opacity=overlay_opacity,
+        speaking_rate=speaking_rate,
+        footer_company=footer_company,
+        footer_author=footer_author,
+        enable_animations=enable_animations,
+        transition_duration_ms=transition_duration_ms,
+        transition_type=transition_type,
+        export_formats=export_formats,
+    )
+
+    # File info
+    st.info(f"File: **{uploaded_file.name}** ({uploaded_file.size / 1024:.1f} KB)")
+
+    # ======================================================================
+    # PHASE 1: Generate Content
+    # ======================================================================
+    if st.session_state.phase == "upload":
+        if st.button("Generate Content", type="primary"):
+            with st.spinner("Generating slide content..."):
+                progress_bar = st.progress(0, text="Starting...")
+
+                # Parse document
+                progress_bar.progress(10, text="Parsing document...")
+                text = parse_document(uploaded_file)
+                st.session_state.extracted_text = text
+
+                # Generate slides
+                progress_bar.progress(30, text="Generating slide content...")
+                mode = "AI" if config.api_key else "Mock"
                 slides_data = generate_slides(
                     text,
-                    num_slides=num_slides,
-                    api_key=api_key if api_key else None,
-                    base_url=base_url if base_url else None,
-                    model=model_name
+                    num_slides=config.num_slides,
+                    api_key=config.api_key,
+                    base_url=config.base_url,
+                    model=config.model,
+                    language=config.language,
+                    custom_prompt=config.custom_prompt,
                 )
-                st.success("Content generated.")
-                with st.expander("View Slide Content"):
-                    st.json(slides_data)
-            except Exception as e:
-                st.error(f"Error generating content: {e}")
-                st.stop()
+                st.session_state.slides_data = slides_data
 
-        with st.spinner("Rendering Slides..."):
-            # 3. Render
+                # Generate AI background images (if enabled)
+                if enable_ai_images and config.api_key:
+                    progress_bar.progress(50, text="Generating AI images...")
+                    output_dir = "output"
+                    bg_dir = os.path.join(output_dir, "backgrounds")
+                    prompts = [(i, s.image_prompt) for i, s in enumerate(slides_data) if s.image_prompt]
+
+                    def img_progress(current, total):
+                        pct = 50 + int((current / max(total, 1)) * 40)
+                        progress_bar.progress(min(pct, 90), text=f"Generating image {current + 1}/{total}...")
+
+                    ai_bg_images = generate_slide_images_batch(
+                        prompts, bg_dir,
+                        api_key=config.api_key, base_url=config.base_url,
+                        model=image_model, progress_callback=img_progress,
+                    )
+                    st.session_state.ai_bg_images = ai_bg_images
+                    if ai_bg_images:
+                        st.success(f"Generated {len(ai_bg_images)} AI background images.")
+
+                progress_bar.progress(100, text="Content ready!")
+                st.session_state.phase = "edit"
+                st.rerun()
+
+    # ======================================================================
+    # PHASE 2: Slide Editor
+    # ======================================================================
+    if st.session_state.phase in ("edit", "render") and st.session_state.slides_data:
+        slides = st.session_state.slides_data
+
+        # Extracted text preview
+        if st.session_state.extracted_text:
+            with st.expander("Extracted Text Preview", expanded=False):
+                text = st.session_state.extracted_text
+                preview_len = min(len(text), 2000)
+                st.text(text[:preview_len])
+                if len(text) > preview_len:
+                    st.caption(f"... ({len(text) - preview_len} more characters)")
+
+        # Content validation warnings
+        content_warnings = validate_content(slides)
+        if content_warnings:
+            with st.expander(f"Content Warnings ({len(content_warnings)})", expanded=False):
+                for w in content_warnings:
+                    st.warning(w)
+
+        # Presentation statistics
+        total_bullets = sum(len(s.content) for s in slides)
+        total_words = sum(
+            len((" ".join(s.content) + " " + s.speaker_notes).split())
+            for s in slides
+        )
+        layout_counts = {}
+        for s in slides:
+            layout_counts[s.layout.value] = layout_counts.get(s.layout.value, 0) + 1
+        notes_chars = sum(len(s.speaker_notes) for s in slides)
+        # Rough estimate: 150 words per minute for speaking
+        est_duration_min = max(1, round(total_words / 150))
+
+        stat_cols = st.columns(5)
+        stat_cols[0].metric("Slides", len(slides))
+        stat_cols[1].metric("Bullets", total_bullets)
+        stat_cols[2].metric("Words", total_words)
+        stat_cols[3].metric("Est. Duration", f"{est_duration_min} min")
+        stat_cols[4].metric("Layouts", ", ".join(f"{k}:{v}" for k, v in sorted(layout_counts.items())))
+
+        st.subheader("Slide Editor")
+        st.caption("Edit slide content below, then click 'Create Presentation' to render.")
+
+        # Slide search/filter
+        search_query = st.text_input(
+            "Search slides (title or content)",
+            value="",
+            key="search_slides",
+            placeholder="Type to filter slides...",
+        )
+
+        # Layout label mapping
+        layout_options = {
+            SlideLayout.TITLE: "Title",
+            SlideLayout.CONTENT: "Content",
+            SlideLayout.SECTION: "Section",
+            SlideLayout.TWO_COLUMN: "Two-Column",
+        }
+        layout_list = list(layout_options.keys())
+        layout_labels = list(layout_options.values())
+
+        # Track slides to delete
+        slides_to_delete = []
+
+        # Filter slides by search query
+        if search_query.strip():
+            q = search_query.strip().lower()
+            visible_indices = [
+                i for i, s in enumerate(slides)
+                if q in s.title.lower() or any(q in b.lower() for b in s.content)
+                or q in s.speaker_notes.lower()
+            ]
+            st.caption(f"Showing {len(visible_indices)} of {len(slides)} slides")
+        else:
+            visible_indices = list(range(len(slides)))
+
+        for i in visible_indices:
+            slide = slides[i]
+            layout_badge = f"`{slide.layout.value}`"
+            with st.expander(f"Slide {i + 1}: {slide.title} {layout_badge}", expanded=(i == 0 and not search_query)):
+                col1, col2 = st.columns([3, 1])
+
+                with col1:
+                    new_title = st.text_input(
+                        "Title", value=slide.title, key=f"title_{i}",
+                    )
+                    slides[i].title = new_title
+
+                with col2:
+                    current_idx = layout_list.index(slide.layout) if slide.layout in layout_list else 1
+                    new_layout = st.selectbox(
+                        "Layout", options=layout_list,
+                        format_func=lambda x: layout_options[x],
+                        index=current_idx, key=f"layout_{i}",
+                    )
+                    slides[i].layout = new_layout
+
+                # Content bullets
+                content_text = "\n".join(slide.content) if slide.content else ""
+                new_content = st.text_area(
+                    "Content (one bullet point per line)",
+                    value=content_text, height=120, key=f"content_{i}",
+                )
+                slides[i].content = [line.strip() for line in new_content.split("\n") if line.strip()]
+
+                # Speaker notes
+                new_notes = st.text_area(
+                    "Speaker Notes",
+                    value=slide.speaker_notes, height=80, key=f"notes_{i}",
+                )
+                slides[i].speaker_notes = new_notes
+
+                # Image prompt and duration
+                prompt_dur = st.columns([3, 1])
+                with prompt_dur[0]:
+                    new_img_prompt = st.text_input(
+                        "Image Prompt (for AI background)",
+                        value=slide.image_prompt, key=f"img_prompt_{i}",
+                    )
+                    slides[i].image_prompt = new_img_prompt
+                with prompt_dur[1]:
+                    cur_dur = slide.duration_override if slide.duration_override else 0
+                    new_dur = st.number_input(
+                        "Min Duration (s)",
+                        min_value=0, max_value=30, value=min(int(cur_dur), 30), step=1,
+                        key=f"dur_{i}",
+                        help="Minimum slide duration in video, 0\u201330s (0 = auto from audio).",
+                    )
+                    slides[i].duration_override = float(new_dur) if new_dur > 0 else None
+
+                # Actions row
+                action_cols = st.columns(4)
+                with action_cols[0]:
+                    if i > 0 and st.button("\u2191 Move Up", key=f"up_{i}"):
+                        slides[i - 1], slides[i] = slides[i], slides[i - 1]
+                        st.session_state.slides_data = slides
+                        st.rerun()
+                with action_cols[1]:
+                    if i < len(slides) - 1 and st.button("\u2193 Move Down", key=f"down_{i}"):
+                        slides[i], slides[i + 1] = slides[i + 1], slides[i]
+                        st.session_state.slides_data = slides
+                        st.rerun()
+                with action_cols[2]:
+                    if len(slides) > 1 and st.button("\u2717 Delete", key=f"del_{i}"):
+                        slides_to_delete.append(i)
+                with action_cols[3]:
+                    if st.button("\u2398 Duplicate", key=f"dup_{i}"):
+                        dup = SlideData(
+                            title=slide.title + " (copy)",
+                            content=list(slide.content),
+                            speaker_notes=slide.speaker_notes,
+                            image_prompt=slide.image_prompt,
+                            layout=slide.layout,
+                            duration_override=slide.duration_override,
+                        )
+                        slides.insert(i + 1, dup)
+                        st.session_state.slides_data = slides
+                        st.rerun()
+
+        # Process deletions
+        if slides_to_delete:
+            for idx in sorted(slides_to_delete, reverse=True):
+                slides.pop(idx)
+            st.session_state.slides_data = slides
+            st.rerun()
+
+        # Add new slide with template selector
+        add_cols = st.columns([2, 1])
+        with add_cols[0]:
+            template_options = list(SLIDE_TEMPLATES.keys())
+            template_labels = {k: v["label"] for k, v in SLIDE_TEMPLATES.items()}
+            selected_template = st.selectbox(
+                "Slide Template",
+                options=template_options,
+                format_func=lambda x: template_labels[x],
+                index=0,
+                key="add_slide_template",
+                label_visibility="collapsed",
+            )
+        with add_cols[1]:
+            if st.button("+ Add Slide", use_container_width=True):
+                tmpl = SLIDE_TEMPLATES[selected_template]
+                new_slide = SlideData(
+                    title=tmpl["title"],
+                    content=list(tmpl["content"]),
+                    speaker_notes=tmpl["notes"],
+                    image_prompt="Professional presentation visual",
+                    layout=tmpl["layout"],
+                )
+                slides.append(new_slide)
+                st.session_state.slides_data = slides
+                st.rerun()
+
+        st.divider()
+
+        # Action buttons
+        btn_cols = st.columns(3)
+        with btn_cols[0]:
+            create_btn = st.button("Create Presentation", type="primary")
+        with btn_cols[1]:
+            if st.button("Regenerate Content"):
+                st.session_state.phase = "upload"
+                st.session_state.slides_data = None
+                st.session_state.ai_bg_images = {}
+                st.session_state.render_complete = False
+                st.rerun()
+
+        # ======================================================================
+        # PHASE 3: Render Presentation
+        # ======================================================================
+        if create_btn:
+            output_dir = "output"
+            progress_bar = st.progress(0, text="Starting render...")
+            status = st.empty()
+
+            pptx_path = None
+            pdf_path = None
+            video_path = None
+            image_paths = []
+            ai_bg_images = st.session_state.ai_bg_images
+
             try:
-                output_dir = "output"
-                if os.path.exists(output_dir):
-                    shutil.rmtree(output_dir)
-                os.makedirs(output_dir)
+                # Ensure output directory exists (no destructive cleanup)
+                os.makedirs(output_dir, exist_ok=True)
 
-                # PPTX
-                pptx_path = os.path.join(output_dir, "presentation.pptx")
-                create_pptx_file(slides_data, pptx_path)
+                # Render PPTX
+                if ExportFormat.PPTX in config.export_formats:
+                    progress_bar.progress(10, text="Creating PowerPoint...")
+                    status.markdown("**Step 1/4:** Creating PowerPoint file...")
 
-                # Images
+                    pptx_path = os.path.join(output_dir, "presentation.pptx")
+                    create_pptx_file(
+                        slides, pptx_path, theme=config.theme,
+                        background_images=ai_bg_images if ai_bg_images else None,
+                        footer_company=config.footer_company,
+                        footer_author=config.footer_author,
+                        enable_animations=config.enable_animations,
+                        transition_duration_ms=config.transition_duration_ms,
+                        transition_type=config.transition_type,
+                    )
+
+                # Slide Images (needed for PDF and video)
+                progress_bar.progress(30, text="Rendering slide images...")
+                status.markdown("**Step 2/4:** Rendering slide images...")
                 images_dir = os.path.join(output_dir, "images")
-                image_paths = create_slide_images(slides_data, images_dir)
+                image_paths = create_slide_images(
+                    slides, images_dir, theme=config.theme,
+                    background_images=ai_bg_images if ai_bg_images else None,
+                    language=config.language,
+                    overlay_opacity=config.overlay_opacity,
+                    footer_company=config.footer_company,
+                    footer_author=config.footer_author,
+                )
 
                 # PDF
-                pdf_path = os.path.join(output_dir, "presentation.pdf")
-                create_pdf_from_images(image_paths, pdf_path)
+                if ExportFormat.PDF in config.export_formats:
+                    progress_bar.progress(50, text="Generating PDF...")
+                    status.markdown("**Step 3/4:** Generating PDF...")
+                    pdf_path = os.path.join(output_dir, "presentation.pdf")
+                    pdf_title = slides[0].title if slides else ""
+                    create_pdf_from_images(
+                        image_paths, pdf_path,
+                        title=pdf_title, author=config.footer_author,
+                    )
 
-                st.success("Slides rendered.")
+                # Video
+                if ExportFormat.VIDEO in config.export_formats:
+                    progress_bar.progress(60, text="Creating video with voiceover...")
+                    status.markdown("**Step 4/4:** Generating video with AI voiceover...")
+
+                    video_path = os.path.join(output_dir, "presentation.mp4")
+                    voice = config.voice_name
+                    scripts = [s.speaker_notes for s in slides]
+
+                    def video_progress(current, total):
+                        pct = 60 + int((current / max(total, 1)) * 35)
+                        progress_bar.progress(min(pct, 95), text=f"Processing slide {current + 1}/{total}...")
+
+                    try:
+                        dur_overrides = [s.duration_override for s in slides]
+                        create_video_presentation(
+                            image_paths, scripts, video_path,
+                            voice=voice, progress_callback=video_progress,
+                            speaking_rate=config.speaking_rate,
+                            duration_overrides=dur_overrides,
+                        )
+                    except Exception as e:
+                        logger.error("Video generation failed: %s", e)
+                        video_path = None
+                        st.warning(f"Video generation failed: {e}. Other outputs are still available.")
+
+                progress_bar.progress(100, text="Done!")
+                status.markdown("**All steps completed!**")
+
+                # Store results
+                st.session_state.pptx_path = pptx_path
+                st.session_state.pdf_path = pdf_path
+                st.session_state.video_path = video_path
+                st.session_state.image_paths = image_paths
+                # SRT subtitle file is auto-generated alongside video
+                srt_path = os.path.join(output_dir, "presentation.srt")
+                st.session_state.srt_path = srt_path if os.path.exists(srt_path) else None
+                st.session_state.render_complete = True
+                st.session_state.phase = "render"
+
             except Exception as e:
-                st.error(f"Error rendering slides: {e}")
-                st.stop()
+                logger.error("Pipeline error: %s", e, exc_info=True)
+                progress_bar.empty()
+                status.empty()
+                st.error(f"Error: {e}")
 
-        with st.spinner("Creating Video..."):
-            # 4. Video
-            try:
-                video_path = os.path.join(output_dir, "presentation.mp4")
-                # Voice selection
-                voice = "en-US-ChristopherNeural" if voice_gender == "Male" else "en-US-JennyNeural"
+        # ======================================================================
+        # Show Results
+        # ======================================================================
+        if st.session_state.render_complete:
+            pptx_path = st.session_state.pptx_path
+            pdf_path = st.session_state.pdf_path
+            video_path = st.session_state.video_path
+            image_paths = st.session_state.image_paths
+            ai_bg_images = st.session_state.ai_bg_images
 
-                scripts = [s.get("speaker_notes", "") for s in slides_data]
-                create_video_presentation(image_paths, scripts, video_path, voice=voice)
-                st.success("Video created.")
-            except Exception as e:
-                st.error(f"Error creating video: {e}")
-                st.stop()
+            has_any_output = pptx_path or pdf_path or video_path or image_paths
+            if has_any_output:
+                st.divider()
+                st.header("Results")
 
-        # Display Results
-        st.divider()
-        st.header("Results")
+                # Slide preview - show all slides in rows of 3
+                if image_paths:
+                    st.subheader("Slide Preview")
+                    for row_start in range(0, len(image_paths), 3):
+                        row_end = min(row_start + 3, len(image_paths))
+                        cols = st.columns(3)
+                        for idx in range(row_start, row_end):
+                            with cols[idx - row_start]:
+                                st.image(image_paths[idx], caption=f"Slide {idx + 1}", use_container_width=True)
+                                # Show speaker notes below each slide thumbnail
+                                if idx < len(slides) and slides[idx].speaker_notes:
+                                    st.caption(slides[idx].speaker_notes[:150])
 
-        col1, col2 = st.columns(2)
+                # Speaker notes overview
+                if slides:
+                    with st.expander("Speaker Notes (all slides)", expanded=False):
+                        for idx, s in enumerate(slides):
+                            st.markdown(f"**Slide {idx + 1}: {s.title}**")
+                            st.text(s.speaker_notes if s.speaker_notes else "(no notes)")
+                            st.divider()
 
-        with col1:
-            st.subheader("Presentation")
-            # Show first image
-            if image_paths:
-                st.image(image_paths[0], caption="Title Slide")
+                # AI-generated background previews
+                if ai_bg_images:
+                    with st.expander("AI Generated Backgrounds", expanded=False):
+                        bg_cols = st.columns(min(len(ai_bg_images), 4))
+                        for idx, (slide_idx, bg_path) in enumerate(sorted(ai_bg_images.items())[:4]):
+                            with bg_cols[idx]:
+                                st.image(bg_path, caption=f"Slide {slide_idx + 1} BG", use_container_width=True)
 
-            with open(pptx_path, "rb") as f:
-                st.download_button("Download PPTX", f, file_name="presentation.pptx")
+                # Downloads
+                st.subheader("Downloads")
+                dl_cols = st.columns(3)
 
-            if os.path.exists(pdf_path):
-                with open(pdf_path, "rb") as f:
-                    st.download_button("Download PDF", f, file_name="presentation.pdf")
+                with dl_cols[0]:
+                    if pptx_path and os.path.exists(pptx_path):
+                        with open(pptx_path, "rb") as f:
+                            st.download_button(
+                                "Download PPTX",
+                                f,
+                                file_name="presentation.pptx",
+                                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                use_container_width=True,
+                            )
 
-        with col2:
-            st.subheader("Video")
-            if os.path.exists(video_path):
-                st.video(video_path)
-                with open(video_path, "rb") as f:
-                    st.download_button("Download Video", f, file_name="presentation.mp4")
+                with dl_cols[1]:
+                    if pdf_path and os.path.exists(pdf_path):
+                        with open(pdf_path, "rb") as f:
+                            st.download_button(
+                                "Download PDF",
+                                f,
+                                file_name="presentation.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                            )
+
+                with dl_cols[2]:
+                    if video_path and os.path.exists(video_path):
+                        with open(video_path, "rb") as f:
+                            st.download_button(
+                                "Download Video",
+                                f,
+                                file_name="presentation.mp4",
+                                mime="video/mp4",
+                                use_container_width=True,
+                            )
+
+                # Additional downloads row
+                extra_cols = st.columns(3)
+                with extra_cols[0]:
+                    # Outline / Markdown export
+                    outline_lines = []
+                    for idx, s in enumerate(slides):
+                        outline_lines.append(f"## Slide {idx + 1}: {s.title}")
+                        outline_lines.append(f"*Layout: {s.layout.value}*\n")
+                        if s.content:
+                            for bullet in s.content:
+                                outline_lines.append(f"- {bullet}")
+                            outline_lines.append("")
+                        if s.speaker_notes:
+                            outline_lines.append(f"**Speaker Notes:** {s.speaker_notes}\n")
+                        outline_lines.append("---\n")
+                    outline_text = "\n".join(outline_lines)
+                    st.download_button(
+                        "Download Outline (MD)",
+                        outline_text,
+                        file_name="presentation_outline.md",
+                        mime="text/markdown",
+                        use_container_width=True,
+                    )
+
+                with extra_cols[1]:
+                    # SRT subtitle download
+                    srt_path = st.session_state.srt_path
+                    if srt_path and os.path.exists(srt_path):
+                        with open(srt_path, "r", encoding="utf-8") as f:
+                            st.download_button(
+                                "Download Subtitles (SRT)",
+                                f.read(),
+                                file_name="presentation.srt",
+                                mime="text/plain",
+                                use_container_width=True,
+                            )
+
+                with extra_cols[2]:
+                    # Presenter notes TXT export
+                    notes_lines = []
+                    for idx, s in enumerate(slides):
+                        notes_lines.append(f"--- Slide {idx + 1}: {s.title} ---")
+                        notes_lines.append(s.speaker_notes if s.speaker_notes else "(no notes)")
+                        notes_lines.append("")
+                    notes_text = "\n".join(notes_lines)
+                    st.download_button(
+                        "Download Notes (TXT)",
+                        notes_text,
+                        file_name="presenter_notes.txt",
+                        mime="text/plain",
+                        use_container_width=True,
+                    )
+
+                # Project save (JSON export)
+                project_cols = st.columns(3)
+                with project_cols[0]:
+                    project_json = json.dumps(
+                        serialize_project(
+                            slides,
+                            language=config.language.value,
+                            theme=config.theme.value,
+                            footer_company=config.footer_company,
+                            footer_author=config.footer_author,
+                            extracted_text=st.session_state.extracted_text or "",
+                        ),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    st.download_button(
+                        "Save Project (JSON)",
+                        project_json,
+                        file_name="presentation_project.json",
+                        mime="application/json",
+                        use_container_width=True,
+                    )
+
+                # Video player
+                if video_path and os.path.exists(video_path):
+                    st.subheader("Video Preview")
+                    st.video(video_path)
+
+# -- Footer --
+st.sidebar.divider()
+st.sidebar.caption("AutoPresentation AI v25.0")
+if not api_key:
+    st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")
