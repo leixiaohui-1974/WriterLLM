@@ -392,6 +392,7 @@ def _add_pptx_slide_number(slide, slide_index: int, total_slides: int, colors: T
         run.text = footer_text
         run.font.size = Pt(10)
         run.font.color.rgb = _rgb_color(colors.footer)
+        run.font.name = _PPTX_FONT_NAME
 
         # Company branding at bottom-left (truncate long names)
         if footer_company:
@@ -407,6 +408,7 @@ def _add_pptx_slide_number(slide, slide_index: int, total_slides: int, colors: T
             run2.text = company_text
             run2.font.size = Pt(10)
             run2.font.color.rgb = _rgb_color(colors.footer)
+            run2.font.name = _PPTX_FONT_NAME
 
         # Author at bottom-center (truncate long names)
         if footer_author:
@@ -422,6 +424,7 @@ def _add_pptx_slide_number(slide, slide_index: int, total_slides: int, colors: T
             run3.text = author_text
             run3.font.size = Pt(10)
             run3.font.color.rgb = _rgb_color(colors.footer)
+            run3.font.name = _PPTX_FONT_NAME
     except Exception as e:
         logger.debug("Could not add slide number: %s", e)
 
@@ -714,6 +717,10 @@ def _compute_pptx_font_size(content: list, base_size: int = 18, min_size: int = 
     return base_size
 
 
+# Default PPTX font for cross-platform consistency
+_PPTX_FONT_NAME = "Calibri"
+
+
 def _populate_pptx_bullets(text_frame, items: list, colors: ThemeColors, font_size: int):
     """Populate a PPTX text frame with styled bullet items. Shared by content and two-column slides."""
     if not items:
@@ -723,6 +730,7 @@ def _populate_pptx_bullets(text_frame, items: list, colors: ThemeColors, font_si
     for run in text_frame.paragraphs[0].runs:
         run.font.size = Pt(font_size)
         run.font.color.rgb = _rgb_color(colors.text)
+        run.font.name = _PPTX_FONT_NAME
     _format_pptx_bullet(text_frame.paragraphs[0], colors)
     for point in items[1:]:
         p = text_frame.add_paragraph()
@@ -731,6 +739,7 @@ def _populate_pptx_bullets(text_frame, items: list, colors: ThemeColors, font_si
         for run in p.runs:
             run.font.size = Pt(font_size)
             run.font.color.rgb = _rgb_color(colors.text)
+            run.font.name = _PPTX_FONT_NAME
         _format_pptx_bullet(p, colors)
 
 
@@ -792,11 +801,15 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
 
     if slide.shapes.title:
         slide.shapes.title.text = slide_data.title
+        # Responsive title sizing: shrink for long titles
+        title_len = len(slide_data.title)
+        title_pt = 32 if title_len <= 50 else 28 if title_len <= 80 else 24
         for paragraph in slide.shapes.title.text_frame.paragraphs:
             for run in paragraph.runs:
                 run.font.color.rgb = _rgb_color(colors.title)
                 run.font.bold = True
-                run.font.size = Pt(32)
+                run.font.size = Pt(title_pt)
+                run.font.name = _PPTX_FONT_NAME
 
     if len(slide.placeholders) > 1:
         ph = slide.placeholders[1]
@@ -860,6 +873,7 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
             run.font.color.rgb = _rgb_color(colors.title)
             run.font.bold = True
             run.font.size = Pt(44)
+            run.font.name = _PPTX_FONT_NAME
 
     # Accent line (centered below title area)
     try:
@@ -884,6 +898,7 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
             for run in paragraph.runs:
                 run.font.size = Pt(22)
                 run.font.color.rgb = _rgb_color(colors.accent)
+                run.font.name = _PPTX_FONT_NAME
 
     if slide_data.speaker_notes:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
@@ -956,6 +971,7 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
                 run.font.bold = True
                 run.font.size = Pt(280)
                 run.font.color.rgb = _rgb_color(colors.accent)
+                run.font.name = _PPTX_FONT_NAME
         # Set 20% opacity on the text via OpenXML solidFill alpha
         for run_elem in num_box.text_frame._txBody.findall(f".//{qn('a:solidFill')}"):
             clr = run_elem.find(qn("a:srgbClr"))
@@ -977,6 +993,7 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
             run.font.color.rgb = _rgb_color(colors.title)
             run.font.bold = True
             run.font.size = Pt(54)
+            run.font.name = _PPTX_FONT_NAME
 
     # Accent underline shape (centered below title)
     try:
@@ -1010,11 +1027,15 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
     )
     title_box.text_frame.word_wrap = True
     title_box.text_frame.text = slide_data.title
+    # Responsive title sizing: shrink for long titles
+    title_len = len(slide_data.title)
+    title_pt = 32 if title_len <= 50 else 28 if title_len <= 80 else 24
     for paragraph in title_box.text_frame.paragraphs:
         for run in paragraph.runs:
             run.font.color.rgb = _rgb_color(colors.title)
             run.font.bold = True
-            run.font.size = Pt(32)
+            run.font.size = Pt(title_pt)
+            run.font.name = _PPTX_FONT_NAME
 
     # Vertical divider line
     try:
@@ -1100,20 +1121,22 @@ def _draw_slide_footer(
         footer_text, footer_font, footer_color, shadow=shadow,
     )
 
-    # Left: company branding
+    # Left: company branding (truncate long names for parity with PPTX)
     if footer_company:
+        display_company = (footer_company[:45] + "\u2026") if len(footer_company) > 48 else footer_company
         _draw_text(
             draw, (MARGIN_X, SLIDE_HEIGHT - 45),
-            footer_company, footer_font, footer_color, shadow=shadow,
+            display_company, footer_font, footer_color, shadow=shadow,
         )
 
-    # Center: author
+    # Center: author (truncate long names for parity with PPTX)
     if footer_author:
-        bbox_a = draw.textbbox((0, 0), footer_author, font=footer_font)
+        display_author = (footer_author[:45] + "\u2026") if len(footer_author) > 48 else footer_author
+        bbox_a = draw.textbbox((0, 0), display_author, font=footer_font)
         author_w = bbox_a[2] - bbox_a[0]
         _draw_text(
             draw, ((SLIDE_WIDTH - author_w) // 2, SLIDE_HEIGHT - 45),
-            footer_author, footer_font, footer_color, shadow=shadow,
+            display_author, footer_font, footer_color, shadow=shadow,
         )
 
 

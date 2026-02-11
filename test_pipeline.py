@@ -6,7 +6,7 @@ import pytest
 import docx
 
 from pptx import Presentation
-from pptx.util import Inches
+from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 
 from src.parser import parse_document
@@ -27,7 +27,7 @@ from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES, SLIDE_TEMPLATES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, _add_title_slide, _add_section_slide, PPTX_TRANSITION_TYPES
+from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, _add_title_slide, _add_section_slide, _PPTX_FONT_NAME, PPTX_TRANSITION_TYPES
 
 
 OUTPUT_DIR = "test_output"
@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "20.0"
+        assert proj["version"] == "21.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "20.0"
+        assert proj["version"] == "21.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -3223,6 +3223,151 @@ class TestTitleValidation:
         slides = [SlideData(title="Slide Overview", content=["A"], speaker_notes="Notes")]
         warnings = validate_content(slides)
         assert not any("placeholder" in w.lower() for w in warnings)
+
+
+class TestPillowFooterTruncation:
+    """v21: Tests for Pillow footer text truncation parity with PPTX."""
+
+    def test_short_footer_rendered(self):
+        """Short footer text should render without truncation."""
+        slides_data = [
+            SlideData(title="Footer", content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "footer_short")
+        os.makedirs(images_dir, exist_ok=True)
+        images = create_slide_images(slides_data, images_dir,
+                                     footer_company="Acme", footer_author="Jane")
+        assert len(images) == 1
+
+    def test_long_footer_rendered(self):
+        """Long footer text should still render without error."""
+        slides_data = [
+            SlideData(title="Footer Long", content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "footer_long")
+        os.makedirs(images_dir, exist_ok=True)
+        long_name = "X" * 60
+        images = create_slide_images(slides_data, images_dir,
+                                     footer_company=long_name, footer_author=long_name)
+        assert len(images) == 1
+
+
+class TestPPTXResponsiveTitleSize:
+    """v21: Tests for PPTX responsive title font sizing on content/two-column slides."""
+
+    def test_short_title_normal_size(self):
+        """Short title should use standard 32pt font."""
+        slides_data = [
+            SlideData(title="Short", content=["A", "B"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "title_short.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        if slide.shapes.title:
+            for run in slide.shapes.title.text_frame.paragraphs[0].runs:
+                assert run.font.size == Pt(32)
+
+    def test_long_title_shrinks(self):
+        """Long title (>50 chars) should use smaller font."""
+        long_title = "A" * 55 + " Extended Title Text"
+        slides_data = [
+            SlideData(title=long_title, content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "title_long.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        if slide.shapes.title:
+            for run in slide.shapes.title.text_frame.paragraphs[0].runs:
+                assert run.font.size < Pt(32)
+
+    def test_very_long_title_minimum_size(self):
+        """Very long title (>80 chars) should use minimum 24pt font."""
+        very_long = "B" * 90
+        slides_data = [
+            SlideData(title=very_long, content=["A"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "title_verylong.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        if slide.shapes.title:
+            for run in slide.shapes.title.text_frame.paragraphs[0].runs:
+                assert run.font.size == Pt(24)
+
+    def test_two_column_title_responsive(self):
+        """Two-column slide should also use responsive title sizing."""
+        long_title = "C" * 60
+        slides_data = [
+            SlideData(title=long_title, content=["Left|Right"], layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "twocol_title_long.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 1
+
+
+class TestPPTXFontName:
+    """v21: Tests for explicit font name specification in PPTX."""
+
+    def test_content_slide_has_font_name(self):
+        """Content slide text should have explicit font name."""
+        slides_data = [
+            SlideData(title="Font Test", content=["Bullet A", "Bullet B"],
+                      layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "font_content.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        font_names = []
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    for run in para.runs:
+                        if run.font.name:
+                            font_names.append(run.font.name)
+        assert _PPTX_FONT_NAME in font_names
+
+    def test_title_slide_has_font_name(self):
+        """Title slide text should have explicit font name."""
+        slides_data = [
+            SlideData(title="Title Font", content=["Sub"],
+                      layout=SlideLayout.TITLE),
+        ]
+        path = os.path.join(OUTPUT_DIR, "font_title.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        font_names = []
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    for run in para.runs:
+                        if run.font.name:
+                            font_names.append(run.font.name)
+        assert _PPTX_FONT_NAME in font_names
+
+    def test_font_name_constant_is_calibri(self):
+        """Default PPTX font should be Calibri."""
+        assert _PPTX_FONT_NAME == "Calibri"
+
+    def test_footer_has_font_name(self):
+        """Footer text should have explicit font name."""
+        from pptx import Presentation as Prs
+        prs = Prs()
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_pptx_slide_number(slide, 0, 5, colors, footer_company="Co", footer_author="Auth")
+        font_names = []
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    for run in para.runs:
+                        if run.font.name:
+                            font_names.append(run.font.name)
+        assert all(name == _PPTX_FONT_NAME for name in font_names)
 
 
 if __name__ == "__main__":
