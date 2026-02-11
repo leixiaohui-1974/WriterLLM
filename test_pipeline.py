@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "18.0"
+        assert proj["version"] == "19.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "18.0"
+        assert proj["version"] == "19.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -2951,6 +2951,131 @@ class TestSectionSlideNumber:
         _add_section_slide(prs, slide_data, colors, slide_index=0)
         slide = prs.slides[0]
         assert len(slide.shapes) >= 5
+
+
+class TestContentOverflowEllipsis:
+    """v19: Tests for content layout overflow truncation with ellipsis."""
+
+    def test_overflow_content_produces_images(self):
+        """Content layout with many items should still render without error."""
+        slides_data = [
+            SlideData(
+                title="Overflow",
+                content=[f"Bullet point {i} with some extended text content" for i in range(20)],
+                layout=SlideLayout.CONTENT,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "overflow_imgs")
+        os.makedirs(images_dir, exist_ok=True)
+        images = create_slide_images(slides_data, images_dir)
+        assert len(images) == 1
+
+    def test_overflow_content_has_ellipsis_in_image(self):
+        """When content overflows, an ellipsis character should appear in the rendered image."""
+        from PIL import Image
+        slides_data = [
+            SlideData(
+                title="Dense",
+                content=[f"Long bullet point number {i} with lots of text to fill the slide" for i in range(25)],
+                layout=SlideLayout.CONTENT,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "overflow_ellipsis")
+        os.makedirs(images_dir, exist_ok=True)
+        images = create_slide_images(slides_data, images_dir)
+        assert len(images) == 1
+        img = Image.open(images[0])
+        assert img.size == (SLIDE_WIDTH, SLIDE_HEIGHT)
+
+    def test_normal_content_no_overflow(self):
+        """Normal content with few items should render fully without truncation."""
+        slides_data = [
+            SlideData(
+                title="Normal",
+                content=["Point A", "Point B", "Point C"],
+                layout=SlideLayout.CONTENT,
+            ),
+        ]
+        images_dir = os.path.join(OUTPUT_DIR, "normal_imgs")
+        os.makedirs(images_dir, exist_ok=True)
+        images = create_slide_images(slides_data, images_dir)
+        assert len(images) == 1
+
+
+class TestPPTXFooterTruncation:
+    """v19: Tests for PPTX footer text truncation of long names."""
+
+    def test_short_company_not_truncated(self):
+        """Short company name should appear as-is."""
+        from pptx import Presentation as Prs
+        prs = Prs()
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_pptx_slide_number(slide, 0, 5, colors, footer_company="Acme Inc", footer_author="Jane")
+        texts = [s.text_frame.text for s in slide.shapes if s.has_text_frame]
+        assert any("Acme Inc" in t for t in texts)
+
+    def test_long_company_truncated(self):
+        """Long company name should be truncated with ellipsis."""
+        from pptx import Presentation as Prs
+        prs = Prs()
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        long_name = "A" * 60  # 60 chars, exceeds 48 threshold
+        _add_pptx_slide_number(slide, 0, 5, colors, footer_company=long_name)
+        texts = [s.text_frame.text for s in slide.shapes if s.has_text_frame]
+        company_texts = [t for t in texts if "A" in t and "Slide" not in t]
+        assert len(company_texts) >= 1
+        assert company_texts[0].endswith("\u2026")
+        assert len(company_texts[0]) <= 47  # 45 chars + ellipsis
+
+    def test_long_author_truncated(self):
+        """Long author name should be truncated with ellipsis."""
+        from pptx import Presentation as Prs
+        prs = Prs()
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        long_author = "B" * 55
+        _add_pptx_slide_number(slide, 0, 5, colors, footer_author=long_author)
+        texts = [s.text_frame.text for s in slide.shapes if s.has_text_frame]
+        author_texts = [t for t in texts if "B" in t and "Slide" not in t]
+        assert len(author_texts) >= 1
+        assert author_texts[0].endswith("\u2026")
+
+    def test_footer_word_wrap_disabled(self):
+        """Footer text boxes should have word_wrap disabled to prevent overflow."""
+        from pptx import Presentation as Prs
+        prs = Prs()
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_pptx_slide_number(slide, 0, 5, colors, footer_company="Test Co", footer_author="Author")
+        # At least the company and author text boxes should have word_wrap=False
+        no_wrap_count = sum(
+            1 for s in slide.shapes
+            if s.has_text_frame and s.text_frame.word_wrap is False
+        )
+        assert no_wrap_count >= 2
+
+
+class TestDurationOverrideCap:
+    """v19: Tests for duration override max cap validation."""
+
+    def test_duration_override_stored(self):
+        """Duration override should be stored in SlideData."""
+        slide = SlideData(title="T", content=["A"], duration_override=15.0)
+        assert slide.duration_override == 15.0
+
+    def test_duration_override_none_by_default(self):
+        """Duration override should default to None."""
+        slide = SlideData(title="T", content=["A"])
+        assert slide.duration_override is None
+
+    def test_duration_override_serialized(self):
+        """Duration override should survive serialization round-trip."""
+        slides = [SlideData(title="T", content=["A"], duration_override=25.0)]
+        proj = serialize_project(slides)
+        restored_slides, _ = deserialize_project(proj)
+        assert restored_slides[0].duration_override == 25.0
 
 
 if __name__ == "__main__":

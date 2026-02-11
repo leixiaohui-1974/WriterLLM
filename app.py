@@ -444,9 +444,9 @@ if uploaded_file:
                     cur_dur = slide.duration_override if slide.duration_override else 0
                     new_dur = st.number_input(
                         "Min Duration (s)",
-                        min_value=0, max_value=60, value=int(cur_dur), step=1,
+                        min_value=0, max_value=30, value=min(int(cur_dur), 30), step=1,
                         key=f"dur_{i}",
-                        help="Minimum slide duration in video (0 = auto from audio).",
+                        help="Minimum slide duration in video, 0\u201330s (0 = auto from audio).",
                     )
                     slides[i].duration_override = float(new_dur) if new_dur > 0 else None
 
@@ -795,6 +795,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v18.0")
+st.sidebar.caption("AutoPresentation AI v19.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

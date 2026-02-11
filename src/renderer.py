@@ -393,29 +393,33 @@ def _add_pptx_slide_number(slide, slide_index: int, total_slides: int, colors: T
         run.font.size = Pt(10)
         run.font.color.rgb = _rgb_color(colors.footer)
 
-        # Company branding at bottom-left
+        # Company branding at bottom-left (truncate long names)
         if footer_company:
+            company_text = (footer_company[:45] + "\u2026") if len(footer_company) > 48 else footer_company
             txBox2 = slide.shapes.add_textbox(
                 Inches(0.4), Inches(6.9), Inches(4.0), Inches(0.4),
             )
             tf2 = txBox2.text_frame
+            tf2.word_wrap = False
             p2 = tf2.paragraphs[0]
             p2.alignment = PP_ALIGN.LEFT
             run2 = p2.add_run()
-            run2.text = footer_company
+            run2.text = company_text
             run2.font.size = Pt(10)
             run2.font.color.rgb = _rgb_color(colors.footer)
 
-        # Author at bottom-center
+        # Author at bottom-center (truncate long names)
         if footer_author:
+            author_text = (footer_author[:45] + "\u2026") if len(footer_author) > 48 else footer_author
             txBox3 = slide.shapes.add_textbox(
                 Inches(4.5), Inches(6.9), Inches(4.0), Inches(0.4),
             )
             tf3 = txBox3.text_frame
+            tf3.word_wrap = False
             p3 = tf3.paragraphs[0]
             p3.alignment = PP_ALIGN.CENTER
             run3 = p3.add_run()
-            run3.text = footer_author
+            run3.text = author_text
             run3.font.size = Pt(10)
             run3.font.color.rgb = _rgb_color(colors.footer)
     except Exception as e:
@@ -1385,16 +1389,28 @@ def _render_content_layout(
         content_font = _get_font("DejaVuSans.ttf", font_size, language)
     line_spacing = int(font_size * 1.67)
 
-    # Content with CJK-aware wrapping and themed bullets
+    # Content with CJK-aware wrapping and themed bullets (with overflow ellipsis)
     y = CONTENT_START_Y
     max_y = SLIDE_HEIGHT - FOOTER_AREA
+    overflow = False
     for bi, point in enumerate(slide_data.content):
         if y >= max_y:
+            overflow = True
             break
         wrapped = _wrap_text(point, content_font, CONTENT_MAX_WIDTH)
         bullet_icon = _BULLET_ICONS[bi % len(_BULLET_ICONS)]
         for j, line in enumerate(wrapped):
-            if y >= max_y:
+            if y + line_spacing > max_y:
+                # Truncate last visible line with ellipsis
+                trunc = line[:40] + "\u2026" if len(line) > 40 else line + "\u2026"
+                if j == 0:
+                    _draw_text(draw, (MARGIN_X, y), bullet_icon, content_font, colors.accent, shadow=shadow)
+                    bullet_w = _text_pixel_width(bullet_icon + " ", content_font)
+                    _draw_text(draw, (MARGIN_X + bullet_w, y), trunc, content_font, colors.text, shadow=shadow)
+                else:
+                    x = MARGIN_X + BULLET_INDENT
+                    _draw_text(draw, (x, y), f"  {trunc}", content_font, colors.text, shadow=shadow)
+                overflow = True
                 break
             if j == 0:
                 # Draw accent-colored bullet icon
@@ -1405,7 +1421,11 @@ def _render_content_layout(
                 x = MARGIN_X + BULLET_INDENT
                 _draw_text(draw, (x, y), f"  {line}", content_font, colors.text, shadow=shadow)
             y += line_spacing
+        if overflow:
+            break
         y += 10
+    if overflow:
+        logger.debug("Content overflowed at slide %d", slide_index)
 
     # Footer with branding
     _draw_slide_footer(draw, footer_font, colors, slide_index, total_slides, has_bg_image, shadow,
