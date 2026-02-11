@@ -415,7 +415,15 @@ def validate_content(slides: List[SlideData]) -> List[str]:
         else:
             seen[t] = i
 
+    import re
     for i, slide in enumerate(slides):
+        # Empty or placeholder titles
+        title_stripped = slide.title.strip()
+        if not title_stripped:
+            warnings.append(f"Slide {i + 1}: empty title")
+        elif re.match(r'^Slide\s+\d+$', title_stripped):
+            warnings.append(f"Slide {i + 1} \"{slide.title}\": placeholder title (auto-generated)")
+
         # Empty content on non-section/title slides
         if slide.layout in (SlideLayout.CONTENT, SlideLayout.TWO_COLUMN):
             if not slide.content or all(not c.strip() for c in slide.content):

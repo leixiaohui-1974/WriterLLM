@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "19.0"
+        assert proj["version"] == "20.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "19.0"
+        assert proj["version"] == "20.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -3076,6 +3076,153 @@ class TestDurationOverrideCap:
         proj = serialize_project(slides)
         restored_slides, _ = deserialize_project(proj)
         assert restored_slides[0].duration_override == 25.0
+
+
+class TestSpeakerNotesFix:
+    """v20: Tests for speaker notes actually being written to PPTX slides."""
+
+    def test_content_slide_has_notes(self):
+        """Content slide with speaker notes should have them in the PPTX."""
+        slides_data = [
+            SlideData(title="Content", content=["A", "B"],
+                      speaker_notes="These are my notes", layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "notes_content.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        assert slide.has_notes_slide
+        assert "These are my notes" in slide.notes_slide.notes_text_frame.text
+
+    def test_title_slide_has_notes(self):
+        """Title slide with speaker notes should have them in the PPTX."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"],
+                      speaker_notes="Title notes here", layout=SlideLayout.TITLE),
+        ]
+        path = os.path.join(OUTPUT_DIR, "notes_title.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        assert slide.has_notes_slide
+        assert "Title notes here" in slide.notes_slide.notes_text_frame.text
+
+    def test_section_slide_has_notes(self):
+        """Section slide with speaker notes should have them in the PPTX."""
+        slides_data = [
+            SlideData(title="Section", content=[],
+                      speaker_notes="Section notes", layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "notes_section.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        assert slide.has_notes_slide
+        assert "Section notes" in slide.notes_slide.notes_text_frame.text
+
+    def test_two_column_slide_has_notes(self):
+        """Two-column slide with speaker notes should have them in the PPTX."""
+        slides_data = [
+            SlideData(title="Cols", content=["Left|Right"],
+                      speaker_notes="Column notes", layout=SlideLayout.TWO_COLUMN),
+        ]
+        path = os.path.join(OUTPUT_DIR, "notes_twocol.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        assert slide.has_notes_slide
+        assert "Column notes" in slide.notes_slide.notes_text_frame.text
+
+    def test_empty_notes_no_notes_slide(self):
+        """Slide with empty speaker notes should not create a notes slide."""
+        slides_data = [
+            SlideData(title="No Notes", content=["A"], speaker_notes="",
+                      layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "notes_empty.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        slide = prs.slides[0]
+        assert not slide.has_notes_slide
+
+    def test_mixed_deck_notes(self):
+        """All slides with notes in a mixed deck should have notes preserved."""
+        slides_data = [
+            SlideData(title="T", content=["Sub"], speaker_notes="Note 1",
+                      layout=SlideLayout.TITLE),
+            SlideData(title="C", content=["A"], speaker_notes="Note 2",
+                      layout=SlideLayout.CONTENT),
+            SlideData(title="S", content=[], speaker_notes="Note 3",
+                      layout=SlideLayout.SECTION),
+        ]
+        path = os.path.join(OUTPUT_DIR, "notes_mixed.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        for idx, expected in enumerate(["Note 1", "Note 2", "Note 3"]):
+            slide = prs.slides[idx]
+            assert slide.has_notes_slide, f"Slide {idx} should have notes"
+            assert expected in slide.notes_slide.notes_text_frame.text
+
+
+class TestVideoErrorHandling:
+    """v20: Tests for graceful video generation error handling."""
+
+    def test_video_returns_none_on_empty_images(self):
+        """create_video_presentation should return None when no images provided."""
+        from src.video import create_video_presentation
+        result = create_video_presentation([], [], os.path.join(OUTPUT_DIR, "vid_empty.mp4"))
+        assert result is None
+
+    def test_video_returns_none_on_missing_deps(self):
+        """create_video_presentation should return None when deps unavailable."""
+        from src.video import create_video_presentation
+        # With fake image paths and missing edge_tts, should return None gracefully
+        result = create_video_presentation(
+            ["nonexistent.png"], ["Script"], os.path.join(OUTPUT_DIR, "vid_err.mp4"),
+        )
+        assert result is None
+
+
+class TestTitleValidation:
+    """v20: Tests for title validation warnings."""
+
+    def test_empty_title_warning(self):
+        """Empty title should produce a warning."""
+        slides = [SlideData(title="", content=["A"])]
+        warnings = validate_content(slides)
+        assert any("empty title" in w.lower() for w in warnings)
+
+    def test_whitespace_title_warning(self):
+        """Whitespace-only title should produce a warning."""
+        slides = [SlideData(title="   ", content=["A"])]
+        warnings = validate_content(slides)
+        assert any("empty title" in w.lower() for w in warnings)
+
+    def test_placeholder_title_warning(self):
+        """Auto-generated 'Slide N' title should produce a warning."""
+        slides = [SlideData(title="Slide 5", content=["A"])]
+        warnings = validate_content(slides)
+        assert any("placeholder" in w.lower() for w in warnings)
+
+    def test_normal_title_no_warning(self):
+        """Normal title should not produce a title-related warning."""
+        slides = [SlideData(title="Introduction", content=["A"], speaker_notes="Notes")]
+        warnings = validate_content(slides)
+        title_warnings = [w for w in warnings if "title" in w.lower() or "empty" in w.lower()]
+        assert len(title_warnings) == 0
+
+    def test_placeholder_pattern_variations(self):
+        """'Slide 1', 'Slide 10', 'Slide 100' should all trigger placeholder warning."""
+        for title in ["Slide 1", "Slide 10", "Slide 100"]:
+            slides = [SlideData(title=title, content=["A"])]
+            warnings = validate_content(slides)
+            assert any("placeholder" in w.lower() for w in warnings), f"'{title}' should be flagged"
+
+    def test_non_placeholder_slide_word(self):
+        """'Slide Overview' should NOT trigger placeholder warning."""
+        slides = [SlideData(title="Slide Overview", content=["A"], speaker_notes="Notes")]
+        warnings = validate_content(slides)
+        assert not any("placeholder" in w.lower() for w in warnings)
 
 
 if __name__ == "__main__":

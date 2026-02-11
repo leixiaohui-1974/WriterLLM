@@ -804,7 +804,7 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
             font_size = _compute_pptx_font_size(slide_data.content, base_size=18, min_size=12)
             _populate_pptx_bullets(ph.text_frame, slide_data.content, colors, font_size)
 
-    if slide.has_notes_slide:
+    if slide_data.speaker_notes:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
 
 
@@ -885,7 +885,7 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
                 run.font.size = Pt(22)
                 run.font.color.rgb = _rgb_color(colors.accent)
 
-    if slide.has_notes_slide:
+    if slide_data.speaker_notes:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
 
 
@@ -989,7 +989,7 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
     except Exception:
         pass
 
-    if slide.has_notes_slide:
+    if slide_data.speaker_notes:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
 
 
@@ -1051,7 +1051,7 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
     right_box.text_frame.word_wrap = True
     _populate_pptx_bullets(right_box.text_frame, right_items, colors, col_font_size)
 
-    if slide.has_notes_slide:
+    if slide_data.speaker_notes:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
 
 

@@ -201,21 +201,21 @@ def create_video_presentation(
     Returns:
         Output path on success, None on failure.
     """
-    _ensure_deps()
-
     if not image_paths:
         logger.error("No images provided for video generation")
         return None
 
-    clips = []
-    slide_durations = []
     temp_audio_dir = os.path.join(os.path.dirname(os.path.abspath(output_path)), "temp_audio")
-    os.makedirs(temp_audio_dir, exist_ok=True)
-
-    total = len(image_paths)
-    logger.info("Creating video from %d slides (voice: %s, rate: %s, transitions: %s)", total, voice, speaking_rate, enable_transitions)
 
     try:
+        _ensure_deps()
+
+        clips = []
+        slide_durations = []
+        os.makedirs(temp_audio_dir, exist_ok=True)
+
+        total = len(image_paths)
+        logger.info("Creating video from %d slides (voice: %s, rate: %s, transitions: %s)", total, voice, speaking_rate, enable_transitions)
         for i, img_path in enumerate(image_paths):
             script = text_scripts[i] if i < len(text_scripts) else ""
 
@@ -284,7 +284,7 @@ def create_video_presentation(
 
     except Exception as e:
         logger.error("Video generation failed: %s", e)
-        raise
+        return None
 
     finally:
         if os.path.exists(temp_audio_dir):
