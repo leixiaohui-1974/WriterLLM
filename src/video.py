@@ -206,11 +206,12 @@ def create_video_presentation(
         return None
 
     temp_audio_dir = os.path.join(os.path.dirname(os.path.abspath(output_path)), "temp_audio")
+    clips = []
+    final_video = None
 
     try:
         _ensure_deps()
 
-        clips = []
         slide_durations = []
         os.makedirs(temp_audio_dir, exist_ok=True)
 
@@ -292,6 +293,17 @@ def create_video_presentation(
         return None
 
     finally:
+        # Clean up moviepy clip resources to release file handles
+        for _clip in clips:
+            try:
+                _clip.close()
+            except Exception:
+                pass
+        if final_video is not None:
+            try:
+                final_video.close()
+            except Exception:
+                pass
         if os.path.exists(temp_audio_dir):
             try:
                 shutil.rmtree(temp_audio_dir)

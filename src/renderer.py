@@ -305,6 +305,8 @@ def _prepare_background(
 def _cover_crop(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
     """Resize image to cover target size while preserving aspect ratio, then center-crop."""
     src_w, src_h = img.size
+    if src_w <= 0 or src_h <= 0 or target_w <= 0 or target_h <= 0:
+        return Image.new("RGB", (max(target_w, 1), max(target_h, 1)), (0, 0, 0))
     scale = max(target_w / src_w, target_h / src_h)
     new_w = int(src_w * scale)
     new_h = int(src_h * scale)
@@ -666,8 +668,8 @@ def _add_pptx_header_bar(slide, colors: ThemeColors):
         accent_line.fill.solid()
         accent_line.fill.fore_color.rgb = _rgb_color(colors.accent)
         accent_line.line.fill.background()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Header bar accent line failed: %s", exc)
 
 
 def _add_pptx_progress_bar(slide, slide_index: int, total_slides: int, colors: ThemeColors):
@@ -695,8 +697,8 @@ def _add_pptx_progress_bar(slide, slide_index: int, total_slides: int, colors: T
         prog_bar.fill.solid()
         prog_bar.fill.fore_color.rgb = _rgb_color(colors.accent)
         prog_bar.line.fill.background()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Progress bar failed: %s", exc)
 
 
 def _compute_pptx_font_size(content: list, base_size: int = 18, min_size: int = 12) -> int:
@@ -763,8 +765,8 @@ def _add_pptx_text_shadow(shape):
                     '</a:effectLst>'
                 )
                 rPr.append(etree.fromstring(shadow_xml))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Text shadow failed: %s", exc)
 
 
 def _format_pptx_bullet(paragraph, colors: ThemeColors):
@@ -787,8 +789,8 @@ def _format_pptx_bullet(paragraph, colors: ThemeColors):
                 pPr.remove(child)
         pPr.append(buClr)
         pPr.append(buChar)
-    except Exception:
-        pass  # Fallback to default bullets silently
+    except Exception as exc:
+        logger.debug("Bullet formatting failed: %s", exc)
 
 
 def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
@@ -858,7 +860,8 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
         sp = bg_rect._element
         sp.getparent().remove(sp)
         slide.shapes._spTree.insert(2, sp)
-    except Exception:
+    except Exception as exc:
+        logger.debug("Title slide gradient failed: %s", exc)
         _set_pptx_slide_background(slide, colors.header)
 
     # Centered title text box
@@ -883,8 +886,8 @@ def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColo
         accent_line.fill.solid()
         accent_line.fill.fore_color.rgb = _rgb_color(colors.accent)
         accent_line.line.fill.background()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Title slide accent line failed: %s", exc)
 
     # Subtitle (first content item, below accent line)
     if slide_data.content:
@@ -942,7 +945,8 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
         sp = bg_rect._element
         sp.getparent().remove(sp)
         slide.shapes._spTree.insert(2, sp)
-    except Exception:
+    except Exception as exc:
+        logger.debug("Section slide gradient failed: %s", exc)
         _set_pptx_slide_background(slide, colors.header)
 
     # Left accent bar shape
@@ -953,8 +957,8 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
         accent_bar.fill.solid()
         accent_bar.fill.fore_color.rgb = _rgb_color(colors.accent)
         accent_bar.line.fill.background()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Section slide accent bar failed: %s", exc)
 
     # Large faded section number overlay (right side, behind title)
     try:
@@ -978,8 +982,8 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
             if clr is not None:
                 alpha_elem = etree.SubElement(clr, qn("a:alpha"))
                 alpha_elem.set("val", "20000")  # 20% opacity
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Section number overlay failed: %s", exc)
 
     # Large centered title text box
     title_box = slide.shapes.add_textbox(
@@ -1006,8 +1010,8 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
         line_shape.fill.solid()
         line_shape.fill.fore_color.rgb = _rgb_color(colors.accent)
         line_shape.line.fill.background()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Section slide underline failed: %s", exc)
 
     if slide_data.speaker_notes:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
@@ -1049,8 +1053,8 @@ def _add_two_column_slide(prs: Presentation, slide_data: SlideData, colors: Them
         divider.fill.solid()
         divider.fill.fore_color.rgb = _rgb_color(colors.accent)
         divider.line.fill.background()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Two-column divider failed: %s", exc)
 
     # Split content into two columns
     content = slide_data.content

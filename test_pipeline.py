@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "23.0"
+        assert proj["version"] == "24.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "23.0"
+        assert proj["version"] == "24.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -3598,6 +3598,95 @@ class TestPDFImageErrorHandling:
         pdf_path = str(tmp_path / "empty.pdf")
         with pytest.raises(ValueError, match="No valid images"):
             create_pdf_from_images(["/no/such/file.png"], pdf_path)
+
+
+##############################################################################
+# v24 – Debug logging, video clip cleanup, _cover_crop validation
+##############################################################################
+
+class TestSilentExceptionLogging:
+    """All PPTX exception handlers should use logger.debug, not bare pass."""
+
+    def test_no_bare_except_pass_in_renderer(self):
+        """renderer.py should have no bare 'except Exception:' blocks."""
+        import re
+        with open(os.path.join(os.path.dirname(__file__), "src", "renderer.py")) as f:
+            src = f.read()
+        # Match 'except Exception:' NOT followed by ' as '
+        # (bare except Exception without binding the error)
+        matches = re.findall(r"except Exception:\s*\n\s*pass", src)
+        assert len(matches) == 0, f"Found {len(matches)} bare except-pass blocks"
+
+    def test_debug_logging_present(self):
+        """Exception handlers should include logger.debug calls."""
+        import re
+        with open(os.path.join(os.path.dirname(__file__), "src", "renderer.py")) as f:
+            src = f.read()
+        # Count 'except Exception as exc:' followed by logger.debug
+        matches = re.findall(r"except Exception as exc:\s*\n\s*logger\.debug", src)
+        assert len(matches) >= 8, f"Expected >=8 debug-logged handlers, found {len(matches)}"
+
+
+class TestCoverCropValidation:
+    """_cover_crop handles zero/negative dimensions gracefully."""
+
+    def test_zero_width_image(self):
+        """Zero-width source image should return a valid fallback."""
+        from PIL import Image as PILImage
+        # Create a 0x100 image (Pillow allows size 0)
+        try:
+            img = PILImage.new("RGB", (0, 100))
+        except Exception:
+            # Some Pillow versions don't allow size 0 — skip test
+            return
+        result = _cover_crop(img, SLIDE_WIDTH, SLIDE_HEIGHT)
+        assert result.size == (SLIDE_WIDTH, SLIDE_HEIGHT)
+
+    def test_zero_target_dimensions(self):
+        """Zero target dimensions should return a small fallback image."""
+        from PIL import Image as PILImage
+        img = PILImage.new("RGB", (100, 100), (255, 0, 0))
+        result = _cover_crop(img, 0, 0)
+        assert result.size[0] >= 1
+        assert result.size[1] >= 1
+
+    def test_normal_crop_unchanged(self):
+        """Normal positive dimensions should still work correctly."""
+        from PIL import Image as PILImage
+        img = PILImage.new("RGB", (1920, 1080), (0, 128, 255))
+        result = _cover_crop(img, SLIDE_WIDTH, SLIDE_HEIGHT)
+        assert result.size == (SLIDE_WIDTH, SLIDE_HEIGHT)
+
+
+class TestVideoClipCleanup:
+    """Video generation cleans up clip resources."""
+
+    def test_clips_initialized_before_try(self):
+        """clips list should be initialized before try block for cleanup."""
+        import ast
+        with open(os.path.join(os.path.dirname(__file__), "src", "video.py")) as f:
+            src = f.read()
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "create_video_presentation":
+                body = node.body
+                # Find where clips = [] is assigned
+                for i, stmt in enumerate(body):
+                    if isinstance(stmt, ast.Assign):
+                        for target in stmt.targets:
+                            if isinstance(target, ast.Name) and target.id == "clips":
+                                # Check that the next statement (or nearby) is Try
+                                for j in range(i + 1, len(body)):
+                                    if isinstance(body[j], ast.Try):
+                                        return  # clips assigned before try — PASS
+                assert False, "clips not initialized before try block"
+
+    def test_finally_closes_clips(self):
+        """finally block should include clip.close() calls."""
+        with open(os.path.join(os.path.dirname(__file__), "src", "video.py")) as f:
+            src = f.read()
+        assert "_clip.close()" in src, "Expected clip cleanup in finally block"
+        assert "final_video.close()" in src, "Expected final_video cleanup in finally block"
 
 
 if __name__ == "__main__":
