@@ -795,6 +795,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v17.0")
+st.sidebar.caption("AutoPresentation AI v18.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

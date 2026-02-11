@@ -27,7 +27,7 @@ from src.image_gen import generate_slide_image, generate_slide_images_batch
 from src.models import ThemeColors, THEMES, SLIDE_TEMPLATES, serialize_project, deserialize_project
 from src.generator import mock_generate_content, _create_toc_slide, _TOC_TITLES, _SUMMARY_TITLES, _build_speaker_notes, _TRANSITION_PHRASES, _CLOSING_PHRASES, _EMPHASIS_CONNECTORS, validate_content, _extract_json
 from src.video import generate_srt_subtitles, _format_srt_timestamp
-from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, PPTX_TRANSITION_TYPES
+from src.renderer import _add_pptx_entrance_animations, _add_pptx_header_bar, _add_pptx_progress_bar, _compute_pptx_font_size, _populate_pptx_bullets, _add_pptx_text_shadow, _add_title_slide, _add_section_slide, PPTX_TRANSITION_TYPES
 
 
 OUTPUT_DIR = "test_output"
@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "17.0"
+        assert proj["version"] == "18.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "17.0"
+        assert proj["version"] == "18.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -2814,6 +2814,143 @@ class TestEnhancedSectionSlide:
         create_pptx_file(slides_data, path)
         prs = Presentation(path)
         assert len(prs.slides) == 4
+
+
+class TestEnhancedTitleSlide:
+    """v18: Tests for enhanced PPTX title slide with gradient bg and accent line."""
+
+    def test_title_slide_uses_blank_layout(self):
+        """Title slide should use blank layout for full control."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="My Title", content=["Subtitle"], layout=SlideLayout.TITLE)
+        _add_title_slide(prs, slide_data, colors)
+        slide = prs.slides[0]
+        # Blank layout means shapes are manually added (bg rect, title box, accent line, subtitle)
+        assert len(slide.shapes) >= 3
+
+    def test_title_slide_gradient_background(self):
+        """Title slide should have a gradient background rectangle."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="Gradient Title", content=[], layout=SlideLayout.TITLE)
+        _add_title_slide(prs, slide_data, colors)
+        slide = prs.slides[0]
+        from lxml import etree
+        from pptx.oxml.ns import qn
+        grad_fills = slide.shapes._spTree.findall(f".//{qn('a:gradFill')}")
+        assert len(grad_fills) >= 1, "Title slide should have gradient fill"
+
+    def test_title_slide_has_title_text(self):
+        """Title slide should display the title text in a text box."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="Hello World", content=[], layout=SlideLayout.TITLE)
+        _add_title_slide(prs, slide_data, colors)
+        slide = prs.slides[0]
+        title_shapes = [s for s in slide.shapes if s.has_text_frame and "Hello World" in s.text_frame.text]
+        assert len(title_shapes) >= 1
+
+    def test_title_slide_subtitle_from_content(self):
+        """Title slide should display first content item as subtitle."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="Main", content=["My Subtitle"], layout=SlideLayout.TITLE)
+        _add_title_slide(prs, slide_data, colors)
+        slide = prs.slides[0]
+        sub_shapes = [s for s in slide.shapes if s.has_text_frame and "My Subtitle" in s.text_frame.text]
+        assert len(sub_shapes) >= 1
+
+    def test_title_slide_no_subtitle_when_empty_content(self):
+        """Title slide with empty content should have fewer shapes than one with content."""
+        prs_with = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        _add_title_slide(prs_with, SlideData(title="With", content=["Sub"], layout=SlideLayout.TITLE), colors)
+        prs_without = Presentation()
+        _add_title_slide(prs_without, SlideData(title="Without", content=[], layout=SlideLayout.TITLE), colors)
+        # With subtitle should have one more shape than without
+        assert len(prs_with.slides[0].shapes) == len(prs_without.slides[0].shapes) + 1
+
+    def test_title_slide_all_themes(self):
+        """Title slide should work with all themes."""
+        for theme in SlideTheme:
+            slides_data = [
+                SlideData(title="Theme", content=["Sub"], layout=SlideLayout.TITLE),
+            ]
+            path = os.path.join(OUTPUT_DIR, f"title_{theme.value}.pptx")
+            create_pptx_file(slides_data, path, theme=theme)
+            assert os.path.exists(path)
+
+    def test_title_slide_in_full_deck(self):
+        """Title slide renders correctly as part of a full deck via create_pptx_file."""
+        slides_data = [
+            SlideData(title="Cover", content=["Subtitle"], layout=SlideLayout.TITLE),
+            SlideData(title="Body", content=["A", "B"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "title_full_deck.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        assert len(prs.slides) == 2
+
+
+class TestSectionSlideNumber:
+    """v18: Tests for section slide faded number overlay."""
+
+    def test_section_slide_has_number_overlay(self):
+        """Section slide should have a faded number text box."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="Section", content=[], layout=SlideLayout.SECTION)
+        _add_section_slide(prs, slide_data, colors, slide_index=2)
+        slide = prs.slides[0]
+        num_shapes = [s for s in slide.shapes if s.has_text_frame and s.text_frame.text == "3"]
+        assert len(num_shapes) >= 1, "Section slide should have number '3' for slide_index=2"
+
+    def test_section_slide_number_has_alpha(self):
+        """Section number text should have reduced opacity (alpha)."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="Alpha", content=[], layout=SlideLayout.SECTION)
+        _add_section_slide(prs, slide_data, colors, slide_index=0)
+        slide = prs.slides[0]
+        from pptx.oxml.ns import qn
+        alpha_elems = slide.shapes._spTree.findall(f".//{qn('a:alpha')}")
+        assert len(alpha_elems) >= 1, "Section number should have alpha element for fading"
+
+    def test_section_slide_number_defaults_to_one(self):
+        """Default slide_index=0 should produce number '1'."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="Default", content=[], layout=SlideLayout.SECTION)
+        _add_section_slide(prs, slide_data, colors)
+        slide = prs.slides[0]
+        num_shapes = [s for s in slide.shapes if s.has_text_frame and s.text_frame.text == "1"]
+        assert len(num_shapes) >= 1
+
+    def test_section_number_in_mixed_deck(self):
+        """Section slide should get correct slide_index number in a mixed deck."""
+        slides_data = [
+            SlideData(title="Title", content=["Sub"], layout=SlideLayout.TITLE),
+            SlideData(title="Content", content=["A"], layout=SlideLayout.CONTENT),
+            SlideData(title="Break", content=[], layout=SlideLayout.SECTION),
+            SlideData(title="More", content=["B"], layout=SlideLayout.CONTENT),
+        ]
+        path = os.path.join(OUTPUT_DIR, "section_number_mixed.pptx")
+        create_pptx_file(slides_data, path)
+        prs = Presentation(path)
+        section_slide = prs.slides[2]
+        # slide_index=2 → number "3"
+        num_shapes = [s for s in section_slide.shapes if s.has_text_frame and s.text_frame.text == "3"]
+        assert len(num_shapes) >= 1
+
+    def test_section_slide_shapes_count(self):
+        """Section slide should have: bg rect, accent bar, number box, title box, underline = 5+ shapes."""
+        prs = Presentation()
+        colors = THEMES[SlideTheme.PROFESSIONAL]
+        slide_data = SlideData(title="Count", content=[], layout=SlideLayout.SECTION)
+        _add_section_slide(prs, slide_data, colors, slide_index=0)
+        slide = prs.slides[0]
+        assert len(slide.shapes) >= 5
 
 
 if __name__ == "__main__":

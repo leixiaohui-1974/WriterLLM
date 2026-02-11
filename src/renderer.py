@@ -447,9 +447,8 @@ def create_pptx_file(
 
         if layout == SlideLayout.TITLE:
             _add_title_slide(prs, slide_data, colors)
-            _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.header)
         elif layout == SlideLayout.SECTION:
-            _add_section_slide(prs, slide_data, colors)
+            _add_section_slide(prs, slide_data, colors, slide_index=i)
         elif layout == SlideLayout.TWO_COLUMN:
             _add_two_column_slide(prs, slide_data, colors)
             _set_pptx_slide_background(prs.slides[len(prs.slides) - 1], colors.background)
@@ -806,35 +805,88 @@ def _add_content_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
 
 
 def _add_title_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add a title/cover slide."""
-    slide_layout = prs.slide_layouts[0]
+    """Add a title/cover slide with gradient background and accent line."""
+    slide_layout = prs.slide_layouts[5]  # blank layout for full control
     slide = prs.slides.add_slide(slide_layout)
 
-    if slide.shapes.title:
-        slide.shapes.title.text = slide_data.title
-        for paragraph in slide.shapes.title.text_frame.paragraphs:
+    # Full-slide gradient background (header -> lighter shade)
+    try:
+        from lxml import etree
+        bg_rect = slide.shapes.add_shape(
+            1, Inches(0), Inches(0), Inches(13.333), Inches(7.5),
+        )
+        bg_rect.line.fill.background()
+        r, g, b = colors.header
+        r2 = min(r + 40, 255)
+        g2 = min(g + 40, 255)
+        b2 = min(b + 40, 255)
+        sp_pr = bg_rect._element.find(qn("p:spPr"))
+        if sp_pr is None:
+            sp_pr = bg_rect._element.find(qn("a:spPr"))
+        if sp_pr is not None:
+            for child in list(sp_pr):
+                tag_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                if tag_local in ("solidFill", "gradFill", "noFill"):
+                    sp_pr.remove(child)
+            grad_xml = (
+                f'<a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                f'<a:gsLst>'
+                f'<a:gs pos="0"><a:srgbClr val="{r:02X}{g:02X}{b:02X}"/></a:gs>'
+                f'<a:gs pos="100000"><a:srgbClr val="{r2:02X}{g2:02X}{b2:02X}"/></a:gs>'
+                f'</a:gsLst>'
+                f'<a:lin ang="5400000" scaled="1"/>'
+                f'</a:gradFill>'
+            )
+            sp_pr.append(etree.fromstring(grad_xml))
+        sp = bg_rect._element
+        sp.getparent().remove(sp)
+        slide.shapes._spTree.insert(2, sp)
+    except Exception:
+        _set_pptx_slide_background(slide, colors.header)
+
+    # Centered title text box
+    title_box = slide.shapes.add_textbox(
+        Inches(1.5), Inches(2.0), Inches(10.3), Inches(2.5),
+    )
+    title_box.text_frame.word_wrap = True
+    title_box.text_frame.text = slide_data.title
+    for paragraph in title_box.text_frame.paragraphs:
+        paragraph.alignment = PP_ALIGN.CENTER
+        for run in paragraph.runs:
+            run.font.color.rgb = _rgb_color(colors.title)
+            run.font.bold = True
+            run.font.size = Pt(44)
+
+    # Accent line (centered below title area)
+    try:
+        accent_line = slide.shapes.add_shape(
+            1, Inches(3.3), Inches(4.6), Inches(6.7), Inches(0.04),
+        )
+        accent_line.fill.solid()
+        accent_line.fill.fore_color.rgb = _rgb_color(colors.accent)
+        accent_line.line.fill.background()
+    except Exception:
+        pass
+
+    # Subtitle (first content item, below accent line)
+    if slide_data.content:
+        sub_box = slide.shapes.add_textbox(
+            Inches(2.0), Inches(4.9), Inches(9.3), Inches(1.0),
+        )
+        sub_box.text_frame.word_wrap = True
+        sub_box.text_frame.text = slide_data.content[0]
+        for paragraph in sub_box.text_frame.paragraphs:
             paragraph.alignment = PP_ALIGN.CENTER
             for run in paragraph.runs:
-                run.font.color.rgb = _rgb_color(colors.header)
-                run.font.bold = True
-                run.font.size = Pt(44)
-
-    if len(slide.placeholders) > 1 and slide_data.content:
-        subtitle_ph = slide.placeholders[1]
-        if subtitle_ph.has_text_frame:
-            subtitle_ph.text_frame.text = slide_data.content[0]
-            for paragraph in subtitle_ph.text_frame.paragraphs:
-                paragraph.alignment = PP_ALIGN.CENTER
-                for run in paragraph.runs:
-                    run.font.size = Pt(22)
-                    run.font.color.rgb = _rgb_color(colors.accent)
+                run.font.size = Pt(22)
+                run.font.color.rgb = _rgb_color(colors.accent)
 
     if slide.has_notes_slide:
         slide.notes_slide.notes_text_frame.text = slide_data.speaker_notes
 
 
-def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors):
-    """Add an enhanced section divider slide with gradient background, accent bar, and large title."""
+def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeColors, slide_index: int = 0):
+    """Add an enhanced section divider slide with gradient background, accent bar, large title, and faded section number."""
     slide_layout = prs.slide_layouts[5]  # blank layout for full control
     slide = prs.slides.add_slide(slide_layout)
 
@@ -882,6 +934,30 @@ def _add_section_slide(prs: Presentation, slide_data: SlideData, colors: ThemeCo
         accent_bar.fill.solid()
         accent_bar.fill.fore_color.rgb = _rgb_color(colors.accent)
         accent_bar.line.fill.background()
+    except Exception:
+        pass
+
+    # Large faded section number overlay (right side, behind title)
+    try:
+        from lxml import etree
+        section_num = str(slide_index + 1)
+        num_box = slide.shapes.add_textbox(
+            Inches(7.5), Inches(0.5), Inches(5.5), Inches(6.5),
+        )
+        num_box.text_frame.word_wrap = False
+        num_box.text_frame.text = section_num
+        for paragraph in num_box.text_frame.paragraphs:
+            paragraph.alignment = PP_ALIGN.RIGHT
+            for run in paragraph.runs:
+                run.font.bold = True
+                run.font.size = Pt(280)
+                run.font.color.rgb = _rgb_color(colors.accent)
+        # Set 20% opacity on the text via OpenXML solidFill alpha
+        for run_elem in num_box.text_frame._txBody.findall(f".//{qn('a:solidFill')}"):
+            clr = run_elem.find(qn("a:srgbClr"))
+            if clr is not None:
+                alpha_elem = etree.SubElement(clr, qn("a:alpha"))
+                alpha_elem.set("val", "20000")  # 20% opacity
     except Exception:
         pass
 
