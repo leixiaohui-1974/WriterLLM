@@ -46,6 +46,10 @@ _SESSION_DEFAULTS = {
     "video_path": None,
     "image_paths": [],
     "srt_path": None,
+    "imported_language": None,
+    "imported_theme": None,
+    "imported_footer_company": None,
+    "imported_footer_author": None,
 }
 for key, default in _SESSION_DEFAULTS.items():
     if key not in st.session_state:
@@ -61,11 +65,15 @@ language_labels = {
     "ko": "Korean / \ud55c\uad6d\uc5b4", "fr": "French / Fran\u00e7ais",
     "de": "German / Deutsch", "es": "Spanish / Espa\u00f1ol",
 }
+_lang_keys = list(language_labels.keys())
+_lang_default_idx = 0
+if st.session_state.imported_language and st.session_state.imported_language in _lang_keys:
+    _lang_default_idx = _lang_keys.index(st.session_state.imported_language)
 selected_lang = st.sidebar.selectbox(
     "Language",
-    options=list(language_labels.keys()),
+    options=_lang_keys,
     format_func=lambda x: language_labels[x],
-    index=0,
+    index=_lang_default_idx,
 )
 language = language_options[selected_lang]
 
@@ -90,11 +98,14 @@ def _theme_label_with_swatch(key: str) -> str:
     return label
 
 theme_options = [t.value for t in SlideTheme]
+_theme_default_idx = 0
+if st.session_state.imported_theme and st.session_state.imported_theme in theme_options:
+    _theme_default_idx = theme_options.index(st.session_state.imported_theme)
 selected_theme = st.sidebar.selectbox(
     "Slide Theme",
     options=theme_options,
     format_func=_theme_label_with_swatch,
-    index=0,
+    index=_theme_default_idx,
 )
 theme = SlideTheme(selected_theme)
 
@@ -147,12 +158,12 @@ st.sidebar.divider()
 st.sidebar.subheader("Footer Branding")
 footer_company = st.sidebar.text_input(
     "Company Name",
-    value="",
+    value=st.session_state.imported_footer_company or "",
     help="Company or branding text shown at bottom-left of slides.",
 )
 footer_author = st.sidebar.text_input(
     "Author",
-    value="",
+    value=st.session_state.imported_footer_author or "",
     help="Author name shown at bottom-center of slides.",
 )
 
@@ -210,6 +221,11 @@ with st.expander("Import Saved Project", expanded=False):
                 st.session_state.slides_data = imported_slides
                 st.session_state.phase = "edit"
                 st.session_state.extracted_text = imported_settings.get("extracted_text", "")
+                # Restore sidebar settings so widgets pick up saved values
+                st.session_state.imported_language = imported_settings.get("language")
+                st.session_state.imported_theme = imported_settings.get("theme")
+                st.session_state.imported_footer_company = imported_settings.get("footer_company")
+                st.session_state.imported_footer_author = imported_settings.get("footer_author")
                 st.success(f"Loaded project with {len(imported_slides)} slides.")
                 st.rerun()
             else:
@@ -795,6 +811,6 @@ if uploaded_file:
 
 # -- Footer --
 st.sidebar.divider()
-st.sidebar.caption("AutoPresentation AI v22.0")
+st.sidebar.caption("AutoPresentation AI v23.0")
 if not api_key:
     st.sidebar.info("Running in Mock Mode. Add an API key for AI-powered content and images.")

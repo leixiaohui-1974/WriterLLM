@@ -1828,7 +1828,7 @@ class TestProjectSerialize:
                       layout=SlideLayout.CONTENT),
         ]
         proj = serialize_project(slides, language="en", theme="professional")
-        assert proj["version"] == "22.0"
+        assert proj["version"] == "23.0"
         assert len(proj["slides"]) == 2
         assert proj["settings"]["language"] == "en"
         assert proj["settings"]["theme"] == "professional"
@@ -2334,7 +2334,7 @@ class TestProjectVersionString:
         """Serialized project should have version 14.0."""
         slides = [SlideData(title="T", content=["A"])]
         proj = serialize_project(slides, language="en")
-        assert proj["version"] == "22.0"
+        assert proj["version"] == "23.0"
 
     def test_deserialize_ignores_version(self):
         """Deserialization should work regardless of version string."""
@@ -3485,6 +3485,119 @@ class TestVideoImageValidation:
             str(tmp_path / "out.mp4"),
         )
         assert result is None
+
+
+##############################################################################
+# v23 – PDF metadata fix, project settings restore, PDF image error handling
+##############################################################################
+
+class TestPDFMetadataFix:
+    """PDF metadata (title/author/creator) is actually written to the file."""
+
+    def test_metadata_title_written(self):
+        """PDF should contain the title metadata."""
+        from PIL import Image as PILImage
+        from PIL.PdfImagePlugin import PdfParser
+        slides_data = [SlideData(title="Meta", content=["A"], layout=SlideLayout.CONTENT)]
+        images_dir = os.path.join(OUTPUT_DIR, "images_meta_v23")
+        image_paths = create_slide_images(slides_data, images_dir)
+        pdf_path = os.path.join(OUTPUT_DIR, "meta_v23.pdf")
+        create_pdf_from_images(image_paths, pdf_path, title="My Title", author="Jane")
+        pdf = PdfParser.PdfParser(filename=pdf_path)
+        pdf.read_pdf_info()
+        # Title key uses capitalized form
+        info_keys = {k.name.decode() if hasattr(k, 'name') else str(k) for k in pdf.info.keys()}
+        assert "Title" in info_keys
+        pdf.close()
+
+    def test_metadata_author_written(self):
+        """PDF should contain the author metadata."""
+        from PIL.PdfImagePlugin import PdfParser
+        slides_data = [SlideData(title="Auth", content=["B"], layout=SlideLayout.CONTENT)]
+        images_dir = os.path.join(OUTPUT_DIR, "images_auth_v23")
+        image_paths = create_slide_images(slides_data, images_dir)
+        pdf_path = os.path.join(OUTPUT_DIR, "auth_v23.pdf")
+        create_pdf_from_images(image_paths, pdf_path, title="T", author="Alice")
+        pdf = PdfParser.PdfParser(filename=pdf_path)
+        pdf.read_pdf_info()
+        info_keys = {k.name.decode() if hasattr(k, 'name') else str(k) for k in pdf.info.keys()}
+        assert "Author" in info_keys
+        pdf.close()
+
+    def test_metadata_creator_always_set(self):
+        """PDF should always have Creator set to AutoPresentation AI."""
+        from PIL.PdfImagePlugin import PdfParser
+        slides_data = [SlideData(title="Creator", content=["C"], layout=SlideLayout.CONTENT)]
+        images_dir = os.path.join(OUTPUT_DIR, "images_creator_v23")
+        image_paths = create_slide_images(slides_data, images_dir)
+        pdf_path = os.path.join(OUTPUT_DIR, "creator_v23.pdf")
+        create_pdf_from_images(image_paths, pdf_path)
+        pdf = PdfParser.PdfParser(filename=pdf_path)
+        pdf.read_pdf_info()
+        info_keys = {k.name.decode() if hasattr(k, 'name') else str(k) for k in pdf.info.keys()}
+        assert "Creator" in info_keys
+        pdf.close()
+
+
+class TestProjectSettingsRestore:
+    """Project import should restore sidebar settings (language, theme, footer)."""
+
+    def test_serialize_includes_footer(self):
+        """Serialized project should include footer fields."""
+        slides = [SlideData(title="T", content=["A"])]
+        proj = serialize_project(slides, language="zh", theme="dark",
+                                 footer_company="ACME", footer_author="Bob")
+        assert proj["settings"]["footer_company"] == "ACME"
+        assert proj["settings"]["footer_author"] == "Bob"
+
+    def test_deserialize_returns_settings(self):
+        """Deserialized settings should contain language and theme."""
+        slides = [SlideData(title="T", content=["A"])]
+        proj = serialize_project(slides, language="ja", theme="ocean")
+        restored_slides, settings = deserialize_project(proj)
+        assert settings["language"] == "ja"
+        assert settings["theme"] == "ocean"
+
+    def test_deserialize_returns_footer(self):
+        """Deserialized settings should contain footer info."""
+        slides = [SlideData(title="T", content=["A"])]
+        proj = serialize_project(slides, language="en", theme="professional",
+                                 footer_company="Corp", footer_author="Eve")
+        _, settings = deserialize_project(proj)
+        assert settings["footer_company"] == "Corp"
+        assert settings["footer_author"] == "Eve"
+
+
+class TestPDFImageErrorHandling:
+    """PDF generation gracefully handles corrupted or missing images."""
+
+    def test_missing_image_skipped(self, tmp_path):
+        """Missing image files should be skipped, not crash PDF."""
+        from PIL import Image as PILImage
+        valid = str(tmp_path / "good.png")
+        PILImage.new("RGB", (100, 100), (0, 0, 255)).save(valid)
+        missing = str(tmp_path / "gone.png")
+        pdf_path = str(tmp_path / "out.pdf")
+        result = create_pdf_from_images([valid, missing], pdf_path)
+        assert os.path.exists(pdf_path)
+
+    def test_corrupted_image_skipped(self, tmp_path):
+        """Corrupted image file should be skipped, not crash PDF."""
+        from PIL import Image as PILImage
+        valid = str(tmp_path / "good.png")
+        PILImage.new("RGB", (100, 100), (0, 255, 0)).save(valid)
+        corrupted = str(tmp_path / "bad.png")
+        with open(corrupted, "wb") as f:
+            f.write(b"not a real image file at all")
+        pdf_path = str(tmp_path / "out2.pdf")
+        result = create_pdf_from_images([valid, corrupted], pdf_path)
+        assert os.path.exists(pdf_path)
+
+    def test_all_invalid_raises(self, tmp_path):
+        """If all images are invalid, should raise ValueError."""
+        pdf_path = str(tmp_path / "empty.pdf")
+        with pytest.raises(ValueError, match="No valid images"):
+            create_pdf_from_images(["/no/such/file.png"], pdf_path)
 
 
 if __name__ == "__main__":

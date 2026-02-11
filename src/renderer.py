@@ -1536,7 +1536,14 @@ def create_pdf_from_images(
     if not image_paths:
         raise ValueError("No images provided for PDF generation")
 
-    images = [Image.open(p).convert("RGB") for p in image_paths]
+    images = []
+    for p in image_paths:
+        try:
+            images.append(Image.open(p).convert("RGB"))
+        except Exception as e:
+            logger.warning("PDF: skipping unreadable image %s: %s", p, e)
+    if not images:
+        raise ValueError("No valid images for PDF generation")
 
     # Build save kwargs
     save_kwargs = {
@@ -1545,23 +1552,14 @@ def create_pdf_from_images(
         "resolution": 300,
     }
 
-    # Add PDF metadata if Pillow supports it
-    if title or author:
-        try:
-            from PIL import PdfImagePlugin
-            info = PdfImagePlugin.PdfInfo()
-            if title:
-                info.title = title
-            if author:
-                info.author = author
-            info.creator = "AutoPresentation AI"
-            save_kwargs["append_images"] = images[1:]
-            images[0].save(output_path, **save_kwargs)
-        except (ImportError, AttributeError, Exception):
-            # Fallback: save without metadata if PdfInfo not available
-            images[0].save(output_path, **save_kwargs)
-    else:
-        images[0].save(output_path, **save_kwargs)
+    # Add PDF metadata (Pillow passes title/author/creator via encoderinfo)
+    if title:
+        save_kwargs["title"] = title
+    if author:
+        save_kwargs["author"] = author
+    save_kwargs["creator"] = "AutoPresentation AI"
+
+    images[0].save(output_path, **save_kwargs)
 
     logger.info("PDF saved: %s (%d pages)", output_path, len(images))
     return output_path
