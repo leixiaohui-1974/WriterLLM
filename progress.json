@@ -8,7 +8,7 @@
   "current_batch": 1,
   "current_paper": "P1a",
   "papers": {
-    "P1a": {"status": "in_review_v10_iter1", "batch": 1},
+    "P1a": {"status": "in_review_v11_iter2", "batch": 1},
     "P1b": {"status": "existing_draft_v1", "batch": 1},
     "P1c": {"status": "existing_draft_v2", "batch": 1},
     "P2A": {"status": "existing_draft_v2", "batch": 1},

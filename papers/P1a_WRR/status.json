@@ -3,8 +3,8 @@
   "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
   "journal": "Water Resources Research",
   "authors": "Xiaohui Lei (sole author)",
-  "current_version": 10,
-  "total_iterations": 1,
+  "current_version": 11,
+  "total_iterations": 2,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -31,6 +31,30 @@
       ],
       "version_in": 9,
       "version_out": 10
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "verdict": "Minor Revision",
+      "score": 7.5,
+      "key_issues": [
+        "Cognitive Intelligence component underdeveloped",
+        "Missing engagement with data-driven hydrology/digital twin literature",
+        "Proposition 1 needs formal strengthening or scope/limits",
+        "Third revolution claim needs calibration",
+        "Section 5.3 tradeoffs lack quantitative treatment"
+      ],
+      "actions_taken": [
+        "Expanded Section 7.3 Cognitive Intelligence with concrete operational example and propose-validate interface",
+        "Added Section 8.4: CHS and Data-Driven Approaches complementarity",
+        "Added Proposition 1 scope/limits paragraph (groundwater, stormwater excluded)",
+        "Calibrated third revolution claim with explicit criteria and honest limitations",
+        "Added quantitative P2-P6 tradeoff derivation in Section 5.3",
+        "Replaced generic ML references with water-domain-specific AI references",
+        "Added WSAL transition criteria to Table 6 description"
+      ],
+      "version_in": 10,
+      "version_out": 11
     }
   ]
 }
