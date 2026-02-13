@@ -3,11 +3,20 @@
   "title": "Operational Design Domain Formalization and Software-in-the-Loop Verification for Autonomous Water Network Control",
   "journal": "Control Engineering Practice",
   "authors": "Kaige Chen, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
-  "current_version": 1,
-  "total_iterations": 0,
-  "status": "initial_draft_v1",
+  "current_version": 2,
+  "total_iterations": 1,
+  "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
-  "self_cite_rate": null,
-  "history": []
+  "self_cite_rate": 0.23,
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "§3.5 IEC 61511 alignment (SIL-1 Layer 0, SIL-0 ODD monitor), false alarm analysis (0% VIOLATION FP, 0.8% WARNING w/ hysteresis), 10-pool canal scaling (42-dim ODD, 84 constraints, 0.12ms), ODD monitor computational cost table, safety margin sensitivity (SF sweep 1.0-2.5), adaptive recovery, §6.6 multi-agent ODD composition, 3 new refs"
+    }
+  ]
 }
