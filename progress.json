@@ -9,7 +9,7 @@
   "current_paper": "P1b",
   "papers": {
     "P1a": {"status": "accepted_v16_iter8", "batch": 1},
-    "P1b": {"status": "in_review_v2_iter1", "batch": 1},
+    "P1b": {"status": "in_review_v3_iter2", "batch": 1},
     "P1c": {"status": "existing_draft_v2", "batch": 1},
     "P2A": {"status": "existing_draft_v2", "batch": 1},
     "P-DC": {"status": "not_started", "batch": 2},
