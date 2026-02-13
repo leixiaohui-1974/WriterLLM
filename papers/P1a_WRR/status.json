@@ -3,8 +3,8 @@
   "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
   "journal": "Water Resources Research",
   "authors": "Xiaohui Lei (sole author)",
-  "current_version": 12,
-  "total_iterations": 3,
+  "current_version": 13,
+  "total_iterations": 4,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -80,6 +80,32 @@
       ],
       "version_in": 11,
       "version_out": 12
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "verdict": "Minor Revision",
+      "score": 8.5,
+      "key_issues": [
+        "Persistent absence of numerical validation against Saint-Venant benchmarks",
+        "SCADA integration discussion conceptual but not operational (failure modes, cybersecurity, operator transition)",
+        "Cross-sector transfer claims need quantitative backing (time-scale, reservoir nonlinearity, tolerance bounds)",
+        "WSAL transition criteria not yet measurable (measurement period, intervention definition)",
+        "Open Research statement conditional commitment needs strengthening"
+      ],
+      "actions_taken": [
+        "Added Validation Limitations paragraph at end of Section 6 acknowledging gap and directing to companion paper",
+        "Expanded Section 7.5: threshold reconciliation protocol, cybersecurity acknowledgment (IEC 62443, NIST SP 800-82), operator shadow-mode transition protocol",
+        "Added time-scale qualification for urban pressure zone transfer, reservoir nonlinearity gain-scheduling note",
+        "Revised Prediction 2 with explicit engineering definition of transferability",
+        "Added WSAL measurement protocol (90-day period, intervention definition, scenario weighting, statistical confidence)",
+        "Strengthened Open Research with MIT License, Zenodo DOI commitment, reviewer code access",
+        "Added LQR pedagogical note clarifying MPC as recommended operational approach (m2)",
+        "Qualified Prediction 4 three-year timeline with automotive analogy and caveats (m3)",
+        "Fixed 'optimal' → 'characteristic' buffer fraction inconsistency in Section 6.2 (m4)"
+      ],
+      "version_in": 12,
+      "version_out": 13
     }
   ]
 }
