@@ -3,8 +3,8 @@
   "title": "Model-Based Definition for Water Systems Control: A Dual-Tank Laboratory Demonstration",
   "journal": "Journal of Hydroinformatics",
   "authors": "Kaige Chen, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
-  "current_version": 2,
-  "total_iterations": 1,
+  "current_version": 3,
+  "total_iterations": 2,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -17,6 +17,14 @@
       "verdict": "Major Revision",
       "draft_version": "v01->v02",
       "key_changes": "Scaling roadmap table, industrial deployment discussion, MBD vs traditional comparison, Kalman filter + sensor noise, MPC formulation equations, 5 new references, data availability, prior work expansion"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Digital twin connection (§7.4), community benchmark framing (§7.7+Table 11), abstract updated, waterfall visualization, workforce impact"
     }
   ]
 }
