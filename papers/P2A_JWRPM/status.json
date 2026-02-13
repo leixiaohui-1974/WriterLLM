@@ -3,8 +3,8 @@
   "title": "MAS Architecture + WSAL",
   "journal": "JWRPM (ASCE)",
   "authors": "Xiaohui Lei, Lei Zhang, Shangjun Ye, Chen Ji, Xiaowei Liu, Chao Wang, Hao Wang",
-  "current_version": 5,
-  "total_iterations": 3,
+  "current_version": 6,
+  "total_iterations": 4,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -12,6 +12,7 @@
   "history": [
     {"iteration": 1, "reviewer": "B", "verdict": "Major Revision", "score": 6.5, "version_in": 2, "version_out": 3},
     {"iteration": 2, "reviewer": "C", "verdict": "Minor Revision", "score": 7.5, "version_in": 3, "version_out": 4},
-    {"iteration": 3, "reviewer": "A", "verdict": "Minor Revision", "score": 8, "version_in": 4, "version_out": 5}
+    {"iteration": 3, "reviewer": "A", "verdict": "Minor Revision", "score": 8, "version_in": 4, "version_out": 5},
+    {"iteration": 4, "reviewer": "B", "verdict": "Minor Revision", "score": 8.5, "version_in": 5, "version_out": 6}
   ]
 }

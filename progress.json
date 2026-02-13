@@ -11,7 +11,7 @@
     "P1a": {"status": "accepted_v16_iter8", "batch": 1},
     "P1b": {"status": "accepted_v6_iter7", "batch": 1},
     "P1c": {"status": "accepted_v7_iter7", "batch": 1},
-    "P2A": {"status": "in_review_v5_iter3", "batch": 1},
+    "P2A": {"status": "in_review_v6_iter4", "batch": 1},
     "P-DC": {"status": "not_started", "batch": 2},
     "CKG-1": {"status": "not_started", "batch": 2},
     "CKG-2": {"status": "not_started", "batch": 3},
