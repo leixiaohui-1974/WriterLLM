@@ -3,10 +3,10 @@
   "title": "Operational Design Domain Formalization and Software-in-the-Loop Verification for Autonomous Water Network Control",
   "journal": "Control Engineering Practice",
   "authors": "Kaige Chen, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
-  "current_version": 3,
-  "total_iterations": 2,
+  "current_version": 4,
+  "total_iterations": 3,
   "status": "in_review",
-  "consecutive_accepts": 1,
+  "consecutive_accepts": 2,
   "completed": false,
   "self_cite_rate": 0.22,
   "history": [
@@ -24,7 +24,15 @@
       "score": 7.5,
       "verdict": "Minor Revision",
       "draft_version": "v02->v03",
-      "key_changes": "§6.7 Bayesian ODD refinement (data-driven SF updating), §6.8 safety-certified digital twin, tube MPC comparison, FAIR compliance (Zenodo DOI), ODD visualization (Fig 5), broader impact statement, 2 new refs (Mayne 2005, Rasheed 2020)"
+      "key_changes": "§6.7 Bayesian ODD refinement, §6.8 safety-certified digital twin, tube MPC comparison, FAIR compliance, ODD visualization (Fig 5), broader impact, 2 new refs"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "§3.3.1 dynamics-aware ρ weighting (Eq 11b, Table 2b), Proposition 1 (safety-preserving ODD expansion), explicit binomial likelihood (Eq 16), unified ρ_w notation"
     }
   ]
 }
