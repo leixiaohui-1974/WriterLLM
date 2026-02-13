@@ -1,0 +1,36 @@
+{
+  "paper_id": "P1a",
+  "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
+  "journal": "Water Resources Research",
+  "authors": "Xiaohui Lei (sole author)",
+  "current_version": 10,
+  "total_iterations": 1,
+  "status": "in_review",
+  "consecutive_accepts": 0,
+  "completed": false,
+  "self_cite_rate": 0.16,
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "verdict": "Major Revision",
+      "score": 7,
+      "key_issues": [
+        "No numerical validation against Saint-Venant benchmarks",
+        "SCADA/PLC integration feasibility not addressed",
+        "Muskingum-IDZ duality validity conditions missing",
+        "Self-citation rate needs verification",
+        "Prediction 1 (30% RMS) lacks justification"
+      ],
+      "actions_taken": [
+        "Reformatted Key Points to 3 items ≤140 chars per WRR guidelines",
+        "Shortened Abstract to ~150 words",
+        "Added Section 7.5: Implementation Pathway and SCADA Integration",
+        "Strengthened Open Research statement with code availability",
+        "Verified self-citation rate at ~16%"
+      ],
+      "version_in": 9,
+      "version_out": 10
+    }
+  ]
+}
