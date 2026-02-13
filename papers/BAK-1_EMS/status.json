@@ -3,11 +3,20 @@
   "title": "HydroComponents: An Open-Source Modelica Library for Component-Based Modeling of Water Conveyance Systems",
   "journal": "Environmental Modelling & Software",
   "authors": "Yakai Bai, Xiaohui Lei, Kaige Chen, Bingkuan Yin, Chen Ji, Hao Wang",
-  "current_version": 1,
-  "total_iterations": 0,
-  "status": "initial_draft",
+  "current_version": 2,
+  "total_iterations": 1,
+  "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
-  "self_cite_rate": 0.20,
-  "history": []
+  "self_cite_rate": 0.22,
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.0,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Testing §4.4 (87% coverage, CI), reproducibility §4.5 (Docker), component-level validation §5.4 (SluiceGate/RadialGate), HEC-RAS benchmark, performance §5.5 (scalability to 50 pools), SIC²/CanalCAD comparison, 8 new external references"
+    }
+  ]
 }
