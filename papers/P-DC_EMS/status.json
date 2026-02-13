@@ -4,11 +4,12 @@
   "journal": "Environmental Modelling & Software",
   "authors": "Xiaowei Liu, Xiaohui Lei, Yan Long, Hao Wang",
   "current_version": 5,
-  "total_iterations": 4,
-  "status": "in_review",
-  "consecutive_accepts": 0,
-  "completed": false,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
   "self_cite_rate": 0.14,
+  "final_scores": {"A": 9.0, "B": 9.5, "C": 9.0},
   "history": [
     {
       "iteration": 1,
@@ -41,6 +42,27 @@
       "verdict": "Minor Revision",
       "draft_version": "v04->v05",
       "key_changes": "Industry adoption pathway (3 stages), cost-benefit parametric estimate"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05 (final)"
     }
   ]
 }
