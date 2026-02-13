@@ -3,8 +3,8 @@
   "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
   "journal": "Water Resources Research",
   "authors": "Xiaohui Lei (sole author)",
-  "current_version": 13,
-  "total_iterations": 4,
+  "current_version": 14,
+  "total_iterations": 5,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -106,6 +106,33 @@
       ],
       "version_in": 12,
       "version_out": 13
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "verdict": "Minor Revision",
+      "score": 9,
+      "key_issues": [
+        "Cognitive Intelligence-HDC propose-validate interface underspecified (tuple structure, confidence calibration, watchdog)",
+        "Section 8.4 missing differentiable modeling frontier (neural operators, curriculum learning)",
+        "Prediction 1 (30% RMS) needs grounding in published MPC performance numbers",
+        "Operational singularity naming may confuse AI community (technological singularity)",
+        "Impact Statement missing"
+      ],
+      "actions_taken": [
+        "Formalized propose-validate interface: tuple C = {J_new, g_new, ODD_status}, binary HDC response with diagnostic, confidence calibration per Guo et al. (2017), persistent misclassification watchdog",
+        "Added differentiable modeling paragraph to Section 8.4: neural operators (Li et al., 2021), curriculum learning strategy",
+        "Grounded Prediction 1 with published results: Horváth et al. (2024) 40-60%, van Overloop et al. (2010) 30-50%",
+        "Expanded operational singularity footnote for AI community disambiguation (Kurzweil, 2005)",
+        "Added Impact Statement after Key Points",
+        "Specified MAS communication topology: hierarchical backbone with local mesh for fast disturbance propagation (m1)",
+        "Expanded institutional barriers discussion in Section 9.1 Priority 5 (m2)",
+        "Explained Prediction 3 threshold discrepancy vs. scaling law (m3)",
+        "Added theory-prediction cross-references in Section 9.2 (m4)",
+        "Expanded Acknowledgments for solo author collaborative context (m5)"
+      ],
+      "version_in": 13,
+      "version_out": 14
     }
   ]
 }
