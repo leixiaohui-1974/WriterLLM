@@ -3,12 +3,13 @@
   "title": "cuSVE: A GPU-Parallel Saint-Venant Equation Solver for Real-Time Simulation of Water Conveyance Networks",
   "journal": "Advances in Water Resources",
   "authors": "Zhifeng Huang, Xiaohui Lei, Xiaowei Liu, Chen Ji, Hao Wang",
-  "current_version": 2,
-  "total_iterations": 1,
-  "status": "in_review",
-  "consecutive_accepts": 0,
-  "completed": false,
+  "current_version": 5,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
   "self_cite_rate": 0.20,
+  "final_scores": {"A": 9.0, "B": 9.5, "C": 9.0},
   "history": [
     {
       "iteration": 1,
@@ -16,7 +17,55 @@
       "score": 6.5,
       "verdict": "Major Revision",
       "draft_version": "v01->v02",
-      "key_changes": "Field data validation (10-pool SCADA 28mm), weak scaling analysis (η>85% to 200 pools), tree topology support (§3.4, 20-pool branching benchmark), energy efficiency (Table 9), Software Availability + Docker, GPU hardware comparison, 5 new external refs"
+      "key_changes": "Field data validation (10-pool SCADA 28mm), weak scaling (η>85% to 200 pools), tree topology §3.4, energy efficiency, Software Availability, GPU comparison, 5 new refs"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "§6.4 physics-based GPU vs ML surrogates, §6.5 multi-GPU/cloud scaling, roofline analysis, DeepONet/FNO references"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "§3.3.1 convergence analysis (ρ=Δt/τd), §5.7 temporal order verification (MMS, rate 1.97±0.03)"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "CC 6.0 fallback note, JSON input example in §4.4"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05 (final)",
+      "key_changes": "No revisions required — 3 consecutive accepts"
     }
   ]
 }
