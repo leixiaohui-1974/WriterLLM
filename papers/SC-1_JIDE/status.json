@@ -3,11 +3,20 @@
   "title": "Experimental Validation of the Unified Transfer Function Family and Distributed MPC on a Multi-Pool Canal Flume",
   "journal": "Journal of Irrigation and Drainage Engineering (ASCE)",
   "authors": "Chao Su, Xiaohui Lei, Yakai Bai, Bingkuan Yin, Chen Ji, Hao Wang",
-  "current_version": 1,
-  "total_iterations": 0,
-  "status": "initial_draft",
+  "current_version": 2,
+  "total_iterations": 1,
+  "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
   "self_cite_rate": 0.20,
-  "history": []
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "ASCE benchmark mapping + MAE/IAE metrics (Table 9b), backwater coupling quantification + S25 scenario, field-scale comparison (Table 13, §7.6), Muskingum CI reported, sensor details (stilling wells, Butterworth filter, flowmeter uncertainty), Pool 3 control clarified, DMPC notation aligned, prediction horizon justified, Manning's n measured, 1 new reference (Chow 1959)"
+    }
+  ]
 }
