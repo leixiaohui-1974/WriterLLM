@@ -1,0 +1,13 @@
+{
+  "paper_id": "HZF-1",
+  "title": "cuSVE: A GPU-Parallel Saint-Venant Equation Solver for Real-Time Simulation of Water Conveyance Networks",
+  "journal": "Advances in Water Resources",
+  "authors": "Zhifeng Huang, Xiaohui Lei, Xiaowei Liu, Chen Ji, Hao Wang",
+  "current_version": 1,
+  "total_iterations": 0,
+  "status": "initial_draft",
+  "consecutive_accepts": 0,
+  "completed": false,
+  "self_cite_rate": 0.20,
+  "history": []
+}
