@@ -16,7 +16,7 @@
     "CKG-1": {"status": "accepted_v5_iter7", "batch": 2},
     "CKG-2": {"status": "not_started", "batch": 3},
     "CKG-3": {"status": "not_started", "batch": 4},
-    "BAK-1": {"status": "in_review_v2_iter1", "batch": 2},
+    "BAK-1": {"status": "in_review_v3_iter2", "batch": 2},
     "YBK-1": {"status": "not_started", "batch": 3},
     "SC-1": {"status": "accepted_v5_iter7", "batch": 2},
     "SC-2": {"status": "not_started", "batch": 4},
