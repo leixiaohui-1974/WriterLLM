@@ -3,11 +3,20 @@
   "title": "cuSVE: A GPU-Parallel Saint-Venant Equation Solver for Real-Time Simulation of Water Conveyance Networks",
   "journal": "Advances in Water Resources",
   "authors": "Zhifeng Huang, Xiaohui Lei, Xiaowei Liu, Chen Ji, Hao Wang",
-  "current_version": 1,
-  "total_iterations": 0,
-  "status": "initial_draft",
+  "current_version": 2,
+  "total_iterations": 1,
+  "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
   "self_cite_rate": 0.20,
-  "history": []
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Field data validation (10-pool SCADA 28mm), weak scaling analysis (η>85% to 200 pools), tree topology support (§3.4, 20-pool branching benchmark), energy efficiency (Table 9), Software Availability + Docker, GPU hardware comparison, 5 new external refs"
+    }
+  ]
 }
