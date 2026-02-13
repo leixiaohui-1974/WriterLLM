@@ -3,8 +3,8 @@
   "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
   "journal": "Water Resources Research",
   "authors": "Xiaohui Lei (sole author)",
-  "current_version": 11,
-  "total_iterations": 2,
+  "current_version": 12,
+  "total_iterations": 3,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -55,6 +55,31 @@
       ],
       "version_in": 10,
       "version_out": 11
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "verdict": "Minor Revision",
+      "score": 8,
+      "key_issues": [
+        "Notation inconsistency between Family α and Family β parameters",
+        "Theorem 2 proof is verification by enumeration, not derivation from first principles",
+        "P2-P6 tradeoff derivation has gaps (undefined y_range, unjustified optimality)",
+        "Theorem 3 lacks constructive criterion for model-layer selection",
+        "Lemma 3 linearization validity ranges are engineering rules of thumb"
+      ],
+      "actions_taken": [
+        "Fixed Family β notation: replaced primes with superscript β (τₘβ, τᵈβ)",
+        "Added Remark 1 acknowledging Theorem 2 proof method and identifying open problem",
+        "Tightened P2-P6 tradeoff: defined y_range, reframed as scaling law, added intermediate steps",
+        "Added robustness margin discussion after Theorem 3 with open problem identification",
+        "Added Taylor expansion basis for Lemma 3 validity ranges (sluice gate and pump)",
+        "Added footnote distinguishing CHS 'singularity' from mathematical singularity (m1)",
+        "Changed LQR weight matrix symbol Q→W to avoid collision with flow rate (m4)",
+        "Revised Section 8.4 analogy: Navier-Stokes/turbulence models instead of structural mechanics/FEA (m5)"
+      ],
+      "version_in": 11,
+      "version_out": 12
     }
   ]
 }
