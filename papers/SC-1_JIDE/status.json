@@ -3,12 +3,13 @@
   "title": "Experimental Validation of the Unified Transfer Function Family and Distributed MPC on a Multi-Pool Canal Flume",
   "journal": "Journal of Irrigation and Drainage Engineering (ASCE)",
   "authors": "Chao Su, Xiaohui Lei, Yakai Bai, Bingkuan Yin, Chen Ji, Hao Wang",
-  "current_version": 3,
-  "total_iterations": 2,
-  "status": "in_review",
-  "consecutive_accepts": 0,
-  "completed": false,
+  "current_version": 5,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
   "self_cite_rate": 0.19,
+  "final_scores": {"A": 9.0, "B": 9.5, "C": 9.0},
   "history": [
     {
       "iteration": 1,
@@ -16,7 +17,7 @@
       "score": 6.5,
       "verdict": "Major Revision",
       "draft_version": "v01->v02",
-      "key_changes": "ASCE benchmark mapping + MAE/IAE (Table 9b), backwater coupling + S25, field-scale comparison (Table 13), sensor details, Muskingum CI, notation aligned, prediction horizon justified"
+      "key_changes": "ASCE benchmark mapping + MAE/IAE, backwater coupling + S25, field-scale comparison, sensor details, Muskingum CI, notation aligned"
     },
     {
       "iteration": 2,
@@ -24,7 +25,47 @@
       "score": 7.5,
       "verdict": "Minor Revision",
       "draft_version": "v02->v03",
-      "key_changes": "Digital water/data-driven connections (§7.5), ready-made control models from Muskingum, SCADA integration, benchmark protocol (Table 14, §7.7), Schuurmans added, abstract tightened"
+      "key_changes": "Digital water/data-driven connections, ready-made control models from Muskingum, SCADA integration, benchmark protocol"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Inter-pool coupling quantified during identification, DMPC stability analysis (spectral radius), RLS persistence of excitation"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "NWS/China database citations, controller type in benchmark template"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05 (final)",
+      "key_changes": "No revisions required — 3 consecutive accepts"
     }
   ]
 }
