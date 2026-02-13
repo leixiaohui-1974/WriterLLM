@@ -3,11 +3,13 @@
   "title": "Towards Autonomous Water Networks",
   "journal": "Nature Water",
   "authors": "Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
-  "current_version": 1,
-  "total_iterations": 0,
-  "status": "existing_draft",
+  "current_version": 2,
+  "total_iterations": 1,
+  "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
-  "self_cite_rate": null,
-  "history": []
+  "self_cite_rate": 0.18,
+  "history": [
+    {"iteration": 1, "reviewer": "B", "verdict": "Major Revision", "score": 7, "version_in": 1, "version_out": 2}
+  ]
 }
