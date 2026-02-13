@@ -3,8 +3,8 @@
   "title": "HydroComponents: An Open-Source Modelica Library for Component-Based Modeling of Water Conveyance Systems",
   "journal": "Environmental Modelling & Software",
   "authors": "Yakai Bai, Xiaohui Lei, Kaige Chen, Bingkuan Yin, Chen Ji, Hao Wang",
-  "current_version": 4,
-  "total_iterations": 3,
+  "current_version": 5,
+  "total_iterations": 4,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -33,6 +33,14 @@
       "verdict": "Minor Revision",
       "draft_version": "v03->v04",
       "key_changes": "§4.2.1 IDZ derivation accuracy bounds (Table 2b: As<2%, τd<15%, τm<20%), FMI step size guidance (Table 2c: τd/5 rule), Padé(3,3) delay implementation, FMU initialization (Newton steady-state)"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Docker image size (2.1 GB) and hosting clarification, license compatibility statement (MIT source + GPL runtime)"
     }
   ]
 }
