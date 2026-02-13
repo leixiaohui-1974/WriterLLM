@@ -3,11 +3,20 @@
   "title": "HydroRTP: Simulink Rapid Prototyping Toolbox for Automatic Code Generation of Water Network Controllers",
   "journal": "SoftwareX",
   "authors": "Bingkuan Yin, Xiaohui Lei, Yakai Bai, Chen Ji, Hao Wang",
-  "current_version": 1,
-  "total_iterations": 0,
-  "status": "initial_draft_v1",
+  "current_version": 2,
+  "total_iterations": 1,
+  "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
-  "self_cite_rate": null,
-  "history": []
+  "self_cite_rate": 0.26,
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "§1.1 tool comparison (vs Simulink PLC Coder, Table 3), §2.4 software quality (87 tests, 91% coverage, MISRA-C), §2.5 installation/Zenodo, §3.5 scalability (3-100 pools: WCET, memory, code gen time), 7 new external refs (self-cite 26%)"
+    }
+  ]
 }
