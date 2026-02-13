@@ -10,7 +10,7 @@
   "papers": {
     "P1a": {"status": "accepted_v16_iter8", "batch": 1},
     "P1b": {"status": "accepted_v6_iter7", "batch": 1},
-    "P1c": {"status": "existing_draft_v2", "batch": 1},
+    "P1c": {"status": "in_review_v3_iter1", "batch": 1},
     "P2A": {"status": "existing_draft_v2", "batch": 1},
     "P-DC": {"status": "not_started", "batch": 2},
     "CKG-1": {"status": "not_started", "batch": 2},
