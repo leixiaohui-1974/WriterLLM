@@ -3,76 +3,42 @@
   "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
   "journal": "Water Resources Research",
   "authors": "Xiaohui Lei (sole author)",
-  "current_version": 15,
-  "total_iterations": 6,
+  "current_version": 16,
+  "total_iterations": 7,
   "status": "in_review",
-  "consecutive_accepts": 1,
+  "consecutive_accepts": 2,
   "completed": false,
   "self_cite_rate": 0.16,
   "history": [
+    {"iteration": 1, "reviewer": "B", "verdict": "Major Revision", "score": 7, "version_in": 9, "version_out": 10},
+    {"iteration": 2, "reviewer": "C", "verdict": "Minor Revision", "score": 7.5, "version_in": 10, "version_out": 11},
+    {"iteration": 3, "reviewer": "A", "verdict": "Minor Revision", "score": 8, "version_in": 11, "version_out": 12},
+    {"iteration": 4, "reviewer": "B", "verdict": "Minor Revision", "score": 8.5, "version_in": 12, "version_out": 13},
+    {"iteration": 5, "reviewer": "C", "verdict": "Minor Revision", "score": 9, "version_in": 13, "version_out": 14},
+    {"iteration": 6, "reviewer": "A", "verdict": "Accept", "score": 9, "version_in": 14, "version_out": 15},
     {
-      "iteration": 1,
+      "iteration": 7,
       "reviewer": "B",
-      "verdict": "Major Revision",
-      "score": 7,
-      "version_in": 9,
-      "version_out": 10
-    },
-    {
-      "iteration": 2,
-      "reviewer": "C",
-      "verdict": "Minor Revision",
-      "score": 7.5,
-      "version_in": 10,
-      "version_out": 11
-    },
-    {
-      "iteration": 3,
-      "reviewer": "A",
-      "verdict": "Minor Revision",
-      "score": 8,
-      "version_in": 11,
-      "version_out": 12
-    },
-    {
-      "iteration": 4,
-      "reviewer": "B",
-      "verdict": "Minor Revision",
-      "score": 8.5,
-      "version_in": 12,
-      "version_out": 13
-    },
-    {
-      "iteration": 5,
-      "reviewer": "C",
-      "verdict": "Minor Revision",
-      "score": 9,
-      "version_in": 13,
-      "version_out": 14
-    },
-    {
-      "iteration": 6,
-      "reviewer": "A",
       "verdict": "Accept",
-      "score": 9,
+      "score": 9.5,
       "key_issues": [
-        "Theorem 2 open problem could connect to classical model reduction theory (Antoulas, 2005)",
-        "Propose-validate tuple dimensional consistency (J_new vs standard Q,R parameterization)",
-        "Scaling law f_b* qualifying condition (backwater length ~ pool length assumption)",
-        "DMPC convergence conditions not stated (coupling strength, buffer fraction connection)",
-        "Differentiable IDZ parameter identifiability caveat (τ_m/τ_d correlation)"
+        "Shadow-mode transition: measurement exclusions and intervention classification needed",
+        "DMPC computational budget for 64-pool case with SCADA latencies",
+        "Cybersecurity: Area Agent coordination data as architecture-specific attack surface",
+        "Prediction 2 transient behavior not constrained by settling time tolerance",
+        "WSAL-3 deployment candidate identification"
       ],
       "actions_taken": [
-        "Connected Theorem 2 open problem to balanced truncation/moment matching (Antoulas, 2005)",
-        "Revised propose-validate tuple to standard MPC parameterization (Q_new, R_new, x_ref, bounds)",
-        "Added scaling law qualifying condition: backwater length comparable to pool length",
-        "Added DMPC convergence conditions and P2-P6 tradeoff connection, safe fallback",
-        "Added IDZ parameter identifiability caveat citing Horváth et al. (2024)",
-        "Added forward reference in Theorem 2 to Remark 1 (m2)",
-        "Added Quantitative Metric column to Table 3 with P2-P6 scaling law (m3)"
+        "Clarified shadow-mode: 90 calendar days excluding maintenance, intervention vs boundary event distinction",
+        "Added DMPC coordination overhead calculation (0.5-1.5s per 300s interval)",
+        "Added Area Agent cybersecurity threat vector with anomaly detection recommendation",
+        "Added Prediction 2 transient behavior qualification",
+        "Added South-to-North Water Diversion Middle Route as WSAL-3 pilot candidate",
+        "Added code deposit timeline (60 days post-acceptance)",
+        "Added DMPC stale solution backstop (Layer 0 PLC as ultimate safety)"
       ],
-      "version_in": 14,
-      "version_out": 15
+      "version_in": 15,
+      "version_out": 16
     }
   ]
 }
