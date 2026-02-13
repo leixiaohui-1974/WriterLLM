@@ -3,8 +3,8 @@
   "title": "Model-Based Definition for Water Systems Control: A Dual-Tank Laboratory Demonstration",
   "journal": "Journal of Hydroinformatics",
   "authors": "Kaige Chen, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
-  "current_version": 4,
-  "total_iterations": 3,
+  "current_version": 5,
+  "total_iterations": 4,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -33,6 +33,14 @@
       "verdict": "Minor Revision",
       "draft_version": "v03->v04",
       "key_changes": "Kalman filter Q_k/R_k principled derivation + sensitivity analysis (Table 3b), IDZ parameters at 3 operating points (Table 2b), IDZ validity boundary analysis, valve model regularization, QP solver clarification (mpcActiveSetSolver), gain scheduling limitation"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Conclusions HiL numbers corrected (2.0/3.8 mm with Kalman), cost column added to Table 10"
     }
   ]
 }
