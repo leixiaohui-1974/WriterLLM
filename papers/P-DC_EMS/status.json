@@ -3,8 +3,8 @@
   "title": "Discipline Construction: DfO + MBD + Curriculum",
   "journal": "Environmental Modelling & Software",
   "authors": "Xiaowei Liu, Xiaohui Lei, Yan Long, Hao Wang",
-  "current_version": 4,
-  "total_iterations": 3,
+  "current_version": 5,
+  "total_iterations": 4,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -33,6 +33,14 @@
       "verdict": "Minor Revision",
       "draft_version": "v03->v04",
       "key_changes": "Gramian worst-case evaluation + threshold definition, five-level hierarchy ↔ MBD layer mapping table, IDZ identification method with confidence intervals and sensitivity, Preissmann θ=0.6, ODD ratio as discrete grid, MPC horizon formal citation, data-driven safety qualification"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Industry adoption pathway (3 stages), cost-benefit parametric estimate"
     }
   ]
 }
