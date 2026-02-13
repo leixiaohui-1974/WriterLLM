@@ -3,10 +3,10 @@
   "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
   "journal": "Water Resources Research",
   "authors": "Xiaohui Lei (sole author)",
-  "current_version": 14,
-  "total_iterations": 5,
+  "current_version": 15,
+  "total_iterations": 6,
   "status": "in_review",
-  "consecutive_accepts": 0,
+  "consecutive_accepts": 1,
   "completed": false,
   "self_cite_rate": 0.16,
   "history": [
@@ -15,20 +15,6 @@
       "reviewer": "B",
       "verdict": "Major Revision",
       "score": 7,
-      "key_issues": [
-        "No numerical validation against Saint-Venant benchmarks",
-        "SCADA/PLC integration feasibility not addressed",
-        "Muskingum-IDZ duality validity conditions missing",
-        "Self-citation rate needs verification",
-        "Prediction 1 (30% RMS) lacks justification"
-      ],
-      "actions_taken": [
-        "Reformatted Key Points to 3 items ≤140 chars per WRR guidelines",
-        "Shortened Abstract to ~150 words",
-        "Added Section 7.5: Implementation Pathway and SCADA Integration",
-        "Strengthened Open Research statement with code availability",
-        "Verified self-citation rate at ~16%"
-      ],
       "version_in": 9,
       "version_out": 10
     },
@@ -37,22 +23,6 @@
       "reviewer": "C",
       "verdict": "Minor Revision",
       "score": 7.5,
-      "key_issues": [
-        "Cognitive Intelligence component underdeveloped",
-        "Missing engagement with data-driven hydrology/digital twin literature",
-        "Proposition 1 needs formal strengthening or scope/limits",
-        "Third revolution claim needs calibration",
-        "Section 5.3 tradeoffs lack quantitative treatment"
-      ],
-      "actions_taken": [
-        "Expanded Section 7.3 Cognitive Intelligence with concrete operational example and propose-validate interface",
-        "Added Section 8.4: CHS and Data-Driven Approaches complementarity",
-        "Added Proposition 1 scope/limits paragraph (groundwater, stormwater excluded)",
-        "Calibrated third revolution claim with explicit criteria and honest limitations",
-        "Added quantitative P2-P6 tradeoff derivation in Section 5.3",
-        "Replaced generic ML references with water-domain-specific AI references",
-        "Added WSAL transition criteria to Table 6 description"
-      ],
       "version_in": 10,
       "version_out": 11
     },
@@ -61,23 +31,6 @@
       "reviewer": "A",
       "verdict": "Minor Revision",
       "score": 8,
-      "key_issues": [
-        "Notation inconsistency between Family α and Family β parameters",
-        "Theorem 2 proof is verification by enumeration, not derivation from first principles",
-        "P2-P6 tradeoff derivation has gaps (undefined y_range, unjustified optimality)",
-        "Theorem 3 lacks constructive criterion for model-layer selection",
-        "Lemma 3 linearization validity ranges are engineering rules of thumb"
-      ],
-      "actions_taken": [
-        "Fixed Family β notation: replaced primes with superscript β (τₘβ, τᵈβ)",
-        "Added Remark 1 acknowledging Theorem 2 proof method and identifying open problem",
-        "Tightened P2-P6 tradeoff: defined y_range, reframed as scaling law, added intermediate steps",
-        "Added robustness margin discussion after Theorem 3 with open problem identification",
-        "Added Taylor expansion basis for Lemma 3 validity ranges (sluice gate and pump)",
-        "Added footnote distinguishing CHS 'singularity' from mathematical singularity (m1)",
-        "Changed LQR weight matrix symbol Q→W to avoid collision with flow rate (m4)",
-        "Revised Section 8.4 analogy: Navier-Stokes/turbulence models instead of structural mechanics/FEA (m5)"
-      ],
       "version_in": 11,
       "version_out": 12
     },
@@ -86,24 +39,6 @@
       "reviewer": "B",
       "verdict": "Minor Revision",
       "score": 8.5,
-      "key_issues": [
-        "Persistent absence of numerical validation against Saint-Venant benchmarks",
-        "SCADA integration discussion conceptual but not operational (failure modes, cybersecurity, operator transition)",
-        "Cross-sector transfer claims need quantitative backing (time-scale, reservoir nonlinearity, tolerance bounds)",
-        "WSAL transition criteria not yet measurable (measurement period, intervention definition)",
-        "Open Research statement conditional commitment needs strengthening"
-      ],
-      "actions_taken": [
-        "Added Validation Limitations paragraph at end of Section 6 acknowledging gap and directing to companion paper",
-        "Expanded Section 7.5: threshold reconciliation protocol, cybersecurity acknowledgment (IEC 62443, NIST SP 800-82), operator shadow-mode transition protocol",
-        "Added time-scale qualification for urban pressure zone transfer, reservoir nonlinearity gain-scheduling note",
-        "Revised Prediction 2 with explicit engineering definition of transferability",
-        "Added WSAL measurement protocol (90-day period, intervention definition, scenario weighting, statistical confidence)",
-        "Strengthened Open Research with MIT License, Zenodo DOI commitment, reviewer code access",
-        "Added LQR pedagogical note clarifying MPC as recommended operational approach (m2)",
-        "Qualified Prediction 4 three-year timeline with automotive analogy and caveats (m3)",
-        "Fixed 'optimal' → 'characteristic' buffer fraction inconsistency in Section 6.2 (m4)"
-      ],
       "version_in": 12,
       "version_out": 13
     },
@@ -112,27 +47,32 @@
       "reviewer": "C",
       "verdict": "Minor Revision",
       "score": 9,
-      "key_issues": [
-        "Cognitive Intelligence-HDC propose-validate interface underspecified (tuple structure, confidence calibration, watchdog)",
-        "Section 8.4 missing differentiable modeling frontier (neural operators, curriculum learning)",
-        "Prediction 1 (30% RMS) needs grounding in published MPC performance numbers",
-        "Operational singularity naming may confuse AI community (technological singularity)",
-        "Impact Statement missing"
-      ],
-      "actions_taken": [
-        "Formalized propose-validate interface: tuple C = {J_new, g_new, ODD_status}, binary HDC response with diagnostic, confidence calibration per Guo et al. (2017), persistent misclassification watchdog",
-        "Added differentiable modeling paragraph to Section 8.4: neural operators (Li et al., 2021), curriculum learning strategy",
-        "Grounded Prediction 1 with published results: Horváth et al. (2024) 40-60%, van Overloop et al. (2010) 30-50%",
-        "Expanded operational singularity footnote for AI community disambiguation (Kurzweil, 2005)",
-        "Added Impact Statement after Key Points",
-        "Specified MAS communication topology: hierarchical backbone with local mesh for fast disturbance propagation (m1)",
-        "Expanded institutional barriers discussion in Section 9.1 Priority 5 (m2)",
-        "Explained Prediction 3 threshold discrepancy vs. scaling law (m3)",
-        "Added theory-prediction cross-references in Section 9.2 (m4)",
-        "Expanded Acknowledgments for solo author collaborative context (m5)"
-      ],
       "version_in": 13,
       "version_out": 14
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "verdict": "Accept",
+      "score": 9,
+      "key_issues": [
+        "Theorem 2 open problem could connect to classical model reduction theory (Antoulas, 2005)",
+        "Propose-validate tuple dimensional consistency (J_new vs standard Q,R parameterization)",
+        "Scaling law f_b* qualifying condition (backwater length ~ pool length assumption)",
+        "DMPC convergence conditions not stated (coupling strength, buffer fraction connection)",
+        "Differentiable IDZ parameter identifiability caveat (τ_m/τ_d correlation)"
+      ],
+      "actions_taken": [
+        "Connected Theorem 2 open problem to balanced truncation/moment matching (Antoulas, 2005)",
+        "Revised propose-validate tuple to standard MPC parameterization (Q_new, R_new, x_ref, bounds)",
+        "Added scaling law qualifying condition: backwater length comparable to pool length",
+        "Added DMPC convergence conditions and P2-P6 tradeoff connection, safe fallback",
+        "Added IDZ parameter identifiability caveat citing Horváth et al. (2024)",
+        "Added forward reference in Theorem 2 to Remark 1 (m2)",
+        "Added Quantitative Metric column to Table 3 with P2-P6 scaling law (m3)"
+      ],
+      "version_in": 14,
+      "version_out": 15
     }
   ]
 }
