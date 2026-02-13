@@ -3,12 +3,12 @@
   "title": "Experimental Validation of the Unified Transfer Function Family and Distributed MPC on a Multi-Pool Canal Flume",
   "journal": "Journal of Irrigation and Drainage Engineering (ASCE)",
   "authors": "Chao Su, Xiaohui Lei, Yakai Bai, Bingkuan Yin, Chen Ji, Hao Wang",
-  "current_version": 2,
-  "total_iterations": 1,
+  "current_version": 3,
+  "total_iterations": 2,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
-  "self_cite_rate": 0.20,
+  "self_cite_rate": 0.19,
   "history": [
     {
       "iteration": 1,
@@ -16,7 +16,15 @@
       "score": 6.5,
       "verdict": "Major Revision",
       "draft_version": "v01->v02",
-      "key_changes": "ASCE benchmark mapping + MAE/IAE metrics (Table 9b), backwater coupling quantification + S25 scenario, field-scale comparison (Table 13, §7.6), Muskingum CI reported, sensor details (stilling wells, Butterworth filter, flowmeter uncertainty), Pool 3 control clarified, DMPC notation aligned, prediction horizon justified, Manning's n measured, 1 new reference (Chow 1959)"
+      "key_changes": "ASCE benchmark mapping + MAE/IAE (Table 9b), backwater coupling + S25, field-scale comparison (Table 13), sensor details, Muskingum CI, notation aligned, prediction horizon justified"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Digital water/data-driven connections (§7.5), ready-made control models from Muskingum, SCADA integration, benchmark protocol (Table 14, §7.7), Schuurmans added, abstract tightened"
     }
   ]
 }

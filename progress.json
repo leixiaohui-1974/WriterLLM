@@ -18,7 +18,7 @@
     "CKG-3": {"status": "not_started", "batch": 4},
     "BAK-1": {"status": "not_started", "batch": 2},
     "YBK-1": {"status": "not_started", "batch": 3},
-    "SC-1": {"status": "in_review_v2_iter1", "batch": 2},
+    "SC-1": {"status": "in_review_v3_iter2", "batch": 2},
     "SC-2": {"status": "not_started", "batch": 4},
     "HZF-1": {"status": "not_started", "batch": 2},
     "HZF-2": {"status": "not_started", "batch": 3},
