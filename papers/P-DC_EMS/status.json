@@ -3,12 +3,12 @@
   "title": "Discipline Construction: DfO + MBD + Curriculum",
   "journal": "Environmental Modelling & Software",
   "authors": "Xiaowei Liu, Xiaohui Lei, Yan Long, Hao Wang",
-  "current_version": 2,
-  "total_iterations": 1,
+  "current_version": 3,
+  "total_iterations": 2,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
-  "self_cite_rate": 0.11,
+  "self_cite_rate": 0.14,
   "history": [
     {
       "iteration": 1,
@@ -17,6 +17,14 @@
       "verdict": "Major Revision",
       "draft_version": "v01->v02",
       "key_changes": "Quantified DfO metrics (P1-P5), expanded reference workflow with Saint-Venant/IDZ/MPC/MiL tables, cross-domain MBD comparison, reframed curriculum as educational software infrastructure, genuine Software Availability artifact, 10 new references"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Data-driven/ML positioning (§7.5), digital twin framing (§7.4 expanded), competency framework with Bloom's taxonomy (§5.5+Table 3b), SDG 6 connection, open-source emphasis, Figure 4, 4 new references"
     }
   ]
 }
