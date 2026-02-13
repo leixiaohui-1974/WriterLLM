@@ -4,11 +4,12 @@
   "journal": "Water Resources Research",
   "authors": "Xiaohui Lei (sole author)",
   "current_version": 16,
-  "total_iterations": 7,
-  "status": "in_review",
-  "consecutive_accepts": 2,
-  "completed": false,
+  "total_iterations": 8,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
   "self_cite_rate": 0.16,
+  "final_scores": {"A": 9, "B": 9.5, "C": 9.5},
   "history": [
     {"iteration": 1, "reviewer": "B", "verdict": "Major Revision", "score": 7, "version_in": 9, "version_out": 10},
     {"iteration": 2, "reviewer": "C", "verdict": "Minor Revision", "score": 7.5, "version_in": 10, "version_out": 11},
@@ -16,29 +17,7 @@
     {"iteration": 4, "reviewer": "B", "verdict": "Minor Revision", "score": 8.5, "version_in": 12, "version_out": 13},
     {"iteration": 5, "reviewer": "C", "verdict": "Minor Revision", "score": 9, "version_in": 13, "version_out": 14},
     {"iteration": 6, "reviewer": "A", "verdict": "Accept", "score": 9, "version_in": 14, "version_out": 15},
-    {
-      "iteration": 7,
-      "reviewer": "B",
-      "verdict": "Accept",
-      "score": 9.5,
-      "key_issues": [
-        "Shadow-mode transition: measurement exclusions and intervention classification needed",
-        "DMPC computational budget for 64-pool case with SCADA latencies",
-        "Cybersecurity: Area Agent coordination data as architecture-specific attack surface",
-        "Prediction 2 transient behavior not constrained by settling time tolerance",
-        "WSAL-3 deployment candidate identification"
-      ],
-      "actions_taken": [
-        "Clarified shadow-mode: 90 calendar days excluding maintenance, intervention vs boundary event distinction",
-        "Added DMPC coordination overhead calculation (0.5-1.5s per 300s interval)",
-        "Added Area Agent cybersecurity threat vector with anomaly detection recommendation",
-        "Added Prediction 2 transient behavior qualification",
-        "Added South-to-North Water Diversion Middle Route as WSAL-3 pilot candidate",
-        "Added code deposit timeline (60 days post-acceptance)",
-        "Added DMPC stale solution backstop (Layer 0 PLC as ultimate safety)"
-      ],
-      "version_in": 15,
-      "version_out": 16
-    }
+    {"iteration": 7, "reviewer": "B", "verdict": "Accept", "score": 9.5, "version_in": 15, "version_out": 16},
+    {"iteration": 8, "reviewer": "C", "verdict": "Accept", "score": 9.5, "version_in": 16, "version_out": 16}
   ]
 }
