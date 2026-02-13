@@ -3,8 +3,8 @@
   "title": "Discipline Construction: DfO + MBD + Curriculum",
   "journal": "Environmental Modelling & Software",
   "authors": "Xiaowei Liu, Xiaohui Lei, Yan Long, Hao Wang",
-  "current_version": 3,
-  "total_iterations": 2,
+  "current_version": 4,
+  "total_iterations": 3,
   "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
@@ -25,6 +25,14 @@
       "verdict": "Minor Revision",
       "draft_version": "v02->v03",
       "key_changes": "Data-driven/ML positioning (§7.5), digital twin framing (§7.4 expanded), competency framework with Bloom's taxonomy (§5.5+Table 3b), SDG 6 connection, open-source emphasis, Figure 4, 4 new references"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Gramian worst-case evaluation + threshold definition, five-level hierarchy ↔ MBD layer mapping table, IDZ identification method with confidence intervals and sensitivity, Preissmann θ=0.6, ODD ratio as discrete grid, MPC horizon formal citation, data-driven safety qualification"
     }
   ]
 }
