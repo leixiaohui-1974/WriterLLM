@@ -3,11 +3,20 @@
   "title": "Parallel Quadratic Programming for Distributed Model Predictive Control of Water Conveyance Networks",
   "journal": "Journal of Water Resources Planning and Management",
   "authors": "Zhifeng Huang, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
-  "current_version": 1,
-  "total_iterations": 0,
-  "status": "initial_draft",
+  "current_version": 2,
+  "total_iterations": 1,
+  "status": "in_review",
   "consecutive_accepts": 0,
   "completed": false,
-  "self_cite_rate": 0.0,
-  "history": []
+  "self_cite_rate": 0.23,
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Comparison with OSQP/Gurobi (Table 10), fault tolerance §6.5 (core failure, comm loss, sensor fault), HiL validation on 3-pool flume (Table 11), resource utilization (Table 8), §2.4 coupling strength physical interpretation, §3.6 junction handling, ADMM penalty auto-tuning validation, cybersecurity note, 10 new external refs (self-cite 23%)"
+    }
+  ]
 }
