@@ -1,0 +1,71 @@
+{
+  "paper_id": "BAK-1",
+  "title": "HydroComponents: An Open-Source Modelica Library for Component-Based Modeling of Water Conveyance Systems",
+  "journal": "Environmental Modelling & Software",
+  "authors": "Yakai Bai, Xiaohui Lei, Kaige Chen, Bingkuan Yin, Chen Ji, Hao Wang",
+  "current_version": 5,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
+  "self_cite_rate": 0.19,
+  "final_scores": {"A": 9.0, "B": 9.5, "C": 9.0},
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.0,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Testing §4.4 (87% coverage, CI), reproducibility §4.5 (Docker), component-level validation §5.4 (SluiceGate/RadialGate), HEC-RAS benchmark, performance §5.5 (scalability to 50 pools), SIC²/CanalCAD comparison, 8 new external references"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "§7.4 hybrid physics-ML modeling pathways, digital twin framing in §7.1, §7.5 sustainability plan, WNTR comparison, FAIR compliance, Zenodo DOI, tutorial descriptions, 5 new references"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "§4.2.1 IDZ derivation accuracy bounds (Table 2b: As<2%, τd<15%, τm<20%), FMI step size guidance (Table 2c: τd/5 rule), Padé(3,3) delay implementation, FMU initialization (Newton steady-state)"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Docker image size (2.1 GB) and hosting clarification, license compatibility statement (MIT source + GPL runtime)"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05 (final)",
+      "key_changes": "No revisions required — 3 consecutive accepts"
+    }
+  ]
+}

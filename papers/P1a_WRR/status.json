@@ -1,0 +1,23 @@
+{
+  "paper_id": "P1a",
+  "title": "Cybernetics of Hydro Systems: A Unified Control-Theoretic Framework for Water Network Operations",
+  "journal": "Water Resources Research",
+  "authors": "Xiaohui Lei (sole author)",
+  "current_version": 16,
+  "total_iterations": 8,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
+  "self_cite_rate": 0.16,
+  "final_scores": {"A": 9, "B": 9.5, "C": 9.5},
+  "history": [
+    {"iteration": 1, "reviewer": "B", "verdict": "Major Revision", "score": 7, "version_in": 9, "version_out": 10},
+    {"iteration": 2, "reviewer": "C", "verdict": "Minor Revision", "score": 7.5, "version_in": 10, "version_out": 11},
+    {"iteration": 3, "reviewer": "A", "verdict": "Minor Revision", "score": 8, "version_in": 11, "version_out": 12},
+    {"iteration": 4, "reviewer": "B", "verdict": "Minor Revision", "score": 8.5, "version_in": 12, "version_out": 13},
+    {"iteration": 5, "reviewer": "C", "verdict": "Minor Revision", "score": 9, "version_in": 13, "version_out": 14},
+    {"iteration": 6, "reviewer": "A", "verdict": "Accept", "score": 9, "version_in": 14, "version_out": 15},
+    {"iteration": 7, "reviewer": "B", "verdict": "Accept", "score": 9.5, "version_in": 15, "version_out": 16},
+    {"iteration": 8, "reviewer": "C", "verdict": "Accept", "score": 9.5, "version_in": 16, "version_out": 16}
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "paper_id": "YBK-1",
+  "title": "HydroRTP: Simulink Rapid Prototyping Toolbox for Automatic Code Generation of Water Network Controllers",
+  "journal": "SoftwareX",
+  "authors": "Bingkuan Yin, Xiaohui Lei, Yakai Bai, Chen Ji, Hao Wang",
+  "current_version": 5,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
+  "self_cite_rate": 0.26,
+  "final_scores": {
+    "A": 9.0,
+    "B": 9.5,
+    "C": 9.0
+  },
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "§1.1 tool comparison (vs Simulink PLC Coder, Table 3), §2.4 software quality (87 tests, 91% coverage, MISRA-C), §2.5 installation/Zenodo, §3.5 scalability (3-100 pools: WCET, memory, code gen time), 7 new external refs (self-cite 26%)"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "§4.1 neural/hybrid controller extensibility (LSTM, RL policy block), §4.2 ODD Monitor block (from CKG-2), §4.3 sustainability/community (3 core devs, 4 tutorials), 2 new refs (Garcia 2015, Willard 2022)"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "QP solver convergence handling (20-iter cap, warm-start fallback, safe degradation), optional EKF block (+40% WCET overhead), code generation determinism note"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "License compatibility paragraph (MIT + MATLAB costs), semantic versioning policy (semver.org)"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05",
+      "key_changes": "No changes required"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05",
+      "key_changes": "No changes required"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05",
+      "key_changes": "No changes required"
+    }
+  ]
+}

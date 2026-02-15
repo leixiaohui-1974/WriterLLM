@@ -1,0 +1,71 @@
+{
+  "paper_id": "SC-2",
+  "title": "Integrated OpenModelica-Simulink Toolchain for X-in-the-Loop Verification of Distributed MPC on a Multi-Pool Canal System",
+  "journal": "Journal of Hydrology",
+  "authors": "Chao Su, Xiaohui Lei, Yakai Bai, Bingkuan Yin, Chen Ji, Chao Wang, Hao Wang",
+  "current_version": 5,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
+  "self_cite_rate": 0.23,
+  "final_scores": {"A": 9.0, "B": 9.5, "C": 9.0},
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Field-scale extrapolation table, manual baseline HiL comparison, FMI step-size sensitivity, PLC memory/timing profiling, installation/deployment guide, 4 new references"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Python/CasADi alternative pathway (§7.6), digital twin integration framing, community adoption roadmap, FAIR compliance, self-citation reduced to 23%"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "FMI coupling stability analysis, IDZ identification error propagation to DMPC, ADMM convergence guarantee with model mismatch bounds"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Licensing clarification (MIT + MATLAB), vendor-neutral deployment discussion"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05 (final)",
+      "key_changes": "No revisions required — 3 consecutive accepts"
+    }
+  ]
+}

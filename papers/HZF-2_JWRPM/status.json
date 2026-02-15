@@ -1,0 +1,75 @@
+{
+  "paper_id": "HZF-2",
+  "title": "Parallel Quadratic Programming for Distributed Model Predictive Control of Water Conveyance Networks",
+  "journal": "Journal of Water Resources Planning and Management",
+  "authors": "Zhifeng Huang, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
+  "current_version": 5,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
+  "self_cite_rate": 0.22,
+  "final_scores": {
+    "A": 9.0,
+    "B": 9.5,
+    "C": 9.0
+  },
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "OSQP/Gurobi comparison (Table 10), fault tolerance §6.5, HiL validation (Table 11), resource utilization (Table 8), coupling strength interpretation (§2.4), junction handling (§3.6), 10 new external refs (self-cite 23%)"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "§6.6 neural MPC positioning, §6.7 heterogeneous agent support, convergence theory vs. observed (Table 12), energy per cycle (Table 13), junction notation, 2 new refs (Karg 2020, Chen 2022)"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Remark 1 (constrained QP convergence), ADMM penalty sensitivity (Table 14, Fig 7), expanded Theorem 3 proof, Δh_ref definition, 1 new ref (Nocedal & Wright 2006)"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "§4.4 deployment guide (strategy selection, ε_p tuning, warm-start verification), alternative hardware platforms (Wago, PLCnext)"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05",
+      "key_changes": "No changes required"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05",
+      "key_changes": "No changes required"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05",
+      "key_changes": "No changes required"
+    }
+  ]
+}

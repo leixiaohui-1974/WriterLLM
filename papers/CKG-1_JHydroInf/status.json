@@ -1,0 +1,71 @@
+{
+  "paper_id": "CKG-1",
+  "title": "Model-Based Definition for Water Systems Control: A Dual-Tank Laboratory Demonstration",
+  "journal": "Journal of Hydroinformatics",
+  "authors": "Kaige Chen, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
+  "current_version": 5,
+  "total_iterations": 7,
+  "status": "accepted",
+  "consecutive_accepts": 3,
+  "completed": true,
+  "self_cite_rate": 0.18,
+  "final_scores": {"A": 9.0, "B": 9.5, "C": 9.0},
+  "history": [
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.5,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Scaling roadmap table, industrial deployment discussion, MBD vs traditional comparison, Kalman filter + sensor noise, MPC formulation equations, 5 new references, data availability, prior work expansion"
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Digital twin connection (§7.4), community benchmark framing (§7.7+Table 11), abstract updated, waterfall visualization, workforce impact"
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Kalman filter Q_k/R_k principled derivation + sensitivity analysis (Table 3b), IDZ parameters at 3 operating points (Table 2b), IDZ validity boundary analysis, valve model regularization, QP solver clarification (mpcActiveSetSolver), gain scheduling limitation"
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Conclusions HiL numbers corrected (2.0/3.8 mm with Kalman), cost column added to Table 10"
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.0,
+      "verdict": "Accept",
+      "draft_version": "v05 (no changes)",
+      "key_changes": "No revisions required"
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v05 (final)",
+      "key_changes": "No revisions required — 3 consecutive accepts"
+    }
+  ]
+}
