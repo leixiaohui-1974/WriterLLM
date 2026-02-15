@@ -1,6 +1,6 @@
 {
   "paper_id": "HZF-3",
-  "version": "v20",
+  "version": "v24",
   "state": "pre_submission",
   "consistency_checks": [
     {
@@ -8,28 +8,28 @@
       "anchor": "P1a Definition 2: Sigma=(P,A,S,D,C,O)",
       "hzf3_scope": "Sections 2-3 equations and module mapping",
       "status": "pass",
-      "evidence": "draft_v20.md Section 2 and Section 3"
+      "evidence": "draft_v24.md Section 2 and Section 3"
     },
     {
       "name": "model_family_wording_lock",
       "anchor": "P1a Theorem 2 Family alpha/beta wording",
       "hzf3_scope": "Section 2 equation context only",
       "status": "pass",
-      "evidence": "draft_v20.md Eq. (2) context and bounded-claim policy"
+      "evidence": "draft_v24.md Eq. (2) context and bounded-claim policy"
     },
     {
       "name": "wsal_safety_floor_lock",
       "anchor": "P2A WSAL L0-L5 governance",
       "hzf3_scope": "Sections 4-5 fallback and commissioning policies",
       "status": "pass",
-      "evidence": "draft_v20.md Sections 4.3, 5.1-5.4"
+      "evidence": "draft_v24.md Sections 4.3, 5.1-5.4"
     },
     {
       "name": "mas_hierarchy_naming_lock",
       "anchor": "P2A cloud/area/edge plus L0 safety floor",
       "hzf3_scope": "Sections 3-5 deployment ownership/escalation",
       "status": "pass",
-      "evidence": "draft_v20.md Sections 3.4 and 5.4"
+      "evidence": "draft_v24.md Sections 3.4 and 5.4"
     }
   ],
   "non_regression_assertions": [
@@ -69,7 +69,7 @@
   },
   "evidence_freshness_rule": {
     "path": "consistency_checks[*].evidence",
-    "must_reference_current_draft": "draft_v20.md",
+    "must_reference_current_draft": "draft_v24.md",
     "status": "pass"
   },
   "gate_order_rule": {
@@ -85,11 +85,11 @@
     ],
     "status": "pass"
   },
-  "current_draft": "draft_v20.md",
+  "current_draft": "draft_v24.md",
   "restart_bundle_digests": {
-    "submission_readiness_gate.json": "d616cd84780d0a3782732d3951917306e5b7052edffb7a3f9c38012b478571a2",
-    "status.json": "16c5710a4b724dcb99d0f721130a530fd302b46b076a95bb6baa15f8ca8ab6a3",
-    "progress.json": "aa7cf881046e3d1b42a2d9d4294e39c0fa6e581627218514ea1dc7db42498657",
+    "submission_readiness_gate.json": "7f15ba25f53a2e28338898693affe8d59b019ffeac67c39cdfeae5f22b7baf3f",
+    "status.json": "3abf7458e139b3c6f31430fea758f45038198430648850d121f951e65f4e6e56",
+    "progress.json": "a2f9c0dd1590caf49879ae90cc4c7a53002e89d9e1183cf40b6f5816c48ea735",
     "reference_verification_log.json": "6dfcd4883fa0d55b095c2381b42acb18696517a041f13e28f29cf762282f47a2"
   },
   "digest_rule": {

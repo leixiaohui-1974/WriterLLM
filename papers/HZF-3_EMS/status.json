@@ -3,11 +3,11 @@
   "title": "HydroGraph-GPU: A Graph-to-GPU Digital Twin Engine for Real-Time Water Network Simulation and Control",
   "journal": "Environmental Modelling & Software",
   "authors": "Zhifeng Huang, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
-  "current_version": 20,
-  "total_iterations": 19,
-  "status": "accept",
-  "consecutive_accepts": 19,
-  "completed": false,
+  "current_version": 24,
+  "total_iterations": 23,
+  "status": "accepted",
+  "consecutive_accepts": 23,
+  "completed": true,
   "self_cite_rate": null,
   "history": [
     {
@@ -169,6 +169,38 @@
       "verdict": "Accept",
       "draft_version": "v19->v20",
       "key_changes": "Added canonical fingerprint computation rule (UTF-8 JSON array serialization) and synchronized v20 metadata while keeping equations/API/SLA and blocker semantics unchanged."
+    },
+    {
+      "iteration": 20,
+      "reviewer": "C",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v20->v21",
+      "key_changes": "Lifecycle-completion archival sync: preserved technical content, updated machine-readable state, and marked iteration-20 loop completion."
+    },
+    {
+      "iteration": 21,
+      "reviewer": "A",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v21->v22",
+      "key_changes": "Resolved stale version literals in completion snapshot and synchronized v22 machine-readable audit artifacts without technical content changes."
+    },
+    {
+      "iteration": 22,
+      "reviewer": "B",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v22->v23",
+      "key_changes": "Aligned prose gate order and current_draft pointer with machine-readable artifacts; synchronized v23 metadata without technical content changes."
+    },
+    {
+      "iteration": 23,
+      "reviewer": "C",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v23->v24",
+      "key_changes": "Removed remaining stale draft example literal and synchronized v24 machine-readable artifacts without technical content changes."
     }
   ]
 }
