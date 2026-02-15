@@ -1,12 +1,12 @@
 {
   "project": "CHS Paper System",
   "total_papers": 25,
-  "completed": 17,
+  "completed": 18,
   "in_progress": 1,
-  "not_started": 3,
+  "not_started": 2,
   "published": 4,
   "current_batch": 4,
-  "current_paper": "HZF-3",
+  "current_paper": "P2E",
   "papers": {
     "P1a": {
       "status": "accepted_v16_iter8",
@@ -65,7 +65,7 @@
       "batch": 3
     },
     "HZF-3": {
-      "status": "accept_v20_iter19_pre_submission",
+      "status": "accepted_v24_iter23_completed",
       "batch": 4
     },
     "P2B": {
@@ -73,7 +73,7 @@
       "batch": 3
     },
     "P2E": {
-      "status": "not_started",
+      "status": "draft_v03_iter2_minor_revision_in_progress",
       "batch": 4
     },
     "P2C": {

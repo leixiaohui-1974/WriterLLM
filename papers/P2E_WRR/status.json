@@ -1,0 +1,37 @@
+{
+  "paper_id": "P2E",
+  "title": "From ODD Expansion to WSAL-2→3 Transition in Shaping Hydropower",
+  "journal": "Water Resources Research / Control Engineering Practice",
+  "current_version": 3,
+  "total_iterations": 2,
+  "status": "minor_revision",
+  "consecutive_accepts": 1,
+  "completed": false,
+  "self_cite_rate": null,
+  "history": [
+    {
+      "iteration": 0,
+      "reviewer": null,
+      "score": null,
+      "verdict": "Draft Initialized",
+      "draft_version": "v01",
+      "key_changes": "Initialized P2E draft skeleton with CHS-consistent equations, WSAL-2→3 scope, and ODD/xIL governance placeholders."
+    },
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 7.4,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Added ODD go/no-go gates, measurable WSAL-2→3 criteria, minimal evidence package, bounded fallback requirement, and scope boundary statement."
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 8.2,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Added bounded contribution statement, WSAL transition governance matrix, and cross-paper linkage notes while preserving equations/symbols."
+    }
+  ]
+}
