@@ -1,0 +1,44 @@
+{
+  "paper_id": "HZF-3",
+  "version": "v07",
+  "last_updated": "2026-02-15",
+  "records": [
+    {
+      "id": "lei2025a_internal",
+      "source": "project_anchor",
+      "check_date": "2026-02-15",
+      "verifier": "agent",
+      "status": "verified_internal",
+      "notes": "Internal anchor record; external metadata verification pending"
+    },
+    {
+      "id": "lei2025b_internal",
+      "source": "project_anchor",
+      "check_date": "2026-02-15",
+      "verifier": "agent",
+      "status": "verified_internal",
+      "notes": "Internal anchor record; external metadata verification pending"
+    },
+    {
+      "id": "lei2025c_internal",
+      "source": "project_anchor",
+      "check_date": "2026-02-15",
+      "verifier": "agent",
+      "status": "verified_internal",
+      "notes": "Internal anchor record; external metadata verification pending"
+    },
+    {
+      "id": "lei2025d_internal",
+      "source": "project_anchor",
+      "check_date": "2026-02-15",
+      "verifier": "agent",
+      "status": "verified_internal",
+      "notes": "Internal anchor record; external metadata verification pending"
+    }
+  ],
+  "external_reference_intake": {
+    "status": "pending",
+    "reason": "network/proxy constrained environment during this run",
+    "policy": "Unverified external citations are excluded from evidence-critical claims"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "paper_id": "HZF-3",
+  "version": "v20",
+  "state": "pre_submission",
+  "gates": [
+    {
+      "name": "evidence_monitor_pass",
+      "status": "pass",
+      "evidence": "Section 4.7 traceability matrix + runtime trace bundle"
+    },
+    {
+      "name": "governance_policy_validated",
+      "status": "pass",
+      "evidence": "Sections 5.1-5.4 runbook/SLA/fail-safe policies"
+    },
+    {
+      "name": "terminology_lock_p1a_p2a",
+      "status": "pass",
+      "evidence": "Section 7.1 terminology gate statement"
+    },
+    {
+      "name": "audit_artifacts_consistent",
+      "status": "pass",
+      "evidence": "status.json + progress.json + reference_verification_log.json + cross_paper_consistency_hzf3.json"
+    },
+    {
+      "name": "consistency_evidence_freshness",
+      "status": "pass",
+      "evidence": "cross_paper_consistency_hzf3.json evidence_freshness_rule.status=pass"
+    },
+    {
+      "name": "restart_bundle_digest_integrity",
+      "status": "pass",
+      "evidence": "cross_paper_consistency_hzf3.json restart_bundle_digests + digest_rule.status=pass"
+    },
+    {
+      "name": "external_reference_verification",
+      "status": "blocked",
+      "evidence": "reference_verification_log.json external_reference_intake.status=pending",
+      "blocker_reason": "environment-level network/proxy constraints during this run"
+    }
+  ],
+  "restart_bundle": [
+    "papers/HZF-3_EMS/submission_readiness_gate.json",
+    "papers/HZF-3_EMS/cross_paper_consistency_hzf3.json",
+    "papers/HZF-3_EMS/status.json",
+    "progress.json",
+    "papers/HZF-3_EMS/reference_verification_log.json"
+  ],
+  "gate_order_rule": {
+    "status": "pass",
+    "evidence": "stable gate order enforced for deterministic replay (including digest gate)"
+  },
+  "gate_sequence_fingerprint": {
+    "algorithm": "sha256",
+    "value": "06dab5029d01b0f74f8dcad17311b522368b733bd74abbd37833dd053fd0175b",
+    "source": "submission_readiness_gate.json::gates[*].name",
+    "canonicalization": "utf8_json_array_no_whitespace"
+  }
+}
