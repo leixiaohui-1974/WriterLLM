@@ -1,0 +1,122 @@
+{
+  "paper_id": "HZF-3",
+  "version": "v20",
+  "state": "pre_submission",
+  "consistency_checks": [
+    {
+      "name": "chs_six_tuple_lock",
+      "anchor": "P1a Definition 2: Sigma=(P,A,S,D,C,O)",
+      "hzf3_scope": "Sections 2-3 equations and module mapping",
+      "status": "pass",
+      "evidence": "draft_v20.md Section 2 and Section 3"
+    },
+    {
+      "name": "model_family_wording_lock",
+      "anchor": "P1a Theorem 2 Family alpha/beta wording",
+      "hzf3_scope": "Section 2 equation context only",
+      "status": "pass",
+      "evidence": "draft_v20.md Eq. (2) context and bounded-claim policy"
+    },
+    {
+      "name": "wsal_safety_floor_lock",
+      "anchor": "P2A WSAL L0-L5 governance",
+      "hzf3_scope": "Sections 4-5 fallback and commissioning policies",
+      "status": "pass",
+      "evidence": "draft_v20.md Sections 4.3, 5.1-5.4"
+    },
+    {
+      "name": "mas_hierarchy_naming_lock",
+      "anchor": "P2A cloud/area/edge plus L0 safety floor",
+      "hzf3_scope": "Sections 3-5 deployment ownership/escalation",
+      "status": "pass",
+      "evidence": "draft_v20.md Sections 3.4 and 5.4"
+    }
+  ],
+  "non_regression_assertions": [
+    "abstract_unchanged_from_v10",
+    "equations_sections_2_to_5_unchanged_in_substance",
+    "bounded_claim_conclusion_unchanged",
+    "pre_submission_blocker_external_reference_verification_unchanged"
+  ],
+  "restart_bundle": [
+    "papers/HZF-3_EMS/cross_paper_consistency_hzf3.json",
+    "papers/HZF-3_EMS/submission_readiness_gate.json",
+    "papers/HZF-3_EMS/reference_verification_log.json",
+    "papers/HZF-3_EMS/status.json",
+    "progress.json"
+  ],
+  "schema_lock": {
+    "top_level_required": [
+      "paper_id",
+      "version",
+      "state",
+      "consistency_checks",
+      "non_regression_assertions",
+      "restart_bundle"
+    ],
+    "check_level_required": [
+      "name",
+      "anchor",
+      "hzf3_scope",
+      "status",
+      "evidence"
+    ]
+  },
+  "cross_file_alignment": {
+    "field": "state",
+    "must_equal": "papers/HZF-3_EMS/submission_readiness_gate.json::state",
+    "status": "pass"
+  },
+  "evidence_freshness_rule": {
+    "path": "consistency_checks[*].evidence",
+    "must_reference_current_draft": "draft_v20.md",
+    "status": "pass"
+  },
+  "gate_order_rule": {
+    "path": "submission_readiness_gate.json::gates[*].name",
+    "expected_order": [
+      "evidence_monitor_pass",
+      "governance_policy_validated",
+      "terminology_lock_p1a_p2a",
+      "audit_artifacts_consistent",
+      "consistency_evidence_freshness",
+      "restart_bundle_digest_integrity",
+      "external_reference_verification"
+    ],
+    "status": "pass"
+  },
+  "current_draft": "draft_v20.md",
+  "restart_bundle_digests": {
+    "submission_readiness_gate.json": "d616cd84780d0a3782732d3951917306e5b7052edffb7a3f9c38012b478571a2",
+    "status.json": "16c5710a4b724dcb99d0f721130a530fd302b46b076a95bb6baa15f8ca8ab6a3",
+    "progress.json": "aa7cf881046e3d1b42a2d9d4294e39c0fa6e581627218514ea1dc7db42498657",
+    "reference_verification_log.json": "6dfcd4883fa0d55b095c2381b42acb18696517a041f13e28f29cf762282f47a2"
+  },
+  "digest_rule": {
+    "algorithm": "sha256",
+    "scope": "restart_bundle_excluding_self",
+    "status": "pass"
+  },
+  "gate_order_sync_rule": {
+    "when_new_gate_added": "update_order_declarations_in_same_version",
+    "status": "pass"
+  },
+  "gate_sequence_fingerprint": {
+    "algorithm": "sha256",
+    "value": "06dab5029d01b0f74f8dcad17311b522368b733bd74abbd37833dd053fd0175b",
+    "source": "submission_readiness_gate.json::gates[*].name",
+    "canonicalization": "utf8_json_array_no_whitespace"
+  },
+  "fingerprint_alignment": {
+    "with": "submission_readiness_gate.json::gate_sequence_fingerprint.value",
+    "status": "pass"
+  },
+  "fingerprint_source_binding": {
+    "canonical_source": "submission_readiness_gate.json::gates[*].name",
+    "status": "pass"
+  },
+  "fingerprint_canonicalization_rule": {
+    "serialization": "utf8_json_array_no_whitespace",
+    "status": "pass"
+  }
+}

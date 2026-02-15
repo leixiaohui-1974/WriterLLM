@@ -1,0 +1,174 @@
+{
+  "paper_id": "HZF-3",
+  "title": "HydroGraph-GPU: A Graph-to-GPU Digital Twin Engine for Real-Time Water Network Simulation and Control",
+  "journal": "Environmental Modelling & Software",
+  "authors": "Zhifeng Huang, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
+  "current_version": 20,
+  "total_iterations": 19,
+  "status": "accept",
+  "consecutive_accepts": 19,
+  "completed": false,
+  "self_cite_rate": null,
+  "history": [
+    {
+      "iteration": 0,
+      "reviewer": null,
+      "score": null,
+      "verdict": "Draft Initialized",
+      "draft_version": "v01",
+      "key_changes": "Created initial EMS-format manuscript scaffold."
+    },
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 6.8,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Removed unverified hard claims/URL assumptions, added reproducibility protocol, fallback-mode engineering details, API error contract, and limitations section."
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 7.6,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Added two-axis novelty framing, WSAL governance/escalation policy, benchmark acceptance criteria, compatibility and artifact-retention policies, and cross-paper linkage map."
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.2,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Added theoretical-boundary statement, model-layer usage mapping, symbol consistency checklist, CHS element-module mapping, deterministic boundary update order, and bounded scope-of-claims section."
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.6,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Added deployment readiness checklist, minimum observability policy, pilot go/no-go mapping, artifact manifest schema, and compact operational risk register."
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 8.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v05->v06",
+      "key_changes": "Added reference-verification workflow/status transparency, citation-governance fields, bounded claim dependence on verified evidence, and submission-ready bibliography transition path."
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.1,
+      "verdict": "Minor Revision",
+      "draft_version": "v06->v07",
+      "key_changes": "Fixed version-label consistency, added machine-readable reference verification ledger, linked deterministic restart artifacts, and clarified internal-anchor vs external-verification scope."
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.2,
+      "verdict": "Minor Revision",
+      "draft_version": "v07->v08",
+      "key_changes": "Added commissioning runbook, incident severity ownership/SLA table, acceptance-to-monitor traceability matrix, compounded-fault fail-safe policy, and post-incident replay package requirement."
+    },
+    {
+      "iteration": 8,
+      "reviewer": "C",
+      "score": 9.3,
+      "verdict": "Accept",
+      "draft_version": "v08->v09",
+      "key_changes": "Added submission-readiness checklist with explicit pre-submission gate, terminology lock, and deterministic restart artifact pointer; preserved bounded claim language."
+    },
+    {
+      "iteration": 9,
+      "reviewer": "A",
+      "score": 9.4,
+      "verdict": "Accept",
+      "draft_version": "v09->v10",
+      "key_changes": "Added machine-readable submission gate artifact, explicit gate pass/blocked semantics, and deterministic restart linkage for pre-submission evaluation."
+    },
+    {
+      "iteration": 10,
+      "reviewer": "C",
+      "score": 9.5,
+      "verdict": "Accept",
+      "draft_version": "v10->v11",
+      "key_changes": "Added cross-paper consistency snapshot, machine-readable consistency artifact, and explicit linkage to deterministic restart bundle while keeping pre-submission blocker unchanged."
+    },
+    {
+      "iteration": 11,
+      "reviewer": "A",
+      "score": 9.6,
+      "verdict": "Accept",
+      "draft_version": "v11->v12",
+      "key_changes": "Added consistency artifact schema-lock note and explicit cross-file state-alignment rule, while keeping equations, API/SLA, and pre-submission blocker semantics unchanged."
+    },
+    {
+      "iteration": 12,
+      "reviewer": "B",
+      "score": 9.7,
+      "verdict": "Accept",
+      "draft_version": "v12->v13",
+      "key_changes": "Aligned consistency artifact evidence to current draft version, added evidence-freshness rule, and kept equations/API/SLA and blocker semantics unchanged."
+    },
+    {
+      "iteration": 13,
+      "reviewer": "C",
+      "score": 9.8,
+      "verdict": "Accept",
+      "draft_version": "v13->v14",
+      "key_changes": "Added gate-order determinism rule and synchronized v14 audit metadata while keeping equations/API/SLA and blocker semantics unchanged."
+    },
+    {
+      "iteration": 14,
+      "reviewer": "A",
+      "score": 9.8,
+      "verdict": "Accept",
+      "draft_version": "v14->v15",
+      "key_changes": "Removed stale draft literals, added current_draft pointer for machine audit, and synchronized v15 metadata without changing equations/API/SLA or blocker semantics."
+    },
+    {
+      "iteration": 15,
+      "reviewer": "B",
+      "score": 9.9,
+      "verdict": "Accept",
+      "draft_version": "v15->v16",
+      "key_changes": "Added restart-bundle SHA-256 digest metadata and digest integrity gate, while keeping equations/API/SLA and blocked-gate semantics unchanged."
+    },
+    {
+      "iteration": 16,
+      "reviewer": "C",
+      "score": 9.9,
+      "verdict": "Accept",
+      "draft_version": "v16->v17",
+      "key_changes": "Synchronized gate-order declarations to include digest integrity gate and added anti-drift rule while keeping equations/API/SLA and blocker semantics unchanged."
+    },
+    {
+      "iteration": 17,
+      "reviewer": "A",
+      "score": 9.9,
+      "verdict": "Accept",
+      "draft_version": "v17->v18",
+      "key_changes": "Added cross-artifact gate-sequence fingerprint and alignment status while preserving equations/API/SLA and blocked-gate semantics."
+    },
+    {
+      "iteration": 18,
+      "reviewer": "B",
+      "score": 9.9,
+      "verdict": "Accept",
+      "draft_version": "v18->v19",
+      "key_changes": "Added fingerprint-source binding to canonical gate sequence path and synchronized v19 metadata while keeping equations/API/SLA and blocker semantics unchanged."
+    },
+    {
+      "iteration": 19,
+      "reviewer": "C",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v19->v20",
+      "key_changes": "Added canonical fingerprint computation rule (UTF-8 JSON array serialization) and synchronized v20 metadata while keeping equations/API/SLA and blocker semantics unchanged."
+    }
+  ]
+}
