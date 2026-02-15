@@ -2,10 +2,10 @@
   "paper_id": "P2E",
   "title": "From ODD Expansion to WSAL-2→3 Transition in Shaping Hydropower",
   "journal": "Water Resources Research / Control Engineering Practice",
-  "current_version": 3,
-  "total_iterations": 2,
+  "current_version": 11,
+  "total_iterations": 10,
   "status": "minor_revision",
-  "consecutive_accepts": 1,
+  "consecutive_accepts": 9,
   "completed": false,
   "self_cite_rate": null,
   "history": [
@@ -32,6 +32,70 @@
       "verdict": "Minor Revision",
       "draft_version": "v02->v03",
       "key_changes": "Added bounded contribution statement, WSAL transition governance matrix, and cross-paper linkage notes while preserving equations/symbols."
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.6,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Added explicit Eq.(2) validity assumptions, model-layer acceptance rule, and falsifiable gate metrics with strict fail condition."
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 8.8,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Added scenario taxonomy with mandatory class coverage, operator go/no-go checklist, and audit traceability table tied to SCADA-valid fallback verification."
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v05->v06",
+      "key_changes": "Added impact-positioning boundary, responsible-autonomy human-role definition, iteration-5 reference verification note, and cross-paper differentiation guardrail."
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.1,
+      "verdict": "Minor Revision",
+      "draft_version": "v06->v07",
+      "key_changes": "Formalized WSAL promotion predicate (Eq.3), mapped Eq.(2) assumptions to gate-failure logic, and added non-compensability safety rule with requalification requirements."
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.2,
+      "verdict": "Minor Revision",
+      "draft_version": "v07->v08",
+      "key_changes": "Added shift-level activation protocol, communication degradation stress envelope, and operational campaign closure criteria with explicit open/acceptable states."
+    },
+    {
+      "iteration": 8,
+      "reviewer": "C",
+      "score": 9.3,
+      "verdict": "Minor Revision",
+      "draft_version": "v08->v09",
+      "key_changes": "Added multi-stakeholder transparency layer, bounded transferability prerequisites, and public-interest safety communication categories (safe success/hold/downgrade)."
+    },
+    {
+      "iteration": 9,
+      "reviewer": "A",
+      "score": 9.4,
+      "verdict": "Minor Revision",
+      "draft_version": "v09->v10",
+      "key_changes": "Added decision-state invariants (PROMOTE/HOLD/DOWNGRADE), contradiction-check audit rule, and minimal executable checklist for Eq.(3) gate aggregation."
+    },
+    {
+      "iteration": 10,
+      "reviewer": "B",
+      "score": 9.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v10->v11",
+      "key_changes": "Added runtime authority handoff protocol, alarm triage/escalation matrix, and mandatory post-shift closure package requirements for audit continuity."
     }
   ]
 }
