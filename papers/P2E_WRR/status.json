@@ -2,10 +2,10 @@
   "paper_id": "P2E",
   "title": "From ODD Expansion to WSAL-2→3 Transition in Shaping Hydropower",
   "journal": "Water Resources Research / Control Engineering Practice",
-  "current_version": 11,
-  "total_iterations": 10,
-  "status": "minor_revision",
-  "consecutive_accepts": 9,
+  "current_version": 19,
+  "total_iterations": 18,
+  "status": "accept",
+  "consecutive_accepts": 17,
   "completed": false,
   "self_cite_rate": null,
   "history": [
@@ -96,6 +96,70 @@
       "verdict": "Minor Revision",
       "draft_version": "v10->v11",
       "key_changes": "Added runtime authority handoff protocol, alarm triage/escalation matrix, and mandatory post-shift closure package requirements for audit continuity."
+    },
+    {
+      "iteration": 11,
+      "reviewer": "C",
+      "score": 9.6,
+      "verdict": "Minor Revision",
+      "draft_version": "v11->v12",
+      "key_changes": "Added transfer-readiness scorecard (TR-1~TR-3), mandatory negative-result disclosure, and bounded novelty statement versus P1a/P2A/P2D to tighten accountability and cross-paper distinction."
+    },
+    {
+      "iteration": 12,
+      "reviewer": "A",
+      "score": 9.7,
+      "verdict": "Minor Revision",
+      "draft_version": "v12->v13",
+      "key_changes": "Introduced freshness constraint for gate evidence (Eq.4), freshness-aware promotion predicate (Eq.5), and monotonic invalidation/requalification rule under configuration drift."
+    },
+    {
+      "iteration": 13,
+      "reviewer": "B",
+      "score": 9.8,
+      "verdict": "Minor Revision",
+      "draft_version": "v13->v14",
+      "key_changes": "Added minimum live-observation window before promotion, rollback SLO constraint (Eq.6) tied to fallback gate failure, and multi-shift handover continuity package requirements."
+    },
+    {
+      "iteration": 14,
+      "reviewer": "C",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v14->v15",
+      "key_changes": "Added public decision reporting template, transfer-governance maturity tiers (T1/T2/T3), and formal non-promotion validity statement (Eq.7) for safety-first accountability."
+    },
+    {
+      "iteration": 15,
+      "reviewer": "A",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v15->v16",
+      "key_changes": "Expanded ProtocolComplete into formal subconditions (Eq.8), defined SafetyPreserved predicate (Eq.9), and added decision-predicate non-contradiction implication for valid non-promotion outcomes (Eq.10)."
+    },
+    {
+      "iteration": 16,
+      "reviewer": "B",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v16->v17",
+      "key_changes": "Added non-authoritative campaign readiness index (Eq.11), post-downgrade requalification window, and campaign handback checklist while preserving Eq.(5) as sole promotion criterion."
+    },
+    {
+      "iteration": 17,
+      "reviewer": "C",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v17->v18",
+      "key_changes": "Added cross-cycle learning ledger requirement, external communication boundary statements, and completion-readiness governance indicator (Eq.12) tied to traceability and archival artifacts."
+    },
+    {
+      "iteration": 18,
+      "reviewer": "A",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v18->v19",
+      "key_changes": "Added traceability completeness predicate (Eq.13), closure non-regression constraint (Eq.14), and pre-final governance readiness implication (Eq.15) to tighten final-stage audit consistency."
     }
   ]
 }
