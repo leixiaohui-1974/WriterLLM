@@ -1,0 +1,53 @@
+{
+  "paper_id": "P2D",
+  "title": "Energy-Aware HDMPC with Digital-Twin xIL for Jiaodong Water Transfer",
+  "journal": "Journal of Hydroinformatics",
+  "current_version": 5,
+  "total_iterations": 4,
+  "status": "minor_revision",
+  "consecutive_accepts": 3,
+  "completed": false,
+  "self_cite_rate": null,
+  "history": [
+    {
+      "iteration": 0,
+      "reviewer": null,
+      "score": null,
+      "verdict": "Draft Initialized",
+      "draft_version": "v01",
+      "key_changes": "Initialized P2D draft with CHS-consistent formulation, energy-aware HDMPC objective skeleton, digital-twin xIL chain, and initial deployment governance gates for Jiaodong transfer."
+    },
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 7.6,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Added executable ODD envelope and violation policy, energy KPI package for campaign assessment, and SCADA-linked operator checklist with role-bound fallback accountability."
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 8.4,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Added bounded contribution statement, explicit transferability prerequisites/non-transfer conditions, and responsible autonomy communication boundary aligned with P2A WSAL semantics."
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.8,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Formalized deployment gate predicates (Eq.4), added freshness-constrained effective gates (Eq.5), and separated authorization implication from dynamics with Eq.(6)."
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 9.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Added rollback SLO constraint (Eq.7), alarm triage-to-authority matrix, and multi-shift handover continuity artifacts linked to fallback gate and closure readiness."
+    }
+  ]
+}

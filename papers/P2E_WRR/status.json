@@ -2,11 +2,11 @@
   "paper_id": "P2E",
   "title": "From ODD Expansion to WSAL-2→3 Transition in Shaping Hydropower",
   "journal": "Water Resources Research / Control Engineering Practice",
-  "current_version": 19,
-  "total_iterations": 18,
-  "status": "accept",
-  "consecutive_accepts": 17,
-  "completed": false,
+  "current_version": 21,
+  "total_iterations": 20,
+  "status": "accept_completed",
+  "consecutive_accepts": 19,
+  "completed": true,
   "self_cite_rate": null,
   "history": [
     {
@@ -160,6 +160,22 @@
       "verdict": "Accept",
       "draft_version": "v18->v19",
       "key_changes": "Added traceability completeness predicate (Eq.13), closure non-regression constraint (Eq.14), and pre-final governance readiness implication (Eq.15) to tighten final-stage audit consistency."
+    },
+    {
+      "iteration": 19,
+      "reviewer": "B",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v19->v20",
+      "key_changes": "Added pre-activation shift-freeze package, alarm-to-authority closure predicate (Eq.16), and deployment-governance compatibility note preserving Eq.(5)."
+    },
+    {
+      "iteration": 20,
+      "reviewer": "C",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v20->v21",
+      "key_changes": "Added responsible dissemination package, publication-readiness predicate (Eq.17), and iteration-exit completion statement for project handoff."
     }
   ]
 }
