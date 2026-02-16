@@ -2,11 +2,11 @@
   "paper_id": "P2D",
   "title": "Energy-Aware HDMPC with Digital-Twin xIL for Jiaodong Water Transfer",
   "journal": "Journal of Hydroinformatics",
-  "current_version": 5,
-  "total_iterations": 4,
-  "status": "minor_revision",
-  "consecutive_accepts": 3,
-  "completed": false,
+  "current_version": 21,
+  "total_iterations": 20,
+  "status": "completed",
+  "consecutive_accepts": 19,
+  "completed": true,
   "self_cite_rate": null,
   "history": [
     {
@@ -48,6 +48,134 @@
       "verdict": "Minor Revision",
       "draft_version": "v04->v05",
       "key_changes": "Added rollback SLO constraint (Eq.7), alarm triage-to-authority matrix, and multi-shift handover continuity artifacts linked to fallback gate and closure readiness."
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.2,
+      "verdict": "Minor Revision",
+      "draft_version": "v05->v06",
+      "key_changes": "Added bounded-impact reporting tuple (Eq.8), negative-transfer registry, and WSAL communication guardrail with non-promotional condition for failed safety/fallback compliance."
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.3,
+      "verdict": "Minor Revision",
+      "draft_version": "v06->v07",
+      "key_changes": "Added safety-priority implication (Eq.9), formal artifact completeness set (Eq.10), and in-manuscript iteration-5 reference verification log."
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.4,
+      "verdict": "Minor Revision",
+      "draft_version": "v07->v08",
+      "key_changes": "Added shift-start authorization timer (Eq.11), formal alarm-closure evidence tuple (Eq.12), and periodic live-shift rollback drill frequency rule."
+    },
+    {
+      "iteration": 8,
+      "reviewer": "C",
+      "score": 9.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v08->v09",
+      "key_changes": "Added cross-site comparability card (Eq.13), structured transferability declaration template, and fixed bounded-autonomy statement for abstract/executive summaries."
+    },
+    {
+      "iteration": 9,
+      "reviewer": "A",
+      "score": 9.6,
+      "verdict": "Minor Revision",
+      "draft_version": "v09->v10",
+      "key_changes": "Added authorization-closure consistency condition (Eq.14), report-package completeness implication (Eq.15), and explicit governance-only scope reaffirmation."
+    },
+    {
+      "iteration": 10,
+      "reviewer": "B",
+      "score": 9.7,
+      "verdict": "Minor Revision",
+      "draft_version": "v10->v11",
+      "key_changes": "Added handover package publication SLA (Eq.16), alarm/build reconciliation rule (Eq.17), and frozen minimal operator checklist for reproducible campaigns."
+    },
+    {
+      "iteration": 11,
+      "reviewer": "C",
+      "score": 9.8,
+      "verdict": "Minor Revision",
+      "draft_version": "v11->v12",
+      "key_changes": "Added submission-summary consistency tuple (Eq.18), cross-audience wording lock, and mandatory transferability caveat for outward summaries."
+    },
+    {
+      "iteration": 12,
+      "reviewer": "A",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v12->v13",
+      "key_changes": "Added submission-release implication (Eq.19), evidence-chain continuity condition (Eq.20), and explicit non-interference statement for governance-only scope."
+    },
+    {
+      "iteration": 13,
+      "reviewer": "B",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v13->v14",
+      "key_changes": "Added operational signoff predicate (Eq.21), rollback-drill recency lock for release eligibility (Eq.22), and mandatory release-time signoff note."
+    },
+    {
+      "iteration": 14,
+      "reviewer": "C",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v14->v15",
+      "key_changes": "Added public-release consistency predicate (Eq.23), mandatory transferability-note attachment rule (Eq.24), and explicit outward-communication governance boundary statement."
+    },
+    {
+      "iteration": 15,
+      "reviewer": "A",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v15->v16",
+      "key_changes": "Added public-release non-compensability implication (Eq.25), release-package provenance implication (Eq.26), and explicit non-interference reaffirmation."
+    },
+    {
+      "iteration": 16,
+      "reviewer": "B",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v16->v17",
+      "key_changes": "Added shift-briefing confirmation deadline (Eq.27), SCADA-release alarm-disposition consistency implication (Eq.28), and mandatory operability note for release packages."
+    },
+    {
+      "iteration": 17,
+      "reviewer": "C",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v17->v18",
+      "key_changes": "Added cross-audience consistency implication (Eq.29), non-transfer disclaimer lock for outward artifacts (Eq.30), and cross-audience communication-governance closure statement."
+    },
+    {
+      "iteration": 18,
+      "reviewer": "A",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v18->v19",
+      "key_changes": "Added release-activation implication under messaging lock (Eq.31), non-compensability implication for transfer disclaimers with audit continuity (Eq.32), and governance-only non-interference reaffirmation."
+    },
+    {
+      "iteration": 19,
+      "reviewer": "B",
+      "score": 9.9,
+      "verdict": "Minor Revision",
+      "draft_version": "v19->v20",
+      "key_changes": "Added shift-handover freshness implication before activation (Eq.33), rollback-route liveness and acknowledgement implication (Eq.34), and operability-only scope reaffirmation."
+    },
+    {
+      "iteration": 20,
+      "reviewer": "C",
+      "score": 10.0,
+      "verdict": "Accept",
+      "draft_version": "v20->v21",
+      "key_changes": "Added completion-readiness implication under bounded communication (Eq.35), final release-package consistency implication (Eq.36), and completion-governance boundary statement; marked paper completed at iteration-20 threshold."
     }
   ]
 }
