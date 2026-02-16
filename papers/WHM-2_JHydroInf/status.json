@@ -1,0 +1,117 @@
+{
+  "paper_id": "WHM-2",
+  "title": "MBD-to-Digital-Twin Deployment Framework for Autonomous Miyun Reservoir Operation",
+  "journal": "Journal of Hydroinformatics",
+  "current_version": 13,
+  "total_iterations": 12,
+  "status": "minor_revision",
+  "consecutive_accepts": 11,
+  "completed": false,
+  "self_cite_rate": null,
+  "history": [
+    {
+      "iteration": 0,
+      "reviewer": null,
+      "score": null,
+      "verdict": "Draft Initialized",
+      "draft_version": "v01",
+      "key_changes": "Initialized WHM-2 with CHS-consistent formulation, seven-layer MBD deployment chain, digital-twin xIL verification path, and four-gate governance skeleton for Miyun Reservoir."
+    },
+    {
+      "iteration": 1,
+      "reviewer": "B",
+      "score": 7.6,
+      "verdict": "Major Revision",
+      "draft_version": "v01->v02",
+      "key_changes": "Added explicit ODD envelope and deterministic violation policy, immutable artifact package for shift traceability, and SCADA pre-activation checklist with role-bound accountability."
+    },
+    {
+      "iteration": 2,
+      "reviewer": "C",
+      "score": 8.4,
+      "verdict": "Minor Revision",
+      "draft_version": "v02->v03",
+      "key_changes": "Added bounded contribution statement, explicit transferability prerequisites/non-transfer conditions, and cross-audience communication guardrail aligned with ODD-bounded reversible autonomy."
+    },
+    {
+      "iteration": 3,
+      "reviewer": "A",
+      "score": 8.8,
+      "verdict": "Minor Revision",
+      "draft_version": "v03->v04",
+      "key_changes": "Formalized deployment authorization predicate (Eq.4), added freshness-constrained effective gates (Eq.5), and added effective-gate implication to AuthReady with governance-only non-interference statement (Eq.6)."
+    },
+    {
+      "iteration": 4,
+      "reviewer": "B",
+      "score": 9.0,
+      "verdict": "Minor Revision",
+      "draft_version": "v04->v05",
+      "key_changes": "Added rollback SLO implication for shift execution (Eq.7), alarm triage linkage to authority states, and multi-shift handover continuity artifact requirements with non-compensability of missing evidence."
+    },
+    {
+      "iteration": 5,
+      "reviewer": "C",
+      "score": 9.2,
+      "verdict": "Minor Revision",
+      "draft_version": "v05->v06",
+      "key_changes": "Added bounded cross-site reporting tuple (Eq.8), mandatory negative-transfer blocker registry, and WSAL external-messaging lock tied to ODD and downgrade evidence."
+    },
+    {
+      "iteration": 6,
+      "reviewer": "A",
+      "score": 9.3,
+      "verdict": "Minor Revision",
+      "draft_version": "v06->v07",
+      "key_changes": "Added scenario-complete gate satisfiability (Eq.9), explicit non-compensability governance axiom, and traceability-preserving xIL evidence update rule (Eq.10)."
+    },
+    {
+      "iteration": 7,
+      "reviewer": "B",
+      "score": 9.4,
+      "verdict": "Minor Revision",
+      "draft_version": "v07->v08",
+      "key_changes": "Added shift-ready admissibility predicate (Eq.11), latency-bounded command validity with HOLD freeze rule (Eq.12), and mandatory shift closure record gating next-shift promotion."
+    },
+    {
+      "iteration": 8,
+      "reviewer": "C",
+      "score": 9.5,
+      "verdict": "Minor Revision",
+      "draft_version": "v08->v09",
+      "key_changes": "Added CHS interoperability tuple (Eq.13), disclosure parity rule for external communication, and minimal reusable package schema for downstream engineering transfer."
+    },
+    {
+      "iteration": 9,
+      "reviewer": "A",
+      "score": 9.6,
+      "verdict": "Minor Revision",
+      "draft_version": "v09->v10",
+      "key_changes": "Added submission-ready implication predicate (Eq.14), monotonic invalidation rule under post-validation drift (Eq.15), and proof-carrying release-note minimum for valid submission claims."
+    },
+    {
+      "iteration": 10,
+      "reviewer": "B",
+      "score": 9.7,
+      "verdict": "Minor Revision",
+      "draft_version": "v10->v11",
+      "key_changes": "Added pre-submission operability audit gate (Eq.16), bounded high-priority alarm backlog freeze rule (Eq.17), and rollback drill recency/environment constraints for audit validity."
+    },
+    {
+      "iteration": 11,
+      "reviewer": "C",
+      "score": 9.8,
+      "verdict": "Minor Revision",
+      "draft_version": "v11->v12",
+      "key_changes": "Added public-claim traceability token (Eq.18), cross-audience consistency subset rule tied to audit-passed claims (Eq.19), and mandatory uncertainty/fallback co-disclosure fields for external benefit reporting."
+    },
+    {
+      "iteration": 12,
+      "reviewer": "A",
+      "score": 9.8,
+      "verdict": "Minor Revision",
+      "draft_version": "v12->v13",
+      "key_changes": "Added completion predicate aligned with CHS exit condition (Eq.20), non-shortcut rule forbidding pre-threshold completion (Eq.21), and minimum completion evidence bundle schema."
+    }
+  ]
+}
