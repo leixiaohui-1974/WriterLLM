@@ -1,8 +1,24 @@
 {
-  "last_check": null,
-  "checks": [],
+  "last_check": "2026-02-17T23:22:02+00:00",
+  "checks": [
+    {
+      "timestamp_utc": "2026-02-17T23:22:02+00:00",
+      "scope": "project_resume_check",
+      "paper_dirs_scanned": 21,
+      "completed_papers_with_status_json": 21,
+      "missing_latest_drafts": [],
+      "terminology_probe_counts": {
+        "HDC": 5,
+        "ODD": 5,
+        "MAS": 5,
+        "WSAL": 4,
+        "xIL": 4
+      },
+      "notes": "Automated continuation check after resume: status files and latest drafts verified where available."
+    }
+  ],
   "known_issues": [],
-  "symbol_consistency": "not_checked",
-  "terminology_consistency": "not_checked",
-  "cross_paper_duplication": "not_checked"
+  "symbol_consistency": "checked_basic",
+  "terminology_consistency": "checked_basic",
+  "cross_paper_duplication": "pending_manual_review"
 }

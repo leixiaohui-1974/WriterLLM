@@ -6,7 +6,7 @@
   "not_started": 0,
   "published": 4,
   "current_batch": 4,
-  "current_paper": "WHM-2",
+  "current_paper": null,
   "papers": {
     "P1a": {
       "status": "accepted_v16_iter8",
@@ -104,5 +104,6 @@
     "Lei2025d": {
       "status": "published"
     }
-  }
+  },
+  "project_status": "all_papers_completed"
 }
