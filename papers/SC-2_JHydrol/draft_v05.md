@@ -157,7 +157,7 @@ __3.2  FMI Coupling Architecture__
 
 The FMI coupling between OpenModelica and Simulink uses the Co-Simulation mode with the following configuration:
 
-__*Table 5. FMI Co-Simulation Configuration*__
+__*Table 5a. FMI Co-Simulation Configuration*__
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
