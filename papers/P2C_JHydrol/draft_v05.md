@@ -288,7 +288,7 @@ Following the ODD formalization methodology (Chen et al., 2026b), the Jiaodong O
 
 $$\mathcal{O} = \{\mathbf{x} : \mathbf{A}_{\text{ODD}} \mathbf{x} \leq \mathbf{b}_{\text{ODD}}\} \tag{9}$$
 
-The 52 ODD constraints are organized as:
+The 53 ODD constraints are organized as:
 
 **Physical constraints** (16): Water levels bounded by pipeline invert and maximum freeboard at each monitoring point ($h_i^{\text{invert}} \leq h_i \leq h_i^{\text{crown}} - 0.3$ m air gap).
 
@@ -416,7 +416,7 @@ __*Table 8. Structural Isomorphism: Jiaodong (α) vs. Shaoping (β)*__
 | Fast layer $\Delta t$ | 2 s | 30 s |
 | Slow layer $\Delta t$ | 3600 s | 300 s |
 | ODD dimensions | 24 (levels + flows) | 9 (levels + power + freq) |
-| ODD constraints | 52 | 36 |
+| ODD constraints | 53 | 36 |
 | Stability mechanism | Terminal cost + integrator clamping | Inherent self-regulation |
 | Distributed consensus | Gauss-Seidel (ParaQP) | ADMM |
 | SiL solver | cuSVE (GPU) | cuSVE (GPU) |
@@ -440,7 +440,7 @@ The Jiaodong system requires three HDMPC layers, while the Shaoping cascade oper
 
 3. **Linear topology**: The 302 km serial pipeline creates 7 coupled segments, each requiring local coordination. The Segment Agent layer handles this inter-station coupling at the hydraulic timescale.
 
-__6.3  Comparison with Existing Pipeline Control__
+__6.4  Comparison with Existing Pipeline Control__
 
 __*Table 9. Comparison with Published Pipeline Control Methods*__
 
@@ -454,9 +454,9 @@ __*Table 9. Comparison with Published Pipeline Control Methods*__
 
 The three-timescale HDMPC achieves higher energy savings than published single- and two-timescale approaches, primarily because the fast pump regulation layer (2 s) captures VFD efficiency opportunities unavailable to methods with sampling periods of minutes or hours. The Jiaodong system is the longest pipeline with three-timescale distributed control reported in the literature.
 
-__6.4  Comparison with Established Pump Scheduling Methods__
+__6.5  Comparison with Established Pump Scheduling Methods__
 
-__*Table 11. HDMPC vs. Established Pump Scheduling Methods (S4, Weekly Pattern)*__
+__*Table 10. HDMPC vs. Established Pump Scheduling Methods (S4, Weekly Pattern)*__
 
 | Method | Energy (MWh/week) | Savings (%) | Computation | Online Adaptation | Reference |
 |--------|-------------------|-------------|-------------|-------------------|-----------|
@@ -468,9 +468,9 @@ __*Table 11. HDMPC vs. Established Pump Scheduling Methods (S4, Weekly Pattern)*
 
 DP achieves slightly better energy performance (8.1% vs. 7.2%) because it optimizes over the full week with perfect demand foresight. GA achieves 7.6% but requires 40 minutes of offline computation. The HDMPC's advantage is real-time operation with automatic disturbance rejection: when an unexpected offtake demand change occurs at hour 37 of S4, HDMPC adapts within one System Agent cycle (1 hour) while offline methods require full recomputation. In practice, the optimal deployment combines DP for weekly scheduling with HDMPC for real-time tracking and disturbance response (Clemmens et al., 2005).
 
-__6.5  Computational Requirements__
+__6.6  Computational Requirements__
 
-__*Table 10. Computational Resource Summary*__
+__*Table 11. Computational Resource Summary*__
 
 | Component | Hardware | CPU Load | RAM | Solve Time |
 |-----------|----------|----------|-----|------------|
@@ -481,7 +481,7 @@ __*Table 10. Computational Resource Summary*__
 
 All agents run on industrial-grade Beckhoff CX2062 IPCs. Station and Segment Agents share hardware at each pump station (total 20% CPU). The System Agent runs on a dedicated IPC at the central dispatch center. Total hardware cost: ¥400,000 ($55,000 USD) for 9 IPCs, representing < 0.1% of the system's annual energy budget (approximately ¥150M).
 
-__6.6  HDMPC vs. Reinforcement Learning__
+__6.7  HDMPC vs. Reinforcement Learning__
 
 Recent advances in reinforcement learning (RL) for water system operations (Castelletti et al., 2012; Kong et al., 2020; Xu et al., 2021; Wang et al., 2022) raise the question of whether model-free RL could replace or complement the model-based HDMPC. For the Jiaodong system at WSAL-2, we argue that model-based HDMPC is the appropriate choice for three reasons:
 
@@ -493,7 +493,7 @@ Recent advances in reinforcement learning (RL) for water system operations (Cast
 
 However, RL offers complementary strengths: (a) handling unmodeled dynamics (biofilm, sedimentation) through learned state representations, (b) potentially superior long-term scheduling by learning from multi-year operational patterns. A promising hybrid architecture—using RL for demand forecasting and warm-starting the System Agent's LP/QP—is identified as future work.
 
-__6.7  Demand Forecast Sensitivity__
+__6.8  Demand Forecast Sensitivity__
 
 The System Agent's 24-hour optimization assumes demand profiles provided 24 h ahead by municipal utilities. Current forecasting uses ARIMA models with weather correction (temperature, precipitation), achieving mean absolute percentage error (MAPE) of 8.2% across the 6 offtake points. Sensitivity of energy savings to forecast accuracy:
 
@@ -509,7 +509,7 @@ __*Table 12. Energy Savings vs. Demand Forecast Accuracy*__
 
 Energy savings degrade gracefully: even at 20% MAPE (well above current 8.2%), the HDMPC still achieves 5.1% savings over rule-based dispatch. The degradation is primarily from sub-optimal tariff-shifting (Layer 3), while the real-time tracking (Layers 1–2) is unaffected by forecast errors. For improved robustness, the System Agent can employ scenario-based optimization with 3 demand scenarios (low/medium/high), trading 0.3% energy optimality for constraint robustness under extreme forecast errors.
 
-__6.8  Commissioning Pathway__
+__6.9  Commissioning Pathway__
 
 Transitioning from the current rule-based dispatch to three-layer HDMPC follows a phased deployment:
 
@@ -521,7 +521,7 @@ Transitioning from the current rule-based dispatch to three-layer HDMPC follows 
 
 This phased approach allows operators to build trust incrementally while providing quantitative acceptance criteria at each gate.
 
-__6.9  Limitations and Future Work__
+__6.10  Limitations and Future Work__
 
 Several limitations are noted:
 

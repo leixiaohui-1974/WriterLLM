@@ -156,7 +156,7 @@ All $N_p$ QPs can be solved concurrently, reducing computation time per outer it
 
 The Jacobi strategy trades convergence speed (more outer iterations) for parallelism. The net speedup over serial relaxation depends on the ratio of QP solve time to communication time.
 
-**Remark 1** (Constrained QP convergence). *The bounds $\rho_{\text{GS}} \leq \kappa^2$ and $\rho_J \leq 2\kappa^2$ hold exactly for the unconstrained problem. For the constrained QP, convergence is guaranteed when the active set is stable across consecutive outer iterations, which holds under the strict complementarity condition (Nocedal & Wright, 2006, Theorem 16.4). In practice, active sets stabilize within 2–3 outer iterations for all benchmarks because: (a) warm-starting provides a near-optimal initial active set, and (b) water network constraints are typically not simultaneously active at multiple neighboring pools. Table 12 confirms observed rates match unconstrained bounds to within 20–30%.*
+**Remark 1** (Constrained QP convergence). *The bounds $\rho_{\text{GS}} \leq \kappa^2$ and $\rho_J \leq 2\kappa^2$ hold exactly for the unconstrained problem. For the constrained QP, convergence is guaranteed when the active set is stable across consecutive outer iterations, which holds under the strict complementarity condition (Nocedal & Wright, 2006, Theorem 16.4). In practice, active sets stabilize within 2–3 outer iterations for all benchmarks because: (a) warm-starting provides a near-optimal initial active set, and (b) water network constraints are typically not simultaneously active at multiple neighboring pools. Table 2 confirms observed rates match unconstrained bounds to within 20–30%.*
 
 __3.3  Strategy 3: ADMM Consensus__
 
@@ -209,7 +209,7 @@ __3.5  Warm-Starting and Early Termination__
 
 Two practical accelerations reduce computation time:
 
-1. **Warm-starting**: At sampling step $k$, the QP is initialized with the shifted solution from step $k-1$: $\Delta u_i^{(0)}(k) = [\Delta u_i^*(1|k-1), \ldots, \Delta u_i^*(N_u-1|k-1), 0]$. This reduces the mean number of active-set iterations from 8.3 to 3.1 (Table 5).
+1. **Warm-starting**: At sampling step $k$, the QP is initialized with the shifted solution from step $k-1$: $\Delta u_i^{(0)}(k) = [\Delta u_i^*(1|k-1), \ldots, \Delta u_i^*(N_u-1|k-1), 0]$. This reduces the mean number of active-set iterations from 8.3 to 3.1 (Table 7).
 
 2. **Early termination**: The outer iteration terminates when the primal residual (boundary mismatch) falls below a threshold $\epsilon_p$:
 
@@ -257,7 +257,7 @@ Three target platforms are evaluated:
 
 The Beckhoff CX2062 industrial PC is the primary target for ParaQP, as it provides 16 cores in a DIN-rail-mount form factor suitable for control room installation. The Siemens S7-1516 serves as the sequential baseline (HydroRTP-generated code, single-core execution). ParaQP's OpenMP implementation is portable to any Linux-based IPC with a C++17 compiler and POSIX threads. Alternative platforms include the Wago PFC200 (2-core ARM, suitable for ≤10 pools), Phoenix Contact PLCnext (4-core Intel Atom, suitable for ≤20 pools), and standard x86 Linux PCs for development and central control room deployment. The Docker container in the Zenodo archive enables testing on any platform before hardware procurement.
 
-__4.4  Deployment Guide__
+__4.3  Deployment Guide__
 
 For practitioners deploying ParaQP on a new canal system:
 
@@ -267,7 +267,7 @@ For practitioners deploying ParaQP on a new canal system:
 
 3. **Warm-start verification**: During the first hour of operation, monitor the mean number of active-set iterations per QP. With functioning warm-start, the mean should be 2–4 iterations. If it exceeds 5, verify that the solution shift logic ($\Delta u^{(0)}(k) = [\Delta u^*(1|k-1), \ldots, 0]$) is correctly implemented in the deployed code.
 
-__4.3  Integration with CHS Tool Chain__
+__4.4  Integration with CHS Tool Chain__
 
 ParaQP integrates with the CHS tool chain at two levels:
 
@@ -302,7 +302,7 @@ __*Table 1. Outer Iteration Count (Mean ± Std, 500 Sampling Steps)*__
 
 Serial relaxation converges fastest (fewest iterations) because it uses the most recent upstream information. Jacobi requires 70–110% more iterations but executes each iteration in parallel. ADMM requires the most iterations but guarantees convergence without the coupling strength restriction $\kappa < 1/\sqrt{2}$ needed by Jacobi.
 
-__*Table 12. Theoretical vs. Observed Convergence Rates*__
+__*Table 2. Theoretical vs. Observed Convergence Rates*__
 
 | System | $\kappa$ | $\rho_{\text{GS,theory}}$ | $\rho_{\text{GS,observed}}$ | $\rho_{J,\text{theory}}$ | $\rho_{J,\text{observed}}$ |
 |--------|---------|--------------------------|----------------------------|--------------------------|---------------------------|
@@ -313,7 +313,7 @@ __*Table 12. Theoretical vs. Observed Convergence Rates*__
 
 Observed convergence rates are consistently 20–30% below the theoretical bounds ($\rho_{\text{GS}} = \kappa^2$, $\rho_J = 2\kappa^2$), confirming that the bounds are conservative but informative for practitioners selecting a decomposition strategy.
 
-__*Table 14. ADMM Penalty Sensitivity (B4, 50-pool)*__
+__*Table 3. ADMM Penalty Sensitivity (B4, 50-pool)*__
 
 | $\rho / \rho^*$ | Outer iterations | Wall time (ms) | Relative to optimal |
 |-----------------|-----------------|----------------|---------------------|
@@ -329,7 +329,7 @@ ADMM convergence is robust within a factor of 3 around $\rho^*$ (wall time withi
 
 __5.3  Wall-Clock Time and Speedup__
 
-__*Table 2. DMPC Computation Time (ms) on Beckhoff CX2062 (16 cores)*__
+__*Table 4. DMPC Computation Time (ms) on Beckhoff CX2062 (16 cores)*__
 
 | System | Sequential (1 core) | Serial GS | Jacobi (16 cores) | ADMM (16 cores) |
 |--------|--------------------|-----------|--------------------|-----------------|
@@ -338,7 +338,7 @@ __*Table 2. DMPC Computation Time (ms) on Beckhoff CX2062 (16 cores)*__
 | B3 (30-pool) | 1,420 | 1,420 | 148 | 186 |
 | B4 (50-pool) | 4,810 | 4,810 | 262 | 340 |
 
-__*Table 3. Speedup over Sequential DMPC*__
+__*Table 5. Speedup over Sequential DMPC*__
 
 | System | Jacobi | ADMM | Ideal ($N_p$ cores) |
 |--------|--------|------|---------------------|
@@ -351,7 +351,7 @@ The Jacobi strategy consistently outperforms ADMM in wall-clock time despite req
 
 __5.4  Real-Time Feasibility__
 
-__*Table 4. Real-Time Feasibility Assessment*__
+__*Table 6. Real-Time Feasibility Assessment*__
 
 | System | $\Delta t$ (s) | $T_{\text{seq}}$ (ms) | $T_{\text{Jacobi}}$ (ms) | Margin | Feasible? |
 |--------|---------------|----------------------|--------------------------|--------|-----------|
@@ -364,7 +364,7 @@ All systems are real-time feasible with Jacobi parallel DMPC. The 50-pool system
 
 __5.5  Warm-Start Effectiveness__
 
-__*Table 5. Effect of Warm-Starting (B4, Jacobi Strategy)*__
+__*Table 7. Effect of Warm-Starting (B4, Jacobi Strategy)*__
 
 | Metric | Cold Start | Warm Start | Improvement |
 |--------|-----------|------------|-------------|
@@ -378,7 +378,7 @@ __5.6  Control Performance Comparison__
 
 To verify that parallel decomposition does not degrade control quality, we compare ParaQP (Jacobi) against centralized MPC (single QP solving the full problem) on benchmark B2 (10-pool Jiaodong) for a 24-hour scenario including step changes, disturbance rejection, and gate maintenance events.
 
-__*Table 6. Control Performance: ParaQP Jacobi vs. Centralized MPC (B2)*__
+__*Table 8. Control Performance: ParaQP Jacobi vs. Centralized MPC (B2)*__
 
 | Metric | Centralized MPC | ParaQP Jacobi | Difference |
 |--------|----------------|---------------|------------|
@@ -395,7 +395,7 @@ __5.7  SiL Verification with cuSVE__
 
 ParaQP is coupled with the cuSVE GPU solver (Huang et al., 2026) for Software-in-the-Loop verification at full Saint-Venant fidelity.
 
-__*Table 7. SiL Verification: ParaQP + cuSVE (B4, 50-pool, 24-hour scenario)*__
+__*Table 9. SiL Verification: ParaQP + cuSVE (B4, 50-pool, 24-hour scenario)*__
 
 | Metric | IDZ model (ParaQP) | SVE model (ParaQP + cuSVE) | Difference |
 |--------|--------------------|-----------------------------|------------|
@@ -410,7 +410,7 @@ The IDZ-to-SVE degradation (3.8 mm RMSE increase) is consistent with the known l
 
 __5.8  Resource Utilization__
 
-__*Table 8. Resource Utilization on Beckhoff CX2062 (16-core)*__
+__*Table 10. Resource Utilization on Beckhoff CX2062 (16-core)*__
 
 | System | RAM/agent (KB) | Total RAM (MB) | CPU util. (%) | QP solve (%) | Comm (%) | Overhead (%) |
 |--------|---------------|----------------|--------------|-------------|---------|-------------|
@@ -421,7 +421,7 @@ __*Table 8. Resource Utilization on Beckhoff CX2062 (16-core)*__
 
 Memory footprint is minimal: even the 50-pool system requires only 3.2 MB of RAM, well within the CX2062's 8 GB capacity.
 
-__*Table 13. Energy per DMPC Cycle (mJ/cycle)*__
+__*Table 11. Energy per DMPC Cycle (mJ/cycle)*__
 
 | Platform | B2 (10-pool) | B4 (50-pool) |
 |----------|-------------|-------------|
@@ -433,7 +433,7 @@ The CX2062 is the most energy-efficient per DMPC cycle due to lower idle power a
 
 __5.9  Scaling Analysis__
 
-__*Table 9. Scaling of Jacobi ParaQP on 16-Core CX2062*__
+__*Table 12. Scaling of Jacobi ParaQP on 16-Core CX2062*__
 
 | Pools | QPs per core | Wall time (ms) | Speedup vs. seq. | Parallel efficiency |
 |-------|-------------|----------------|-------------------|---------------------|
@@ -450,7 +450,7 @@ __5.10  Comparison with General-Purpose QP Solvers__
 
 To assess ParaQP's competitiveness against established solvers, we compare on benchmark B4 (50-pool, 50 consecutive steps) using warm-starting where available.
 
-__*Table 10. ParaQP vs. General-Purpose QP Solvers (B4, 50-pool)*__
+__*Table 13. ParaQP vs. General-Purpose QP Solvers (B4, 50-pool)*__
 
 | Solver | Wall time (ms) | Memory (MB) | Suboptimality | License |
 |--------|---------------|-------------|---------------|---------|
@@ -465,7 +465,7 @@ __5.11  Hardware-in-the-Loop Validation__
 
 To bridge the gap between simulation and field deployment, ParaQP was tested in a hardware-in-the-loop (HiL) configuration: the Beckhoff CX2062 running ParaQP controlled the 3-pool laboratory flume (Su et al., 2026) via Profinet. The test scenario included step changes, disturbance rejection, and a 30-s communication dropout.
 
-__*Table 11. HiL Validation Results (B1, 3-Pool Flume, 2-Hour Test)*__
+__*Table 14. HiL Validation Results (B1, 3-Pool Flume, 2-Hour Test)*__
 
 | Metric | SiL (ParaQP + IDZ) | HiL (ParaQP + Flume) | Difference |
 |--------|--------------------|-----------------------|------------|
@@ -664,6 +664,6 @@ __Figure 4.__ Speedup scaling on Beckhoff CX2062 (16 cores). (a) Wall-clock time
 
 __Figure 5.__ SiL verification with cuSVE. (a) Architecture: ParaQP DMPC controller coupled with cuSVE Saint-Venant plant model. (b) Water level comparison for B4 pool 25: IDZ prediction model (green dashed) vs. SVE verification (red solid). (c) Control action computed by ParaQP under both models.
 
-__Figure 7.__ ADMM penalty sensitivity for B4 (50-pool). Outer iterations (left axis, blue) and wall-clock time (right axis, red) vs. $\rho/\rho^*$. The optimal region $\rho \in [0.5\rho^*, 2\rho^*]$ yields wall time within 12% of minimum. Auto-tuned $\rho$ (green diamond) consistently falls within this region.
-
 __Figure 6.__ Coupling strength $\kappa$ as a function of pool length $L$. Parameters: bottom width $B = 5$ m, $A_s = B \cdot L$; gate linearization coefficient $\alpha = 0.04$ m²/s; tracking-to-control weight ratio $Q_i/R_i = 10$; $\Delta t = 60$ s. Dashed lines indicate convergence thresholds for Jacobi ($\kappa < 1/\sqrt{2} \approx 0.71$) and serial relaxation ($\kappa < 1$). Pools longer than 5 km have $\kappa < 0.1$; pools shorter than 2 km have $\kappa > 0.3$ (ADMM recommended).
+
+__Figure 7.__ ADMM penalty sensitivity for B4 (50-pool). Outer iterations (left axis, blue) and wall-clock time (right axis, red) vs. $\rho/\rho^*$. The optimal region $\rho \in [0.5\rho^*, 2\rho^*]$ yields wall time within 12% of minimum. Auto-tuned $\rho$ (green diamond) consistently falls within this region.

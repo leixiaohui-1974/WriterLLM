@@ -174,11 +174,11 @@ __3.2  MPC Parameters__
 
 The dual-timescale design separates fast power tracking (30 s, Edge Agent) from slow reservoir level management (5 min, Area Agent), consistent with the CHS hierarchical control principle (Lei, 2025a, §6.2; Maciejowski, 2002).
 
-__3.4  Stability of Dual-Timescale HDMPC__
+__3.3  Stability of Dual-Timescale HDMPC__
 
 The 10:1 timescale ratio (30 s Edge vs. 300 s Area) is analyzed using the singular perturbation approach (Christofides et al., 2002): when the fast subsystem (Edge MPC) settles within the slow subsystem's sampling interval, the cascade behaves as a two-timescale system with guaranteed stability. Empirically, the Edge Agent settles step changes in $\leq 3$ sampling steps (90 s), well within the Area Agent's 300 s interval. Edge Agent MPC stability is guaranteed by the terminal cost formulation (Rawlings et al., 2017, §2.4). Area Agent stability follows from the cascade's inherent self-regulation (Family β systems are open-loop stable by definition). The MIQP Area Agent has worst-case solve time of 2.4 s across all 16 scenarios (S16: flood + max dispatch with Pubugou forbidden zone active), well within the 300 s interval.
 
-__3.3  Flood Routing Integration__
+__3.4  Flood Routing Integration__
 
 During flood season (June–September), the Area Agent prediction model includes an explicit flood routing component using the Muskingum method (consistent with CHS Theorem 2, Corollary 1). The routed inflow prediction:
 
@@ -305,7 +305,7 @@ Two boundary scenarios (S14, S16) triggered the VIOLATION zone, activating the a
 - False positive (nominal scenario falsely flagged as VIOLATION): 0/8 (0%)
 - WARNING correctly issued for scenarios approaching boundary: 6/8 nominal + 6/8 boundary = 12/16 (appropriate)
 
-__5.5  Stochastic Robustness Analysis__
+__5.4  Stochastic Robustness Analysis__
 
 To quantify performance under inflow forecast uncertainty, a 200-run Monte Carlo ensemble is conducted for scenario S4 (inflow increase), perturbing the inflow forecast with Gaussian noise ($\sigma = 15\%$ of mean inflow):
 
@@ -320,7 +320,7 @@ __*Table 4b. Monte Carlo Ensemble Results (S4, 200 runs)*__
 
 The 3.5% VIOLATION rate (7/200 runs) occurs in the tail of the inflow distribution (actual inflow >+45% vs. forecast), consistent with the 5% robust constraint margin. Zero physical constraint violations across all 200 runs confirm that the ODD safety factor (SF = 1.5) adequately protects against forecast uncertainty.
 
-__5.6  Structural Isomorphism Validation__
+__5.5  Structural Isomorphism Validation__
 
 To validate the CHS claim that the same architecture works across dynamical families, we compare the Shaoping HDMPC (Family β) with the canal DMPC from Su et al. (2026) (Family α):
 
@@ -422,13 +422,13 @@ The Shaoping cascade (4,470 MW) represents approximately 5.2% of the Sichuan gri
 
 The safety factor SF = 1.5 is based on: (a) IEC 61511 SIL-1 alignment for automated water system control, (b) historical Shaoping data (maximum 5-year level exceedance: 0.4 m; ODD constraint: 0.5 m; effective SF = 1.25, rounded to 1.5), and (c) operator consensus from preliminary WSAL-1 trials.
 
-__6.8  Climate Change and Non-Stationary ODD__
+__6.7  Climate Change and Non-Stationary ODD__
 
 The ODD is calibrated using historical operating data (2019–2025). However, the Dadu River basin is experiencing non-stationary hydrology: analysis of 60-year flow records (1960–2020) shows +8% mean annual inflow increase with +22% increase in peak flood flows, consistent with glacial melt acceleration in the upper catchment. Under RCP 4.5 and 8.5 scenarios, inflow variability is projected to increase by 15–30% by 2050, potentially invalidating the current flood-level ODD boundaries.
 
 The Bayesian ODD refinement approach (Chen et al., 2026b, Proposition 1) provides a systematic pathway for updating ODD boundaries as climate shifts are observed: the safety factor $\text{SF}$ is updated using a posterior distribution estimated from a sliding 10-year window of operational data. We recommend 5-yearly ODD review cycles for the Shaoping cascade, with automated alerts when the observed inflow variability exceeds the calibration period statistics by >20%.
 
-__6.9  ODD Adequacy__
+__6.8  ODD Adequacy__
 
 The 36-constraint ODD (Eq. 11) covers the primary operational envelope but may be incomplete for rare events:
 - Ice formation (winter) affects turbine intake and is not modeled
