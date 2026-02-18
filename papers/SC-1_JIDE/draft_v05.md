@@ -273,7 +273,7 @@ __*Table 9\. DMPC Verification Results*__
 
 All 25 scenarios pass the acceptance criteria\. The worst\-case RMSE \(7\.1 mm, Pool 2\) occurs in scenario S16 \(OP5, step \-10 mm\), where the high\-flow operating point maximizes the IDZ model mismatch\. Scenario S25 \(backwater stress test\) yields Pool 2 RMSE of 5\.8 mm, confirming adequate performance under amplified backwater coupling\.
 
-__*Table 9b\. DMPC Results in ASCE Standard Metrics*__
+__*Table 10\. DMPC Results in ASCE Standard Metrics*__
 
 | ASCE Category | MAE \[mm\] | IAE \[mm·s\] | RMSE \[mm\] | Scenarios |
 |---------------|-----------|-------------|-------------|-----------|
@@ -285,9 +285,9 @@ __*Table 9b\. DMPC Results in ASCE Standard Metrics*__
 
 __6\.2  DMPC vs\. Centralized MPC__
 
-Table 10 compares the DMPC and centralized MPC performance\.
+Table 11 compares the DMPC and centralized MPC performance\.
 
-__*Table 10\. DMPC vs\. Centralized MPC Comparison*__
+__*Table 11\. DMPC vs\. Centralized MPC Comparison*__
 
 | Metric | Centralized | DMPC | Degradation |
 |--------|------------|------|-------------|
@@ -306,9 +306,9 @@ Key observations:
 
 __6\.3  IDZ Model Fidelity Under Closed\-Loop Control__
 
-A distinguishing feature of this study is the assessment of IDZ model fidelity under closed\-loop \(DMPC\) control, not just open\-loop step\-response fitting\. Table 11 reports the one\-step\-ahead prediction error of the IDZ model during closed\-loop DMPC operation across all 24 scenarios\.
+A distinguishing feature of this study is the assessment of IDZ model fidelity under closed\-loop \(DMPC\) control, not just open\-loop step\-response fitting\. Table 12 reports the one\-step\-ahead prediction error of the IDZ model during closed\-loop DMPC operation across all 24 scenarios\.
 
-__*Table 11\. IDZ Model Prediction Error Under Closed\-Loop DMPC*__
+__*Table 12\. IDZ Model Prediction Error Under Closed\-Loop DMPC*__
 
 | Pool | Mean Prediction Error \[mm\] | 95th Percentile \[mm\] | Max \[mm\] |
 |------|----------------------------|-----------------------|-----------|
@@ -343,9 +343,9 @@ For field\-scale systems with more pools and bidirectional coupling \(backwater 
 
 __7\.4  Comparison with Prior Laboratory Studies__
 
-Table 12 compares the present study with prior laboratory canal control experiments\.
+Table 13 compares the present study with prior laboratory canal control experiments\.
 
-__*Table 12\. Comparison with Prior Laboratory Canal Control Studies*__
+__*Table 13\. Comparison with Prior Laboratory Canal Control Studies*__
 
 | Study | System | Pools | Controller | RMSE \[mm\] | IDZ Validation? | Duality Verified? |
 |-------|--------|-------|------------|-------------|-----------------|-------------------|
@@ -357,7 +357,7 @@ __*Table 12\. Comparison with Prior Laboratory Canal Control Studies*__
 
 The present study is the first to validate IDZ across multiple operating points, verify the Muskingum–IDZ duality experimentally, and demonstrate DMPC \(rather than centralized MPC\) on a multi\-pool canal flume\.
 
-In terms of the ASCE benchmark metrics, the overall DMPC MAE of 3\.1 mm is comparable to the best\-performing controllers in the ASCE 2005 test cases \(MAE 2–5 mm for centralized algorithms on similar pool lengths\), though direct comparison is approximate because pool geometry and scale differ\. The ASCE\-format results \(Table 9b\) enable standardized comparison with future studies using the same metric definitions\.
+In terms of the ASCE benchmark metrics, the overall DMPC MAE of 3\.1 mm is comparable to the best\-performing controllers in the ASCE 2005 test cases \(MAE 2–5 mm for centralized algorithms on similar pool lengths\), though direct comparison is approximate because pool geometry and scale differ\. The ASCE\-format results \(Table 10\) enable standardized comparison with future studies using the same metric definitions\.
 
 __7\.5  From Experimental Identification to Operational Deployment__
 
@@ -371,9 +371,9 @@ __SCADA integration__: For operational canals with existing SCADA systems, the s
 
 __7\.6  Scaling to Field Canals__
 
-Table 13 compares the flume parameters with typical field\-scale irrigation canals to illustrate the scaling relationships\.
+Table 14 compares the flume parameters with typical field\-scale irrigation canals to illustrate the scaling relationships\.
 
-__*Table 13\. Flume\-to\-Field Scaling Comparison*__
+__*Table 14\. Flume\-to\-Field Scaling Comparison*__
 
 | Parameter | This Flume | Imperial ID \(USA\) | Haohanquan \(China\) | Scaling Factor |
 |-----------|-----------|---------------------|----------------------|----------------|
@@ -391,7 +391,7 @@ __7\.7  Canal Flume Benchmark Protocol__
 
 Following the community benchmark tradition in canal control \(ASCE test cases; Clemmens et al\., 2005\) and the dual\-tank benchmark proposed by Chen et al\. \(2026, Table 11\), we propose a standardized flume benchmark protocol for the three\-pool configuration\.
 
-__*Table 14\. Canal Flume Benchmark Reporting Template*__
+__*Table 15\. Canal Flume Benchmark Reporting Template*__
 
 | Metric | Unit | Baseline \(this paper\) |
 |--------|------|----------------------|
