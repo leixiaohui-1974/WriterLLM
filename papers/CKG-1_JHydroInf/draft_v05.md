@@ -93,10 +93,10 @@ __*Table 2\. IDZ Parameters at Nominal Operating Point ($h_0 = 25$ cm, $Q_0 = 0.
 | Parameter | Tank 1 | Tank 2 | 95% CI |
 |-----------|--------|--------|--------|
 | $A_s$ \[m²\] | 0\.120 | 0\.120 | ±2% |
-
-Note: For the prismatic tanks, $A_s$ equals the constant water surface area \(0\.40 m × 0\.30 m = 0\.120 m²\)\.
 | $\tau_d$ \[s\] | 8\.5 | 9\.2 | ±4% |
 | $\tau_m$ \[s\] | 3\.1 | 3\.5 | ±6% |
+
+*Note: For the prismatic tanks, $A_s$ equals the constant water surface area \(0\.40 m × 0\.30 m = 0\.120 m²\)\.*
 
 __*Table 2b\. IDZ Parameter Variation Across Operating Points (Tank 1)*__
 

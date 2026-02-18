@@ -45,7 +45,7 @@ __1.1  Comparison with Existing Tools__
 
 MathWorks Simulink PLC Coder generates generic IEC 61131-3 Structured Text from Simulink models but lacks domain-specific support for water systems: no pre-built IDZ plant models, no MPC/DMPC controller blocks tuned for canal dynamics, no model assembly GUI for multi-pool systems, and no automatic verification test generation. HydroRTP uses MATLAB Embedded Coder (rather than PLC Coder) for C code generation, then applies custom ST conversion with vendor-specific optimizations (TIA Portal Openness API for Siemens, L5X format for Allen-Bradley). OpenModelica provides plant model code generation via FMU export (Bai et al., 2026) but does not generate controller code. Ptolemy II (UC Berkeley) provides actor-based design for heterogeneous systems but does not target industrial PLCs. Manual recoding from Simulink to ST remains the most common practice in the water industry but introduces errors, delays, and maintenance overhead.
 
-__*Table 3. Feature Comparison*__
+__*Table 1. Feature Comparison*__
 
 | Feature | HydroRTP | Simulink PLC Coder | Manual Coding |
 |---------|----------|-------------------|---------------|
@@ -134,7 +134,7 @@ __*[Figure 2 about here]*__
 
 __2.4  Software Quality__
 
-__*Table 4. Software Quality Metrics*__
+__*Table 2. Software Quality Metrics*__
 
 | Metric | Value | Tool |
 |--------|-------|------|
@@ -193,9 +193,9 @@ Deployment targets:
 
 __3.3  Verification Results__
 
-Table 1 compares the Simulink simulation with PLC execution for a standard test scenario (simultaneous +5 cm step on all three pool references).
+Table 3 compares the Simulink simulation with PLC execution for a standard test scenario (simultaneous +5 cm step on all three pool references).
 
-__*Table 1. Simulink vs. PLC Verification (3-Pool Flume)*__
+__*Table 3. Simulink vs. PLC Verification (3-Pool Flume)*__
 
 | Metric | Simulink | S7-1516 | AB 5580 | Threshold |
 |--------|----------|---------|---------|-----------|
@@ -218,9 +218,9 @@ The generated PLC code was deployed on the physical 3-pool flume for a 2-hour te
 - 1 disturbance rejection (outflow valve V3 opened 20% at $t = 1800$ s)
 - 1 communication dropout (30 s at $t = 3600$ s)
 
-Results (Table 2):
+Results (Table 4):
 
-__*Table 2. Physical Flume Validation Results*__
+__*Table 4. Physical Flume Validation Results*__
 
 | Metric | MPC on Simulink (SiL) | MPC on S7-1516 (PiL) | Difference |
 |--------|----------------------|---------------------|------------|

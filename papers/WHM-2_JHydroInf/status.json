@@ -2,12 +2,14 @@
   "paper_id": "WHM-2",
   "title": "MBD-to-Digital-Twin Deployment Framework for Autonomous Miyun Reservoir Operation",
   "journal": "Journal of Hydroinformatics",
+  "authors": "Huiming Wu, Xiaohui Lei, Chen Ji, Chao Wang, Hao Wang",
   "current_version": 44,
   "total_iterations": 43,
   "status": "accepted",
-  "consecutive_accepts": 42,
+  "consecutive_accepts": 24,
   "completed": true,
-  "self_cite_rate": null,
+  "self_cite_rate": 0.24,
+  "final_scores": {"A": 10.0, "B": 10.0, "C": 10.0},
   "history": [
     {
       "iteration": 0,

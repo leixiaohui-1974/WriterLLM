@@ -174,7 +174,7 @@ where:
 
 $N_p = 72$ steps (72-hour horizon), and $w_s, w_f, w_e, w_{\text{sp}}, w_{\text{wq}}$ are objective weights.
 
-**Remark 1 (Weight stability)**: Objective weights are updated on a weekly cycle via Bayesian learning from operator overrides (§6.6), with bounded changes $|\Delta w_i| \leq 0.05$ per update. The MPC is warm-started from the previous solution; the terminal cost formulation guarantees feasibility and stability for each fixed weight vector (Rawlings et al., 2017, Theorem 2.19). Since the Pareto frontier is convex in weight space, weight changes produce smooth transitions between operating points, with transient level deviations bounded by $\|H(k) - H^*(k)\| \leq \epsilon_w / \lambda_{\min}(Q_h)$. Empirically, weight perturbations produce < 0.1 m level deviation, settling within 3–4 Reservoir Agent cycles (3–4 hours). The water level bounds $H^{\max}(k)$ are time-varying: flood control level (155.0 m) during June–September, normal pool level (157.5 m) otherwise. The rate constraint $\Delta Q_{\max} = 50$ m³/s per hour is derived from downstream Chaohe River channel analysis: bankfull capacity 1,200 m³/s at Xiahui gauging station (15 km downstream), flood wave attenuation factor 0.83 with 2.5-hour lag. The rate limit ensures that step releases from Miyun produce downstream peak flows below 800 m³/s (67% of bankfull), maintaining a safety margin for coincident local rainfall.
+**Remark 1 (Weight stability)**: Objective weights are updated on a weekly cycle via Bayesian learning from operator overrides (§6.7), with bounded changes $|\Delta w_i| \leq 0.05$ per update. The MPC is warm-started from the previous solution; the terminal cost formulation guarantees feasibility and stability for each fixed weight vector (Rawlings et al., 2017, Theorem 2.19). Since the Pareto frontier is convex in weight space, weight changes produce smooth transitions between operating points, with transient level deviations bounded by $\|H(k) - H^*(k)\| \leq \epsilon_w / \lambda_{\min}(Q_h)$. Empirically, weight perturbations produce < 0.1 m level deviation, settling within 3–4 Reservoir Agent cycles (3–4 hours). The water level bounds $H^{\max}(k)$ are time-varying: flood control level (155.0 m) during June–September, normal pool level (157.5 m) otherwise. The rate constraint $\Delta Q_{\max} = 50$ m³/s per hour is derived from downstream Chaohe River channel analysis: bankfull capacity 1,200 m³/s at Xiahui gauging station (15 km downstream), flood wave attenuation factor 0.83 with 2.5-hour lag. The rate limit ensures that step releases from Miyun produce downstream peak flows below 800 m³/s (67% of bankfull), maintaining a safety margin for coincident local rainfall.
 
 The optimization uses the median inflow forecast $\hat{Q}_{50\%}$ from the Inflow Agent, with robust constraint tightening based on the forecast uncertainty band: $H^{\max}(k)$ is reduced by $\gamma \cdot (\hat{Q}_{95\%}(k) - \hat{Q}_{50\%}(k)) / A_s$, where $\gamma = 1.5$ is the safety factor.
 
@@ -209,7 +209,7 @@ __*Table 3. Agent Communication Protocol*__
 
 The communication architecture uses OPC UA over dedicated fiber-optic network within the reservoir management area, with encrypted VPN tunnel to the Beijing Water Authority and SNWD dispatch center. Fallback: 4G/LTE cellular with automatic switchover.
 
-__3.5  Water Quality Constraints__
+__3.6  Water Quality Constraints__
 
 Miyun is Beijing's primary drinking water source, requiring water quality integration in the MAS control strategy. Three quality parameters are monitored:
 
@@ -329,7 +329,7 @@ __*Table 7. Comparison with Published Reservoir Optimization Methods*__
 
 The MAS-MPC achieves the highest supply improvement (+3.2%) among real-time methods, benefiting from the multi-objective formulation, ensemble inflow forecasting, and the 72-hour rolling horizon that captures weekly demand patterns. Offline methods (SDP, NSGA-II) can achieve better theoretical performance with longer horizons but cannot adapt to real-time forecast updates.
 
-__6.3  Structural Comparison with Serial Systems__
+__6.4  Structural Comparison with Serial Systems__
 
 __*Table 8. Architectural Comparison: Reservoir vs. Serial Systems*__
 
@@ -346,7 +346,7 @@ __*Table 8. Architectural Comparison: Reservoir vs. Serial Systems*__
 
 The ARI values (0.64 with Jiaodong, 0.59 with Shaoping) are lower than the Jiaodong–Shaoping comparison (0.78), reflecting the more fundamental architectural differences between reservoir and serial systems. Nevertheless, the shared CHS elements (ODD framework, WSAL classification, fallback protocol, communication stack, agent hierarchy template) provide 59–64% reuse—a substantial benefit for systematic water system automation.
 
-__6.4  Comparison with Stochastic Programming__
+__6.5  Comparison with Stochastic Programming__
 
 __*Table 9. MAS-MPC vs. Stochastic Optimization Approaches (10-Year, Miyun)*__
 
@@ -359,13 +359,13 @@ __*Table 9. MAS-MPC vs. Stochastic Optimization Approaches (10-Year, Miyun)*__
 
 SDP achieves marginally higher supply reliability (97.5% vs. 97.1%) because it optimizes over the full probability distribution of future inflows. However, SDP requires discretization of the 7-dimensional state space, introducing approximation errors and 8-hour computation time that precludes real-time adaptation. Robust optimization achieves highest ecological compliance (99.1%) but sacrifices supply reliability (96.8%) due to worst-case conservatism. The MAS-MPC provides the best balance of performance and real-time adaptability.
 
-__6.5  Seasonal Operational Constraints__
+__6.6  Seasonal Operational Constraints__
 
 **Sediment**: Miyun receives approximately 2.3 Mt/year of suspended sediment, concentrated during July–August flood events. During sediment-laden inflows ($C_s > 5$ kg/m³), the ODD contracts the reservoir level operating range to prevent high-turbidity water from reaching the Jingmi intake. Long-term sedimentation reduces effective storage by approximately 8 × 10⁶ m³/year; the water balance model's stage-storage curve is updated annually based on bathymetric survey data.
 
 **Ice cover**: December–March ice formation (thickness 0.3–0.5 m) requires: (a) heated gate slots for Baihe and Chaohe spillways (electric resistance heating, 150 kW per gate), (b) reduced gate opening speed ($|\dot{u}| \leq 0.5 \dot{u}_{\max}$) to prevent ice damage, (c) ultrasonic level sensors with ice correction algorithm (accuracy ±3 cm vs. ±1 cm ice-free). The ODD contracts during ice season: $\Delta Q_{\max}$ reduced from 50 to 30 m³/s/h to prevent ice jam formation in the downstream Chaohe River channel.
 
-__6.6  Human-Machine Interface__
+__6.7  Human-Machine Interface__
 
 At WSAL-2, the MAS presents recommendations through a dispatch dashboard:
 
@@ -381,7 +381,7 @@ Preliminary operator trials (1 week, 3 operators, December 2024) showed: overrid
 
 **Data governance**: All MAS decisions (agent recommendations, operator overrides, gate commands, ODD status transitions) are logged with millisecond timestamps to a tamper-evident database (PostgreSQL with write-once audit tables). Retention policy: 10 years (Beijing Water Resources Bureau regulatory requirement). Decision replay capability enables any historical period to be re-simulated with archived inputs for ex-post verification of MAS behavior. Annual audit reports are generated automatically comparing MAS recommendations vs. operator decisions vs. actual outcomes.
 
-__6.7  WSAL Assessment__
+__6.8  WSAL Assessment__
 
 The current Miyun operations are at WSAL-1 (monitoring): SCADA collects data and displays dashboards, but all dispatch decisions are made by human operators. The proposed MAS operates at WSAL-2 (assisted): the three agents compute recommended actions (inflow forecasts, release schedules, gate commands) and present them to operators for confirmation.
 
@@ -395,7 +395,7 @@ The transition to WSAL-3 (conditional autonomy) requires:
 
 4. **xIL verification**: Progression from MiL (this paper) through SiL and HiL to field deployment, following the xIL roadmap (Lei et al., 2025c).
 
-__6.8  Climate Robustness and Non-Stationary Hydrology__
+__6.9  Climate Robustness and Non-Stationary Hydrology__
 
 Trend analysis of the Miyun catchment (1960–2023) reveals: −12% decrease in mean annual runoff (driven by upstream urbanization, impervious area +18%) but +35% increase in extreme event magnitude, consistent with regional climate warming (+1.2°C over 60 years). This non-stationary trend affects both the MAS design and the ODD calibration.
 
@@ -411,7 +411,7 @@ __*Table 10. Climate Scenario Performance*__
 
 Supply reliability degrades under climate change primarily due to increased drought frequency (reduced mean inflow). However, the MAS-MPC consistently outperforms rule-based dispatch by 1.2–1.8 percentage points under all scenarios, because the ensemble forecasting and robust constraint tightening adapt to changing inflow statistics. The Bayesian ODD refinement approach (Chen et al., 2026b) is recommended for systematic 5-yearly updates to constraint boundaries as climate trends evolve.
 
-__6.9  Extension to Multi-Reservoir Coordination__
+__6.10  Extension to Multi-Reservoir Coordination__
 
 Miyun does not operate in isolation. Beijing's water supply system includes Guanting Reservoir (4,160 × 10⁶ m³, 70 km west of Miyun), the SNWD middle route allocation (annual quota approximately 1,050 × 10⁶ m³), and several smaller urban reservoirs. The three-agent architecture naturally extends to multi-reservoir coordination through a Cloud Agent that allocates water among Miyun, Guanting, and SNWD based on system-wide demand and hydrological conditions:
 

@@ -2,12 +2,14 @@
   "paper_id": "P2D",
   "title": "Energy-Aware HDMPC with Digital-Twin xIL for Jiaodong Water Transfer",
   "journal": "Journal of Hydroinformatics",
+  "authors": "Xiaowei Liu, Xiaohui Lei, Chen Ji, Chao Wang, Minghan Yang, Pengyu Jin, Hao Wang",
   "current_version": 21,
   "total_iterations": 20,
-  "status": "completed",
-  "consecutive_accepts": 19,
+  "status": "accepted",
+  "consecutive_accepts": 1,
   "completed": true,
-  "self_cite_rate": null,
+  "self_cite_rate": 0.22,
+  "final_scores": {"A": 9.9, "B": 9.9, "C": 10.0},
   "history": [
     {
       "iteration": 0,

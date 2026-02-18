@@ -219,7 +219,7 @@ where $\mathbf{a}_i^T \mathbf{x} \leq b_i$ is the $i$-th constraint, and $b_{i,\
 For the dual-tank system, the dominant constraints are the water level limits. The distance function simplifies to:
 
 $$
-\rho(\mathbf{x}) = \min \left( \frac{h_1 - h_{\min,\text{ODD}}}{h_{\text{nom}} - h_{\min,\text{ODD}}}, \; \frac{h_{\max,\text{ODD}} - h_1}{h_{\max,\text{ODD}} - h_{\text{nom}}}, \; \frac{h_2 - h_{\min,\text{ODD}}}{h_{\text{nom}} - h_{\min,\text{ODD}}}, \; \frac{h_{\max,\text{ODD}} - h_2}{h_{\max,\text{ODD}} - h_{\text{nom}}} \right) \tag{11}
+\rho(\mathbf{x}) = \min \left( \frac{h_1 - h_{\min,\text{ODD}}}{h_{\text{nom}} - h_{\min,\text{ODD}}}, \; \frac{h_{\max,\text{ODD}} - h_1}{h_{\max,\text{ODD}} - h_{\text{nom}}}, \; \frac{h_2 - h_{\min,\text{ODD}}}{h_{\text{nom}} - h_{\min,\text{ODD}}}, \; \frac{h_{\max,\text{ODD}} - h_2}{h_{\max,\text{ODD}} - h_{\text{nom}}} \right) \tag{11a}
 $$
 
 At the nominal point ($h_1 = h_2 = 25$ cm), $\rho = 1.0$. When $h_1 = 10$ cm (lower ODD boundary), $\rho = 0.0$.
@@ -234,7 +234,7 @@ $$
 
 where $w_i = \dot{x}_{i,\max} / \dot{x}_{\text{ref}}$ is the ratio of the maximum rate of change for the $i$-th constrained variable to a reference rate. For the dual-tank system: $w_{h} = (Q_{\max}/A_s) / (Q_{\text{nom}}/A_s) = 0.5/0.3 = 1.67$ for water level constraints, $w_{u} = \Delta u_{\max} / \Delta u_{\text{nom}} = 10\%/5\% = 2.0$ for valve rate constraints, and $w_{\text{env}} = 1.0$ for environmental constraints (slow-varying).
 
-__*Table 2b. Weighted vs. Unweighted $\rho$ for Selected Scenarios*__
+__*Table 2. Weighted vs. Unweighted $\rho$ for Selected Scenarios*__
 
 | Scenario | $\rho$ (unweighted) at violation | $\rho_{\text{dyn}}$ (weighted) at violation | Earlier warning (intervals) |
 |----------|--------------------------------|--------------------------------------------|-----------------------------|
@@ -301,9 +301,9 @@ __*[Figure 3 about here]*__
 
 __4.2  Verification Test Matrix__
 
-The verification test matrix extends the 16 nominal scenarios from Chen et al. (2026a) with 16 boundary scenarios (Table 2). The boundary scenarios are designed to systematically probe each ODD dimension.
+The verification test matrix extends the 16 nominal scenarios from Chen et al. (2026a) with 16 boundary scenarios (Table 3). The boundary scenarios are designed to systematically probe each ODD dimension.
 
-__*Table 2. Extended SiL Verification Test Matrix (32 Scenarios)*__
+__*Table 3. Extended SiL Verification Test Matrix (32 Scenarios)*__
 
 | Group | Scenarios | Description | ODD Dimension |
 |-------|-----------|-------------|---------------|
@@ -336,9 +336,9 @@ __5  Results__
 
 __5.1  Nominal Scenarios (Groups A–D)__
 
-Table 3 summarizes the SiL results for the 16 nominal scenarios, which replicate the verification from Chen et al. (2026a) with the addition of ODD monitoring.
+Table 4 summarizes the SiL results for the 16 nominal scenarios, which replicate the verification from Chen et al. (2026a) with the addition of ODD monitoring.
 
-__*Table 3. SiL Results — Nominal Scenarios (S1–S16)*__
+__*Table 4. SiL Results — Nominal Scenarios (S1–S16)*__
 
 | Metric | Mean | Worst Case | Threshold | Pass? |
 |--------|------|------------|-----------|-------|
@@ -356,9 +356,9 @@ The minimum $\rho = 0.18$ occurs in scenario S11 (initial 35 cm, step −10 cm),
 
 __5.2  Boundary Violation Detection (Groups E–H)__
 
-Table 4 summarizes the ODD violation detection results across the 16 boundary scenarios.
+Table 5 summarizes the ODD violation detection results across the 16 boundary scenarios.
 
-__*Table 4. ODD Violation Detection Results (S17–S32)*__
+__*Table 5. ODD Violation Detection Results (S17–S32)*__
 
 | Group | Scenarios | Violations Injected | Detected? | Detection Latency | Fallback Activated? | Physical Limit Violated? |
 |-------|-----------|--------------------|-----------|--------------------|---------------------|-------------------------|
@@ -384,9 +384,9 @@ __*[Figure 4 about here]*__
 
 __5.4  SiL–MiL Consistency__
 
-Table 5 compares SiL and MiL results for the nominal scenarios to verify code generation fidelity.
+Table 6 compares SiL and MiL results for the nominal scenarios to verify code generation fidelity.
 
-__*Table 5. SiL vs. MiL Comparison (Nominal Scenarios)*__
+__*Table 6. SiL vs. MiL Comparison (Nominal Scenarios)*__
 
 | Metric | MiL (mean) | SiL (mean) | Difference | Threshold |
 |--------|-----------|-----------|------------|-----------|
@@ -399,9 +399,9 @@ The SiL–MiL difference is negligible (max 0.3 mm), consistent with the results
 
 __5.5  ODD Coverage Analysis__
 
-The 32 SiL scenarios provide systematic coverage of the ODD dimensions. Table 6 summarizes the coverage achieved.
+The 32 SiL scenarios provide systematic coverage of the ODD dimensions. Table 7 summarizes the coverage achieved.
 
-__*Table 6. ODD Dimension Coverage*__
+__*Table 7. ODD Dimension Coverage*__
 
 | Dimension | Parameters | Range Tested | ODD Range | Coverage |
 |-----------|-----------|-------------|-----------|----------|
@@ -415,9 +415,9 @@ __*Table 6. ODD Dimension Coverage*__
 
 __5.6  False Alarm Analysis__
 
-To quantify the ODD monitor's false alarm characteristics, we ran 100 Monte Carlo repetitions of scenario S11 (the worst-case nominal scenario, with minimum $\rho = 0.18$) using different sensor noise realizations. Table 7 summarizes the results.
+To quantify the ODD monitor's false alarm characteristics, we ran 100 Monte Carlo repetitions of scenario S11 (the worst-case nominal scenario, with minimum $\rho = 0.18$) using different sensor noise realizations. Table 8 summarizes the results.
 
-__*Table 7. False Alarm Analysis (100 Monte Carlo Runs of S11)*__
+__*Table 8. False Alarm Analysis (100 Monte Carlo Runs of S11)*__
 
 | Metric | Without Hysteresis | With Hysteresis (±0.02) |
 |--------|-------------------|------------------------|
@@ -436,9 +436,9 @@ To demonstrate scalability beyond the dual-tank system, we applied the ODD forma
 - Environmental space: 2 dimensions (inflow disturbance + sensor noise)
 - Total: 42 continuous dimensions, 84 linear constraints
 
-The ODD monitor evaluates all 84 constraints in 0.12 ms on a standard PC (Table 1c). Twenty boundary scenarios (2 per ODD dimension category) were executed in the SiL environment. Table 8 summarizes the results.
+The ODD monitor evaluates all 84 constraints in 0.12 ms on a standard PC (Table 1c). Twenty boundary scenarios (2 per ODD dimension category) were executed in the SiL environment. Table 9 summarizes the results.
 
-__*Table 8. 10-Pool Canal SiL Verification Results*__
+__*Table 9. 10-Pool Canal SiL Verification Results*__
 
 | Metric | 10-Pool Canal | Dual-Tank (comparison) |
 |--------|-------------|----------------------|
@@ -456,9 +456,9 @@ The 10-pool results confirm that the polytope-based ODD formalization scales to 
 
 __5.8  Safety Margin Sensitivity Analysis__
 
-Table 9 presents the sensitivity of the ODD performance to the safety factor SF in Eq. (9).
+Table 10 presents the sensitivity of the ODD performance to the safety factor SF in Eq. (9).
 
-__*Table 9. Safety Margin Sensitivity (Dual-Tank, 16 Boundary Scenarios)*__
+__*Table 10. Safety Margin Sensitivity (Dual-Tank, 16 Boundary Scenarios)*__
 
 | Safety Factor | $\delta_h$ (cm) | ODD Range (cm) | Range Reduction | Physical Limit Reached | Min Margin to Physical Limit (cm) |
 |---------------|-----------------|-----------------|-----------------|----------------------|-----------------------------------|
@@ -477,7 +477,7 @@ __6.1  ODD Formalization for Water Systems__
 
 The ODD formalization presented here—a convex polytope with IDZ-derived safety margins and a real-time distance-to-boundary metric—provides the mathematical foundation for safety certification of autonomous water controllers. Two aspects merit discussion.
 
-First, the safety margin derivation (Eq. 8–9) is conservative by design: it assumes the worst-case scenario (maximum flow during the full transport delay). The sensitivity analysis (Table 9) quantifies the tradeoff between safety and operational range, enabling system operators to select an appropriate safety factor based on their risk tolerance and model confidence. For field-scale canal systems with longer delays ($\tau_d$ = 100–1000 s) and larger cross-sections ($A_s$ = 10–100 m²), the relative margin is smaller:
+First, the safety margin derivation (Eq. 8–9) is conservative by design: it assumes the worst-case scenario (maximum flow during the full transport delay). The sensitivity analysis (Table 10) quantifies the tradeoff between safety and operational range, enabling system operators to select an appropriate safety factor based on their risk tolerance and model confidence. For field-scale canal systems with longer delays ($\tau_d$ = 100–1000 s) and larger cross-sections ($A_s$ = 10–100 m²), the relative margin is smaller:
 
 $$
 \delta_h \propto \frac{Q_{\max} \cdot \tau_d}{A_s} \tag{13}
@@ -541,7 +541,7 @@ $$
 p(k | \text{SF}, N) = \binom{N}{k} \, p_v(\text{SF})^k \, (1 - p_v(\text{SF}))^{N-k} \tag{16}
 $$
 
-where $p_v(\text{SF})$ is the violation probability interpolated from Table 9 (e.g., $p_v(1.0) = 3/16 = 0.19$, $p_v(1.25) = 0$, $p_v(1.5) = 0$). If $k = 0$ in $N = 16$ boundary scenarios (as observed), the posterior shifts toward lower SF values, allowing the ODD to expand.
+where $p_v(\text{SF})$ is the violation probability interpolated from Table 10 (e.g., $p_v(1.0) = 3/16 = 0.19$, $p_v(1.25) = 0$, $p_v(1.5) = 0$). If $k = 0$ in $N = 16$ boundary scenarios (as observed), the posterior shifts toward lower SF values, allowing the ODD to expand.
 
 **Proposition 1** (Safety-Preserving ODD Expansion). *If the prior $\text{SF}_0$ satisfies $P(\text{PFD}(\text{SF}_0) < 10^{-1}) > 1 - \epsilon$ and the violation probability $p_v(\text{SF})$ is monotonically decreasing in SF, then the posterior SF after observing $k = 0$ in $N$ scenarios also satisfies the SIL-1 constraint: $P(\text{PFD}(\text{SF}_{\text{post}}) < 10^{-1}) > 1 - \epsilon$.*
 
@@ -575,7 +575,7 @@ __7  Conclusions__
 
 This paper has formalized the Operational Design Domain (ODD) for water conveyance systems and developed a systematic SiL verification methodology that combines nominal performance testing with boundary violation detection. The key findings are:
 
-1. The ODD can be formalized as a convex polytope in the joint space of hydraulic states, actuator capabilities, communication status, and environmental disturbances. Safety margins are derived analytically from the IDZ transfer function parameters (Eq. 8–9), with the safety factor selected via sensitivity analysis (Table 9) to balance operational range against robustness.
+1. The ODD can be formalized as a convex polytope in the joint space of hydraulic states, actuator capabilities, communication status, and environmental disturbances. Safety margins are derived analytically from the IDZ transfer function parameters (Eq. 8–9), with the safety factor selected via sensitivity analysis (Table 10) to balance operational range against robustness.
 
 2. The distance-to-boundary function $\rho(\mathbf{x})$ provides continuous real-time monitoring of ODD proximity. The three-zone classification (NOMINAL/WARNING/VIOLATION) with adaptive recovery and hysteresis filtering ensures safe operation with low false alarm rates (0.0% VIOLATION, 0.8% WARNING).
 

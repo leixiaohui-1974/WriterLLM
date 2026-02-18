@@ -102,7 +102,7 @@ Model\-Based Definition \(MBD\) is a structured approach to engineering that use
 
 The seven layers are organized in descending order of physical fidelity and ascending order of implementation specificity\. Layers 7 and 6 correspond directly to the CHS five\-level model hierarchy established in Lei \(2025a, §4\.6, Theorem 3: Model–Layer Correspondence\):
 
-__*Table 0\. Correspondence between CHS Model Levels and MBD Layers 7–6*__
+__*Table 1\. Correspondence between CHS Model Levels and MBD Layers 7–6*__
 
 | CHS Model Level | MBD Layer | Content | Use Case |
 |-----------------|-----------|---------|----------|
@@ -115,7 +115,7 @@ __*Table 0\. Correspondence between CHS Model Levels and MBD Layers 7–6*__
 The Layer 7→6 transition is the LSV→IDZ reduction pathway described in Lei \(2025a, §4\.7\): linearization around an operating point, spatial discretization, and transfer function identification\. The IDZ level is the primary control model for MPC design; the ID and I levels serve for preliminary design and analytical insight\.
 
 
-__*Table 1\. The Seven\-Layer MBD Framework for Water Systems Control*__
+__*Table 2\. The Seven\-Layer MBD Framework for Water Systems Control*__
 
 | Layer | Name | Content | Model Type | Tool Examples |
 |-------|------|---------|------------|---------------|
@@ -177,9 +177,9 @@ These layers are inherently site\-specific and involve physical engineering rath
 
 __3\.8  Cross\-Domain MBD Comparison__
 
-Table 1b compares the CHS\-MBD framework with established MBD frameworks in other safety\-critical domains\.
+Table 3 compares the CHS\-MBD framework with established MBD frameworks in other safety\-critical domains\.
 
-__*Table 1b\. Cross\-Domain MBD Framework Comparison*__
+__*Table 3\. Cross\-Domain MBD Framework Comparison*__
 
 | Aspect | Automotive \(AUTOSAR\) | Aerospace \(DO\-178C\) | CHS\-MBD |
 |--------|----------------------|----------------------|----------|
@@ -198,9 +198,9 @@ __4  Software Tool Chain Assessment__
 
 __4\.1  Layer\-by\-Layer Mapping__
 
-Table 2 presents a detailed assessment of available software tools for each MBD layer, including maturity level, licensing, and critical gaps\.
+Table 4 presents a detailed assessment of available software tools for each MBD layer, including maturity level, licensing, and critical gaps\.
 
-__*Table 2\. Software Tool Chain Assessment by MBD Layer*__
+__*Table 4\. Software Tool Chain Assessment by MBD Layer*__
 
 | Layer | Tool | License | Maturity | Water\-Specific | Gap |
 |-------|------|---------|----------|----------------|-----|
@@ -239,9 +239,9 @@ CHS sits at the intersection of three established disciplines: water engineering
 
 __5\.2  Educational Software Stack by MBD Layer__
 
-Table 3 maps the required educational software infrastructure to MBD layers, identifying existing tools, gaps, and open\-source alternatives\.
+Table 5 maps the required educational software infrastructure to MBD layers, identifying existing tools, gaps, and open\-source alternatives\.
 
-__*Table 3\. Educational Software Infrastructure for CHS Training*__
+__*Table 5\. Educational Software Infrastructure for CHS Training*__
 
 | MBD Layer | Learning Objective | Software Tool | Status | Gap / Need |
 |-----------|-------------------|---------------|--------|------------|
@@ -264,9 +264,9 @@ The most capital\-intensive educational component is a laboratory\-scale hydraul
 
 __5\.5  Competency Framework and Assessment__
 
-A discipline\-construction paper must specify not only what to teach but what graduates should be able to do\. Table 3b presents a competency matrix mapping MBD layers to Bloom's taxonomy levels, with specific learning outcomes and assessment methods\.
+A discipline\-construction paper must specify not only what to teach but what graduates should be able to do\. Table 6 presents a competency matrix mapping MBD layers to Bloom's taxonomy levels, with specific learning outcomes and assessment methods\.
 
-__*Table 3b\. CHS Competency Matrix: MBD Layer × Bloom's Taxonomy*__
+__*Table 6\. CHS Competency Matrix: MBD Layer × Bloom's Taxonomy*__
 
 | MBD Layer | Bloom's Level | Learning Outcome | Assessment Method |
 |-----------|--------------|------------------|-------------------|
@@ -282,7 +282,7 @@ The competency progression is designed to be vertically integrated: each layer b
 
 Assessment rigor increases with Bloom's level: Layers 7–6 are assessed through individual exams and assignments \(factual and procedural knowledge\); Layers 5–4 through team design projects \(analytical and evaluative thinking\); Layers 3–1 through capstone projects with physical hardware \(synthesis and real\-world problem\-solving\)\. The capstone project—designing, implementing, and verifying a complete control system on the laboratory flume—serves as the integrative assessment that demonstrates competency across all MBD layers\.
 
-__*\[Figure 4 about here\]*__
+__*\[Figure 3 about here\]*__
 
 __6  Reference Workflow: Canal Control Design\-to\-Deployment__
 
@@ -306,7 +306,7 @@ __6\.3  Layer 6: Control Model \(IDZ Derivation and MPC Design\)__
 
 The IDZ transfer function for each pool is identified from the Layer 7 model through step\-response analysis, following the methodology of Litrico & Fromion \(2009, Ch\. 3\)\. A downstream gate opening step of Δa = 0\.05 m is applied; the resulting water level response over a 3\-hour simulation window is fitted to the IDZ model $G(s) = (1 + \tau_m s) e^{-\tau_d s} / (A_s \cdot s)$ using nonlinear least\-squares \(Levenberg\-Marquardt\), minimizing $J = \sum_{k=1}^{N} (h_{SV}(k\Delta t) - h_{IDZ}(k\Delta t))^2$\. The 95% confidence intervals on identified parameters are ±3% for $A_s$, ±5% for $\tau_d$, and ±8% for $\tau_m$ \(wider for $\tau_m$ because the non\-minimum\-phase zero is harder to identify from step data\)\. The identified parameters for the reference operating point \(Q₀ = 5 m³/s, h₀ = 1\.2 m\) are:
 
-__*Table 4\. IDZ Parameters for Three\-Pool Canal*__
+__*Table 7\. IDZ Parameters for Three\-Pool Canal*__
 
 | Pool | A\_s \(m²\) | τ\_d \(s\) | τ\_m \(s\) |
 |------|-----------|-----------|-----------|
@@ -318,7 +318,7 @@ The IDZ model is validated against the Saint\-Venant model \(Layer 7\) across th
 
 An MPC controller is designed in MATLAB/Simulink using the IDZ state\-space model \(second\-order Padé for delay, ZOH discretization\)\. Key design parameters:
 
-__*Table 5\. MPC Controller Configuration*__
+__*Table 8\. MPC Controller Configuration*__
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
@@ -341,9 +341,9 @@ The MPC controller is automatically translated from Simulink to IEC 61131\-3 Str
 
 __6\.6  Quantitative MiL Results__
 
-The FMI co\-simulation couples the Simulink MPC controller \(Layer 6\) with the OpenModelica plant model \(Layer 7\) using FMI 2\.0 for Co\-Simulation\. The communication step size is 10 s \(6 exchanges per MPC step\)\. All 12 ODD scenarios are executed; Table 6 summarizes the results\.
+The FMI co\-simulation couples the Simulink MPC controller \(Layer 6\) with the OpenModelica plant model \(Layer 7\) using FMI 2\.0 for Co\-Simulation\. The communication step size is 10 s \(6 exchanges per MPC step\)\. All 12 ODD scenarios are executed; Table 9 summarizes the results\.
 
-__*Table 6\. MiL Verification Results \(12 ODD Scenarios\)*__
+__*Table 9\. MiL Verification Results \(12 ODD Scenarios\)*__
 
 | Metric | Mean | Worst Case | Threshold | Pass? |
 |--------|------|------------|-----------|-------|
@@ -355,7 +355,7 @@ __*Table 6\. MiL Verification Results \(12 ODD Scenarios\)*__
 
 The worst\-case RMSE \(0\.042 m\) occurs at the ODD boundary \(Q = 8 m³/s\) where the IDZ model mismatch is largest\. Even in this case, all hard constraints are satisfied and the RMSE is well below the 0\.05 m threshold\. MPC computation time \(mean 12 ms, max 28 ms\) is two orders of magnitude below the 60\-s sampling interval, confirming real\-time feasibility on standard PLC hardware\.
 
-__*\[Figure 3 about here\]*__
+__*\[Figure 4 about here\]*__
 
 __7  Discussion__
 
@@ -479,8 +479,8 @@ __Figure Captions__
 
 __Figure 1\. __Design for Operation \(DfO\) paradigm contrasted with Design for Construction \(DfC\)\. Left: DfC pipeline where operational intelligence is added post\-construction as an afterthought\. Right: DfO pipeline where operational performance criteria \(controllability, observability, ODD, verifiability, maintainability\) are integrated from conceptual design through deployment\. The DfO pipeline produces an infrastructure that is not merely built to specification but designed to be operated autonomously\.
 
-__Figure 2\. __The seven\-layer Model\-Based Definition \(MBD\) framework for water systems control, with V\-model correspondence\. Left: layers 7–1 in descending order of physical fidelity \(design arm of the V\)\. Center: V\-model showing the design\-to\-verification correspondence: Layer 7 models are validated against field data; Layer 6 models against Layer 7 simulations; Layer 3 software against Layer 6 models \(SiL\); Layers 2–1 hardware against Layer 7 \(HiL/PiL\)\. Right: software tools mapped to each layer, with critical gaps \(T1–T3\) highlighted\. The cross\-domain comparison \(Table 1b\) positions CHS\-MBD relative to AUTOSAR and DO\-178C\.
+__Figure 2\. __The seven\-layer Model\-Based Definition \(MBD\) framework for water systems control, with V\-model correspondence\. Left: layers 7–1 in descending order of physical fidelity \(design arm of the V\)\. Center: V\-model showing the design\-to\-verification correspondence: Layer 7 models are validated against field data; Layer 6 models against Layer 7 simulations; Layer 3 software against Layer 6 models \(SiL\); Layers 2–1 hardware against Layer 7 \(HiL/PiL\)\. Right: software tools mapped to each layer, with critical gaps \(T1–T3\) highlighted\. The cross\-domain comparison \(Table 3\) positions CHS\-MBD relative to AUTOSAR and DO\-178C\.
 
-__Figure 3\. __Reference workflow: three\-pool canal control system traced through the seven MBD layers\. Top: physical model \(OpenModelica\) validated against analytical solution\. Middle: IDZ control model derivation and MPC design \(Simulink\)\. Bottom: automatic code generation \(Structured Text\), PLC deployment, and xIL verification sequence \(MiL → SiL → HiL → shadow mode\)\.
+__Figure 3\. __CHS Competency Matrix: MBD Layer × Bloom's taxonomy level\. The matrix shows the expected progression from foundational knowledge \(Layer 7: understanding Saint\-Venant physics\) through application \(Layer 6: controller design\) and analysis \(Layer 5–4: architecture and certification\) to synthesis and evaluation \(Layers 3–1: implementation and deployment\)\. Assessment methods progress from individual exams \(Layers 7–6\) through team design projects \(Layers 5–4\) to capstone xIL campaigns on physical hardware \(Layers 2–1\)\. The vertical integration across all seven layers distinguishes CHS education from traditional water engineering or control engineering curricula\.
 
-__Figure 4\. __CHS Competency Matrix: MBD Layer × Bloom's taxonomy level\. The matrix shows the expected progression from foundational knowledge \(Layer 7: understanding Saint\-Venant physics\) through application \(Layer 6: controller design\) and analysis \(Layer 5–4: architecture and certification\) to synthesis and evaluation \(Layers 3–1: implementation and deployment\)\. Assessment methods progress from individual exams \(Layers 7–6\) through team design projects \(Layers 5–4\) to capstone xIL campaigns on physical hardware \(Layers 2–1\)\. The vertical integration across all seven layers distinguishes CHS education from traditional water engineering or control engineering curricula\.
+__Figure 4\. __Reference workflow: three\-pool canal control system traced through the seven MBD layers\. Top: physical model \(OpenModelica\) validated against analytical solution\. Middle: IDZ control model derivation and MPC design \(Simulink\)\. Bottom: automatic code generation \(Structured Text\), PLC deployment, and xIL verification sequence \(MiL → SiL → HiL → shadow mode\)\.

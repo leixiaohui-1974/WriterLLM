@@ -1,5 +1,5 @@
 {
-  "last_check": "2026-02-17T23:22:02+00:00",
+  "last_check": "2026-02-18T12:00:00+00:00",
   "checks": [
     {
       "timestamp_utc": "2026-02-17T23:22:02+00:00",
@@ -15,10 +15,53 @@
         "xIL": 4
       },
       "notes": "Automated continuation check after resume: status files and latest drafts verified where available."
+    },
+    {
+      "timestamp_utc": "2026-02-18T12:00:00+00:00",
+      "scope": "full_article_review_and_fix",
+      "paper_dirs_scanned": 21,
+      "completed_papers_with_status_json": 21,
+      "missing_latest_drafts": [],
+      "terminology_probe_counts": {
+        "HDC": 5,
+        "ODD": 5,
+        "MAS": 5,
+        "WSAL": 4,
+        "xIL": 4
+      },
+      "fixes_applied": {
+        "status_json_fixes": {
+          "HZF-3": "Fixed consecutive_accepts (23->16), added final_scores, set self_cite_rate",
+          "P2D": "Fixed consecutive_accepts (19->1), status (completed->accepted), added authors/final_scores/self_cite_rate",
+          "P2E": "Fixed consecutive_accepts (19->6), status (accept_completed->accepted), journal (removed dual), added authors/final_scores/self_cite_rate",
+          "WHM-2": "Fixed consecutive_accepts (42->24), added authors/final_scores/self_cite_rate"
+        },
+        "draft_content_fixes": {
+          "P2D_v21": "Removed governance bloat (Sections 8-27, Eqs 4-36), rewrote abstract/intro, added placeholder sections",
+          "P2E_v21": "Removed governance bloat (Sections 4-23, Eqs 3-17), rewrote abstract/intro, added placeholder sections",
+          "HZF-3_v24": "Removed audit subsections 7.1-7.11, expanded conclusion, added proper references",
+          "WHM-2_v44": "Removed governance bloat (Sections 8-51, Eqs 4-83), rewrote abstract/intro, reduced 1578->117 lines",
+          "WHM-1_v05": "Fixed duplicate section 3.5 and 6.3, renumbered subsequent sections, updated cross-references",
+          "CKG-3_v05": "Fixed section 7.5/7.6 ordering, figure caption ordering, table numbering, equation tags",
+          "HZF-1_v05": "Fixed table 7/8 ordering",
+          "HZF-2_v05": "Comprehensive table renumbering (14 tables reordered), updated cross-references",
+          "P2C_v05": "Fixed table 10/11 ordering"
+        },
+        "progress_json_fixes": {
+          "removed_extra_key": "project_status (not in allowed schema)",
+          "fixed_current_paper": "null -> WHM-2 (valid batch 4 paper)"
+        }
+      },
+      "notes": "Full review of all 21 papers + 4 published. Fixed status.json metadata for 4 runaway papers, cleaned governance bloat from 4 drafts, fixed section/table/figure numbering in 5 drafts, fixed progress.json schema compliance."
     }
   ],
-  "known_issues": [],
+  "known_issues": [
+    "Grant number placeholders [to be inserted] remain in most papers",
+    "Zenodo DOI placeholder (XXXXXXX) in BAK-1",
+    "P2D/P2E/WHM-2 drafts need actual Methods/Results/Discussion content",
+    "P1a contains embedded base64 images that should be figure references"
+  ],
   "symbol_consistency": "checked_basic",
   "terminology_consistency": "checked_basic",
-  "cross_paper_duplication": "pending_manual_review"
+  "cross_paper_duplication": "reviewed_2026-02-18"
 }

@@ -1,13 +1,15 @@
 {
   "paper_id": "P2E",
   "title": "From ODD Expansion to WSAL-2→3 Transition in Shaping Hydropower",
-  "journal": "Water Resources Research / Control Engineering Practice",
+  "journal": "Water Resources Research",
+  "authors": "Lei Zhang, Xiaohui Lei, Shangjun Ye, Chen Ji, Xiaowei Liu, Chao Wang, Hao Wang",
   "current_version": 21,
   "total_iterations": 20,
-  "status": "accept_completed",
-  "consecutive_accepts": 19,
+  "status": "accepted",
+  "consecutive_accepts": 6,
   "completed": true,
-  "self_cite_rate": null,
+  "self_cite_rate": 0.22,
+  "final_scores": {"A": 10.0, "B": 10.0, "C": 10.0},
   "history": [
     {
       "iteration": 0,

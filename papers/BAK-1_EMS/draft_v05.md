@@ -60,7 +60,7 @@ The Functional Mock-up Interface (FMI) standard (Blochwitz et al., 2012) defines
 
 __2.4  Existing Canal Simulation Software__
 
-Two established tools deserve specific comparison. SIC² (Malaterre & Baume, 2011) is a full Saint-Venant simulator developed by IRSTEA/INRAE with built-in PID control and optimization capabilities, widely used in French irrigation districts. It does not support FMI export or multi-fidelity modeling. CanalCAD (Schuurmans, 1997) implements IDZ-level canal models for control design but is not open-source and lacks multi-fidelity or FMI support. Table 6 (§6.2) provides a detailed feature comparison.
+Two established tools deserve specific comparison. SIC² (Malaterre & Baume, 2011) is a full Saint-Venant simulator developed by IRSTEA/INRAE with built-in PID control and optimization capabilities, widely used in French irrigation districts. It does not support FMI export or multi-fidelity modeling. CanalCAD (Schuurmans, 1997) implements IDZ-level canal models for control design but is not open-source and lacks multi-fidelity or FMI support. Table 13 (§6.2) provides a detailed feature comparison.
 
 For pressurized water distribution networks, the EPANET/WNTR (Water Network Tool for Resilience) ecosystem (Klise et al., 2017) is the most widely used open-source toolkit. WNTR focuses on pipe networks with pressure-driven demand and does not model open-channel flow. HydroComponents complements WNTR by covering open-channel and mixed gravity/pressure conveyance systems; future interoperability between the two libraries (e.g., via FMI) could enable unified modeling of combined open-channel/pipe networks.
 
@@ -191,7 +191,7 @@ __4.2.1  Accuracy of Automatic IDZ Derivation__
 
 The automatic IDZ parameter derivation is based on linearization of the Saint-Venant equations around the uniform flow profile at the nominal operating point ($Q_0$, $h_0$). The derivation assumes: (a) prismatic cross-section (rectangular or trapezoidal), (b) subcritical flow (Froude number $\text{Fr} < 0.7$), (c) mild slope ($S_0 < S_c$), and (d) long pool ($L > 20 B$). Under these conditions, the storage area $A_s$ is computed from the linearized backwater surface area, $\tau_d$ from the wave celerity at $Q_0$, and $\tau_m$ from the downstream backwater diffusivity.
 
-__*Table 2b. Automatic vs. Experimentally Fitted IDZ Parameters*__
+__*Table 3. Automatic vs. Experimentally Fitted IDZ Parameters*__
 
 | System | Parameter | Auto-derived | Fitted | Relative error |
 |--------|-----------|-------------|--------|---------------|
@@ -216,9 +216,9 @@ All components and example systems are tested for FMI 2.0 Co-Simulation export u
 
 The FMU can be imported into: MATLAB/Simulink (FMU block from the FMI Toolbox), Python (FMPy library), Julia (FMI.jl), or any FMI 2.0-compliant tool.
 
-__FMI step size considerations__: The FMI communication step size $\Delta t_{FMI}$ is independent of the internal solver step. For LSV models, the Preissmann scheme uses an internal step $\Delta t_{int}$ governed by the Courant condition; exchanged variables (measurements, control commands) are held constant via zero-order hold during $\Delta t_{FMI}$. For IDZ models, we recommend $\Delta t_{FMI} \leq \tau_d / 5$ to ensure that the communication discretization does not significantly degrade model accuracy. For MPC applications, $\Delta t_{FMI}$ should equal the MPC sampling period (typically 30–300 s for canal systems). Table 2c quantifies this sensitivity.
+__FMI step size considerations__: The FMI communication step size $\Delta t_{FMI}$ is independent of the internal solver step. For LSV models, the Preissmann scheme uses an internal step $\Delta t_{int}$ governed by the Courant condition; exchanged variables (measurements, control commands) are held constant via zero-order hold during $\Delta t_{FMI}$. For IDZ models, we recommend $\Delta t_{FMI} \leq \tau_d / 5$ to ensure that the communication discretization does not significantly degrade model accuracy. For MPC applications, $\Delta t_{FMI}$ should equal the MPC sampling period (typically 30–300 s for canal systems). Table 4 quantifies this sensitivity.
 
-__*Table 2c. FMI Step Size Sensitivity (Three-Pool Flume, IDZ, $\tau_d = 8.5$ s)*__
+__*Table 4. FMI Step Size Sensitivity (Three-Pool Flume, IDZ, $\tau_d = 8.5$ s)*__
 
 | $\Delta t_{FMI}$ [s] | RMSE [mm] | RMSE increase vs. 0.1 s | $\Delta t_{FMI} / \tau_d$ |
 |------------------------|-----------|--------------------------|---------------------------|
@@ -259,7 +259,7 @@ docker pull iwhr-chs/hydrocomponents:v1.0
 docker run -it iwhr-chs/hydrocomponents:v1.0 omc Examples/reproduce_tables.mos
 ```
 
-This reproduces Tables 3–5 and 7–9 from source. The Docker image pins OpenModelica 1.22.3 and Modelica Standard Library 4.0.0. For users who prefer a lightweight installation, the direct approach (steps 1–3 above, ~50 MB excluding OpenModelica) is equally functional.
+This reproduces Tables 5–7 and 8–12 from source. The Docker image pins OpenModelica 1.22.3 and Modelica Standard Library 4.0.0. For users who prefer a lightweight installation, the direct approach (steps 1–3 above, ~50 MB excluding OpenModelica) is equally functional.
 
 Documentation includes: (a) README with quick-start guide, (b) API reference auto-generated from Modelica annotations using MoDoc, (c) three Jupyter notebook tutorials:
 - `tutorial_dual_tank.ipynb`: Assembles a dual-tank system from components, runs a step response simulation, and exports the model as an FMU.
@@ -276,7 +276,7 @@ __5.1  Dual-Tank Platform__
 
 The dual-tank system (Chen et al., 2026) consists of two tanks connected by a motorized valve. The HydroComponents model uses two `Tank` components (IDZ fidelity) connected via a `Valve` actuator, with `LevelSensor` components and an `MPCInterface` for controller coupling. The model assembly requires 6 components, 15 parameter specifications, and 45 lines of Modelica code.
 
-__*Table 3. Dual-Tank Validation Results*__
+__*Table 5. Dual-Tank Validation Results*__
 
 | Metric | HydroComponents | Chen et al. (2026) Reference | Difference |
 |--------|-----------------|-------------------------------|------------|
@@ -289,7 +289,7 @@ __5.2  Three-Pool Canal Flume__
 
 The three-pool flume (Su et al., 2026) is modeled using three `CanalPool` components (IDZ fidelity), two `SluiceGate` actuators, six `LevelSensor` components, and an `MPCInterface` for DMPC coupling. The model assembly requires 14 components, 42 parameter specifications, and 120 lines of Modelica code.
 
-__*Table 4. Three-Pool Flume Validation Results*__
+__*Table 6. Three-Pool Flume Validation Results*__
 
 | Metric | HydroComponents | Su et al. (2026) Reference | Difference |
 |--------|-----------------|------------------------------|------------|
@@ -305,7 +305,7 @@ A field-scale demonstration uses a three-pool section of the Haohanquan Main Can
 
 __Measurement setup__: Water levels were measured by capacitance level sensors (Siemens SITRANS Probe LU, ±3 mm accuracy) at the upstream and downstream ends of each pool, sampled at 30 s intervals. Eight gate operation events were recorded over a 3-month monitoring period (May–July 2025). Gate positions were recorded from the SCADA system.
 
-__*Table 5. Field-Scale Canal Validation Results*__
+__*Table 7. Field-Scale Canal Validation Results*__
 
 | Metric | HydroComponents (LSV) | HydroComponents (IDZ) | HEC-RAS 6.3 | Field Measurement | Unit |
 |--------|------------------------|------------------------|--------------|-------------------|------|
@@ -325,7 +325,7 @@ __5.4  Component-Level Validation__
 
 Individual actuator components are validated against published experimental data to verify the accuracy of the nonlinear discharge computation and the linearized characteristic (Eq. 4).
 
-__*Table 7. SluiceGate Validation (Swamee, 1992; Henry, 1950)*__
+__*Table 8. SluiceGate Validation (Swamee, 1992; Henry, 1950)*__
 
 | Condition | $h_{up}/w$ Range | $C_d$ RMSE | $Q$ RMSE | $N$ tests |
 |-----------|-------------------|-------------|-----------|-----------|
@@ -333,7 +333,7 @@ __*Table 7. SluiceGate Validation (Swamee, 1992; Henry, 1950)*__
 | Submerged | 0.8–3.0 | 3.5% | 3.4% | 7 |
 | __Overall__ | | __3.2%__ | __3.2%__ | __15__ |
 
-__*Table 7b. RadialGate Validation (Buyalski, 1983)*__
+__*Table 9. RadialGate Validation (Buyalski, 1983)*__
 
 | Configuration | Angle range | $C_d$ RMSE | $Q$ RMSE | $N$ tests |
 |---------------|-------------|-------------|-----------|-----------|
@@ -341,7 +341,7 @@ __*Table 7b. RadialGate Validation (Buyalski, 1983)*__
 | High-head | 20°–55° | 4.5% | 4.3% | 4 |
 | __Overall__ | | __4.1%__ | __4.2%__ | __12__ |
 
-__*Table 7c. Linearization Accuracy of Eq. (4)*__
+__*Table 10. Linearization Accuracy of Eq. (4)*__
 
 | Actuator | Operating range | Error at ±10% OP | Error at ±20% OP |
 |----------|----------------|-------------------|-------------------|
@@ -355,7 +355,7 @@ __5.5  Computational Performance__
 
 All benchmarks were run on a standard workstation (Intel Core i7-12700H, 32 GB RAM, Ubuntu 22.04, OpenModelica 1.22.3).
 
-__*Table 8. Computational Performance Summary*__
+__*Table 11. Computational Performance Summary*__
 
 | System | Fidelity | Components | Compile [s] | FMU Export [s] | Init [ms] | Sim 1h [s] | Memory [MB] |
 |--------|----------|------------|-------------|----------------|-----------|-------------|-------------|
@@ -365,7 +365,7 @@ __*Table 8. Computational Performance Summary*__
 | Field canal | IDZ | 18 | 12 | 24 | 58 | 0.08 | 28 |
 | Field canal | LSV | 18 | 28 | 45 | 85 | 1.2 | 65 |
 
-__*Table 9. Scalability Test (IDZ Fidelity, Canal Systems)*__
+__*Table 12. Scalability Test (IDZ Fidelity, Canal Systems)*__
 
 | System size | Pools | Components | Compile [s] | Sim 1h [s] | Real-time factor |
 |-------------|-------|------------|-------------|-------------|-----------------|
@@ -391,7 +391,7 @@ The multi-fidelity feature is critical for this workflow: the same component (sa
 
 __6.2  Comparison with Existing Tools__
 
-__*Table 6. HydroComponents vs. Existing Tools*__
+__*Table 13. HydroComponents vs. Existing Tools*__
 
 | Feature | HEC-RAS | SWMM | SIC² | CanalCAD | Modelica.Fluid | HydroComponents |
 |---------|---------|------|------|----------|----------------|-----------------|
@@ -420,7 +420,7 @@ __7.2  Multi-Fidelity Modeling and the CHS Hierarchy__
 
 The five-level fidelity switching implements the CHS Model–Layer Correspondence (Theorem 3) in software: the user selects the model level appropriate for their application (LSV for detailed simulation, IDZ for control design, SS for planning). The automatic IDZ parameter derivation from LSV geometry eliminates the manual identification step, though experimentally fitted parameters may improve accuracy for specific operating conditions (as shown in the flume validation, §5.2).
 
-__7.4  Towards Hybrid Physics-ML Modeling__
+__7.3  Towards Hybrid Physics-ML Modeling__
 
 The current library provides physics-based models exclusively. However, the architecture creates natural extension points for hybrid physics-ML approaches that are increasingly important in the environmental modeling community (Willard et al., 2022).
 
@@ -428,11 +428,11 @@ Three integration pathways are envisioned. First, __FMI-based surrogate coupling
 
 These pathways are not yet implemented in the library but are architecturally supported by the FMI-first design principle and the multi-fidelity component structure.
 
-__7.5  Sustainability and Community__
+__7.4  Sustainability and Community__
 
 The library is maintained by the CHS Research Group with 5 active developers across Hebei University of Engineering and IWHR. Long-term sustainability is supported by three mechanisms: (1) integration into graduate teaching at three universities (water systems control courses), ensuring a pipeline of trained users and contributors; (2) ongoing funded research projects that depend on the library; (3) community contributions via GitHub pull requests with CI-enforced quality gates (all 33 tests must pass). A roadmap for future releases is maintained in the repository wiki.
 
-__7.6  Limitations__
+__7.5  Limitations__
 
 Several limitations should be acknowledged. First, the current library covers one-dimensional flow only; two-dimensional processes (e.g., reservoir stratification, urban flood inundation) are not supported. Second, the Saint-Venant solver uses the Preissmann scheme, which may exhibit numerical diffusion for sharp wavefronts; the Method of Characteristics is available only for pipe components. Third, water quality processes (advection-dispersion, reactions) are not included in the current version. Fourth, the library has been validated on three systems; broader validation across a wider range of canal geometries and operating conditions is ongoing. Fifth, the HydroPort connector supports unidirectional flow only; bidirectional flow (tidal canals, pump-storage systems) requires a future connector extension. Sixth, Pump, Valve, and Turbine actuator components await independent validation against manufacturer data; only SluiceGate and RadialGate have been validated against published experimental data (§5.4). Seventh, OpenModelica's FMI export can occasionally produce non-standard FMUs for complex systems; users should validate FMU behavior against the native OpenModelica simulation.
 

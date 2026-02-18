@@ -102,7 +102,7 @@ Each pool is instrumented with:
 
 __2.3.1  Five-Pool IDZ Parameters__
 
-__*Table 2b. IDZ Parameters for Five-Pool Canal Flume at Nominal Operating Point ($h_0 = 20$ cm, $Q_0 = 2.0$ L/s)*__
+__*Table 2. IDZ Parameters for Five-Pool Canal Flume at Nominal Operating Point ($h_0 = 20$ cm, $Q_0 = 2.0$ L/s)*__
 
 | Pool | $A_s$ [m²] | $\tau_d$ [s] | $\tau_m$ [s] | $\alpha$ [L/s per cm] | 95% CI ($\tau_d$) |
 |------|-----------|-------------|-------------|----------------------|-------------------|
@@ -152,7 +152,7 @@ __3.2  OPC-UA Communication Architecture__
 
 The PLC hosts an OPC-UA server (built into S7-1200 firmware V4.6) that publishes the following variables:
 
-__*Table 2. OPC-UA Data Model*__
+__*Table 3. OPC-UA Data Model*__
 
 | Node | Data Type | Direction | Update Rate |
 |------|-----------|-----------|-------------|
@@ -187,7 +187,7 @@ __4.1  Motivation for Adaptive Control__
 
 The fixed-model MPC used in Chen et al. (2026a, 2026b) is identified at a single nominal operating point ($h_0 = 25$ cm, $Q_0 = 0.3$ L/s for the dual-tank; $h_0 = 2.0$ m, $Q_0 = 10$ m³/s for the 10-pool canal). As the system operates across its full ODD envelope, the IDZ parameters change:
 
-__*Table 3. IDZ Parameter Variation Across ODD (Dual-Tank, Tank 1)*__
+__*Table 4. IDZ Parameter Variation Across ODD (Dual-Tank, Tank 1)*__
 
 | Operating Point | $h_0$ [cm] | $A_s$ [m²] | $\tau_d$ [s] | $\tau_m$ [s] | RMSE with fixed MPC [mm] |
 |-----------------|------------|------------|-------------|-------------|--------------------------|
@@ -231,7 +231,7 @@ $$
 
 where $\hat{\theta} = [a_1, a_2, b_1, b_2]^T$ is the parameter vector, $\boldsymbol{\phi}(k) = [y(k-1), y(k-2), u(k-d), u(k-d-1)]^T$ is the regression vector, $\mathbf{P}(k)$ is the covariance matrix, and $\lambda = 0.98$ is the forgetting factor. The choice $\lambda = 0.98$ provides a memory window of approximately $1/(1-\lambda) = 50$ samples (250 s), balancing tracking speed against noise sensitivity.
 
-The discrete delay $d$ is estimated online by testing $d \in \{1, 2, 3, 4\}$ and selecting the value that minimizes the ARX one-step prediction error over a sliding window of 100 samples (500 s). This is re-evaluated every 100 samples to track delay changes as the operating point shifts (Table 3 shows $\tau_d$ varying from 6.2 to 12.1 s, giving $d = 2$ or $d = 3$).
+The discrete delay $d$ is estimated online by testing $d \in \{1, 2, 3, 4\}$ and selecting the value that minimizes the ARX one-step prediction error over a sliding window of 100 samples (500 s). This is re-evaluated every 100 samples to track delay changes as the operating point shifts (Table 4 shows $\tau_d$ varying from 6.2 to 12.1 s, giving $d = 2$ or $d = 3$).
 
 __4.2.1  RLS Convergence and Stability__
 
@@ -239,9 +239,9 @@ The RLS convergence requires persistent excitation of the input signal (Ljung, 1
 
 1. **Covariance reset**: When trace($\mathbf{P}(k)$) > $10 \times$ trace($\mathbf{P}_0$), the covariance matrix is reset to $\mathbf{P}_0 = 100 \cdot \mathbf{I}_{4 \times 4}$, preventing unbounded parameter estimate drift during low-excitation periods.
 
-2. **Significance threshold**: MPC updates are triggered only when the parameter change exceeds $\delta_{\text{sig}} = 0.10$ (Eq. 8), ensuring that noise-driven estimate fluctuations do not cause unnecessary controller reconfiguration.
+2. **Significance threshold**: MPC updates are triggered only when the parameter change exceeds $\delta_{\text{sig}} = 0.10$ (Eq. 8a), ensuring that noise-driven estimate fluctuations do not cause unnecessary controller reconfiguration.
 
-__*Table 3b. Forgetting Factor Sensitivity Analysis (16 boundary scenarios, dual-tank)*__
+__*Table 5. Forgetting Factor Sensitivity Analysis (16 boundary scenarios, dual-tank)*__
 
 | $\lambda$ | Memory [samples] | RMSE [mm] (mean ± 95% CI) | $\sigma(\hat{\tau}_d)$ [s] | $N_{\text{adapt}}$ |
 |-----------|-------------------|--------------------------|---------------------------|---------------------|
@@ -257,7 +257,7 @@ __4.3  Gain-Scheduled MPC__
 The MPC controller matrices are updated when the re-identified IDZ parameters change by more than a significance threshold $\delta_{\text{sig}}$:
 
 $$
-\frac{|\hat{p}(k) - p_{\text{current}}|}{p_{\text{current}}} > \delta_{\text{sig}} \tag{8}
+\frac{|\hat{p}(k) - p_{\text{current}}|}{p_{\text{current}}} > \delta_{\text{sig}} \tag{8a}
 $$
 
 where $\hat{p}(k)$ is the newly identified parameter value and $p_{\text{current}}$ is the value currently used in the MPC. The threshold $\delta_{\text{sig}} = 0.10$ (10% relative change) prevents excessive controller reconfiguration due to estimation noise while ensuring adaptation to genuine operating point changes.
@@ -282,13 +282,13 @@ __4.3.1  Stability Under Gain Scheduling__
 
 When the MPC matrices change due to an RLS-triggered update, the closed-loop system effectively switches between two LTI controllers. Standard results from switched systems theory (Liberzon, 2003) require either a common Lyapunov function or a minimum dwell time between switches (Hespanha & Morse, 1999).
 
-**Dwell time analysis**: The significance threshold $\delta_{\text{sig}} = 0.10$ implicitly enforces a minimum dwell time. A 10% change in $\tau_d$ (the most sensitive parameter) requires the operating point to shift by at least $\Delta h \geq 5$ cm (from Table 3), which at the maximum flow rate takes $\geq 60$ s. The observed minimum inter-update interval across all 64 dual-tank scenarios (32 nominal + 32 boundary) is 55 s (scenario A21: large setpoint step from 10 cm to 40 cm), confirming an empirical dwell time of $\geq 50$ s ($\geq 10$ sampling intervals).
+**Dwell time analysis**: The significance threshold $\delta_{\text{sig}} = 0.10$ implicitly enforces a minimum dwell time. A 10% change in $\tau_d$ (the most sensitive parameter) requires the operating point to shift by at least $\Delta h \geq 5$ cm (from Table 4), which at the maximum flow rate takes $\geq 60$ s. The observed minimum inter-update interval across all 64 dual-tank scenarios (32 nominal + 32 boundary) is 55 s (scenario A21: large setpoint step from 10 cm to 40 cm), confirming an empirical dwell time of $\geq 50$ s ($\geq 10$ sampling intervals).
 
 **Common Lyapunov function**: For the dual-tank system, the MPC cost function $J = \sum_{k=0}^{N_p-1} [\|y(k) - r(k)\|^2_Q + \|\Delta u(k)\|^2_R]$ serves as a common Lyapunov function across the gain-scheduled parameter range, because: (a) the system remains integrating (Family $\alpha$) across the full ODD—the structural form of the transfer function does not change; and (b) the MPC weights $(Q, R)$ are fixed across all operating points. Following the terminal cost approach of Mayne et al. (2014), the MPC with terminal constraint guarantees recursive feasibility and asymptotic stability for each fixed parameter set; the common Lyapunov function (the optimal MPC cost $J^*$) is non-increasing across switches because the significance threshold ensures that the new model is more accurate than the old one at the current operating point.
 
-**Empirical verification**: Table 4b shows the transient behavior at all 23 gain-scheduled transitions observed across the 32 dual-tank boundary scenarios:
+**Empirical verification**: Table 6b shows the transient behavior at all 23 gain-scheduled transitions observed across the 32 dual-tank boundary scenarios:
 
-__*Table 4b. Gain-Scheduled Transition Transients (23 events across 32 boundary scenarios)*__
+__*Table 6b. Gain-Scheduled Transition Transients (23 events across 32 boundary scenarios)*__
 
 | Metric | Mean | Worst Case | 95th Percentile |
 |--------|------|------------|-----------------|
@@ -347,7 +347,7 @@ During the RLS convergence period (5–8 samples after an operating point change
 
 From the 32 dual-tank boundary scenarios, the maximum observed $\rho$ reduction during adaptation is $\Delta\rho = 0.03$ (from $\rho = 0.08$ to $\rho = 0.05$, scenario A21). This remains above the WARNING threshold ($\rho_w = 0.03$), so no spurious ODD warnings are triggered during normal adaptation.
 
-The ODD safety factor SF = 1.5 provides a static margin of $\delta_s = 5$ cm. The transient model inaccuracy during adaptation consumes at most $\Delta h_{\text{transient}} = 1.2$ mm of this margin (from Table 4b worst-case overshoot). The effective margin during adaptation is:
+The ODD safety factor SF = 1.5 provides a static margin of $\delta_s = 5$ cm. The transient model inaccuracy during adaptation consumes at most $\Delta h_{\text{transient}} = 1.2$ mm of this margin (from Table 6b worst-case overshoot). The effective margin during adaptation is:
 
 $$
 \delta_{\text{eff}} = \delta_s - \Delta h_{\text{transient}} \geq 4.88 \text{ cm} \tag{10}
@@ -405,7 +405,7 @@ __6  Results__
 
 __6.1  Dual-Tank PLC-Based HiL: Nominal Scenarios (A1–A16)__
 
-__*Table 4. Dual-Tank HiL Results: Nominal Scenarios (Mean ± Std across 16 scenarios)*__
+__*Table 6. Dual-Tank HiL Results: Nominal Scenarios (Mean ± Std across 16 scenarios)*__
 
 | Metric | Fixed-Arduino | Fixed-PLC | Adaptive-PLC |
 |--------|---------------|-----------|--------------|
@@ -423,7 +423,7 @@ __6.2  Dual-Tank: Off-Nominal and Boundary Scenarios (A17–A32)__
 
 The adaptive MAS advantage becomes pronounced under off-nominal conditions:
 
-__*Table 5. Dual-Tank HiL Results: Boundary Scenarios (Mean ± Std across 16 scenarios)*__
+__*Table 7. Dual-Tank HiL Results: Boundary Scenarios (Mean ± Std across 16 scenarios)*__
 
 | Metric | Fixed-PLC | Adaptive-PLC | Improvement |
 |--------|-----------|--------------|-------------|
@@ -437,13 +437,13 @@ __*Table 5. Dual-Tank HiL Results: Boundary Scenarios (Mean ± Std across 16 sce
 | $t_{\text{detect}}$ [intervals] | 1.6 ± 0.5 | 1.2 ± 0.3 | 25% |
 | $N_{\text{adapt}}$ | — | 4.8 ± 1.6 | — |
 
-The 34% RMSE improvement under boundary conditions is the primary result of this paper. The fixed-model MPC degrades significantly at the ODD boundaries (RMSE 3.6 mm, nearly double the nominal 1.8 mm) because the IDZ parameters at extreme operating points differ substantially from the nominal identification (Table 3). The adaptive MAS re-identifies the IDZ parameters within 5–8 samples (25–40 s) of entering a new operating region and updates the MPC accordingly, maintaining near-nominal performance.
+The 34% RMSE improvement under boundary conditions is the primary result of this paper. The fixed-model MPC degrades significantly at the ODD boundaries (RMSE 3.6 mm, nearly double the nominal 1.8 mm) because the IDZ parameters at extreme operating points differ substantially from the nominal identification (Table 4). The adaptive MAS re-identifies the IDZ parameters within 5–8 samples (25–40 s) of entering a new operating region and updates the MPC accordingly, maintaining near-nominal performance.
 
 The minimum ODD distance-to-boundary $\rho_{\min}$ is notably higher for the adaptive MAS (0.08 vs. 0.04), indicating that the adaptive controller keeps the system further from the ODD boundary—a direct consequence of better tracking performance at extreme operating points.
 
 __6.3  Five-Pool Canal Flume HiL (B1–B20)__
 
-__*Table 6. Five-Pool Canal Flume HiL Results*__
+__*Table 8. Five-Pool Canal Flume HiL Results*__
 
 | Metric | Nominal (B1–B10) | Boundary (B11–B20) |
 |--------|-------------------|---------------------|
@@ -466,7 +466,7 @@ Third, the Area Agent ODD monitoring correctly detects all 10 boundary scenarios
 
 __6.4  Ten-Pool Numerical Benchmark (C1–C20)__
 
-__*Table 7. Ten-Pool Numerical Benchmark Results*__
+__*Table 9. Ten-Pool Numerical Benchmark Results*__
 
 | Metric | Nominal (C1–C10) | Boundary (C11–C20) |
 |--------|-------------------|---------------------|
@@ -486,7 +486,7 @@ __6.5  Bayesian ODD Expansion__
 
 Three ODD expansion campaigns were executed on the dual-tank PLC-based HiL:
 
-__*Table 8. ODD Expansion Campaign Results*__
+__*Table 10. ODD Expansion Campaign Results*__
 
 | Campaign | SF | ODD [$h_{\min}$, $h_{\max}$] | Scenarios | Violations | Result |
 |----------|-----|------------------------------|-----------|------------|--------|
@@ -500,7 +500,7 @@ The expanded ODD is validated by running all 32 scenarios (16 nominal + 16 bound
 
 __6.6  Cross-Layer Fidelity Summary__
 
-__*Table 9. Cross-Layer RMSE Comparison (Dual-Tank, Mean across 16 nominal scenarios)*__
+__*Table 11. Cross-Layer RMSE Comparison (Dual-Tank, Mean across 16 nominal scenarios)*__
 
 | Stage | Controller | RMSE [mm] | Degradation from MiL |
 |-------|-----------|-----------|----------------------|
@@ -536,7 +536,7 @@ The three-platform comparison reveals a consistent pattern: the adaptive MAS adv
 
 The computational scaling is linear in the number of pools for Edge Agent operations (RLS + MPC per pool) and approximately quadratic for Area Agent coordination (DMPC with inter-pool coupling). For systems beyond ~100 pools, hierarchical decomposition (multiple Area Agents with limited inter-Area coordination) maintains tractability.
 
-__*Table 11. Computational Scaling Extrapolation*__
+__*Table 13. Computational Scaling Extrapolation*__
 
 | System Size | Edge Agents | Area Agents | Edge Time [ms] | DMPC Time [ms] | Total [ms] | GPU Required? |
 |-------------|------------|-------------|---------------|----------------|-----------|---------------|
@@ -550,7 +550,7 @@ The crossover point is approximately 80 pools, where the total MAS computation t
 
 __7.3.1  Comparison with Alternative Adaptive Approaches__
 
-__*Table 12. Adaptive Control Method Comparison*__
+__*Table 14. Adaptive Control Method Comparison*__
 
 | Criterion | RLS + GS-MPC (this paper) | MMAC | L1 Adaptive | GP-MPC |
 |-----------|---------------------------|------|-------------|--------|
@@ -580,7 +580,7 @@ The PLC-based HiL demonstrated in this paper represents the penultimate step bef
 
 __7.4.1  IEC 62443 Security Level Mapping__
 
-__*Table 10a. IEC 62443 Cybersecurity Compliance Assessment*__
+__*Table 12a. IEC 62443 Cybersecurity Compliance Assessment*__
 
 | IEC 62443 Requirement | SL-1 (Achieved) | SL-2 (Gap) |
 |----------------------|------------------|------------|
@@ -596,7 +596,7 @@ The current laboratory implementation achieves Security Level 1 (SL-1: protectio
 
 __7.4.2  Cost-Benefit Analysis__
 
-__*Table 10b. Platform Cost-Benefit Comparison*__
+__*Table 12b. Platform Cost-Benefit Comparison*__
 
 | Dimension | Arduino Mega 2560 | Siemens S7-1200 | Siemens S7-1500 |
 |-----------|-------------------|-----------------|-----------------|
@@ -612,7 +612,7 @@ __*Table 10b. Platform Cost-Benefit Comparison*__
 
 For field deployment, the PLC cost ($700–$2,500) is < 0.1% of a typical canal automation project budget ($1–5M), making it negligible. For teaching and educational laboratories, the Arduino remains a valid choice for WSAL-1/2 concept demonstration.
 
-__7.6  Self-Calibrating Digital Twin for Water Networks__
+__7.5  Self-Calibrating Digital Twin for Water Networks__
 
 The adaptive MAS with online IDZ re-identification effectively constitutes a self-calibrating digital twin (SCDT): the RLS estimator continuously updates the IDZ model parameters to match the physical plant, making the MPC's internal model a live digital replica that tracks the real system's evolving dynamics (Grieves & Vickers, 2017; Rasheed et al., 2020).
 
@@ -628,7 +628,7 @@ The SCDT provides three operational capabilities: (a) real-time model accuracy m
 
 This concept aligns with the Industry 4.0 cyber-physical systems paradigm, where digital representations of physical assets enable autonomous decision-making. The CHS SCDT adds the critical safety layer (ODD) that is missing from standard Industry 4.0 digital twin implementations.
 
-__7.5  Limitations__
+__7.6  Limitations__
 
 Several limitations should be acknowledged. First, the five-pool canal flume is a laboratory facility; field-scale canals exhibit additional complexities (sediment transport, weed growth, gate leakage) not represented. Second, the online IDZ re-identification assumes persistent excitation—the system must experience sufficient input variation to identify the parameters. During steady-state operation (constant setpoint, constant flow), the RLS estimates may drift; this is mitigated by the significance threshold $\delta_{\text{sig}}$ but not eliminated. Third, the Bayesian ODD expansion has been demonstrated with only three campaigns (40 scenarios total); long-term safety assurance requires hundreds of operating hours, which is planned for the field deployment phase. Fourth, the adaptive MAS has been tested with up to 10 pools; the scaling to 50–500 pool systems (typical of large irrigation districts) requires further investigation with the GPU-parallel solver (Huang et al., 2026). Fifth, the PiL stage has not been demonstrated; the human-automation interaction design for water systems is an open research area with limited prior work.
 
@@ -728,8 +728,8 @@ __Figure 3.__ PLC-based HiL architecture. The Siemens S7-1200 PLC hosts the MPC 
 
 __Figure 4.__ Adaptive MAS architecture. (a) Edge Agent internal structure: sensor input → Kalman filter → RLS estimator → gain-scheduled MPC → actuator output, with local ODD monitor. (b) Three-tier hierarchy for the five-pool system: five Edge Agents coordinated by one Area Agent via DMPC/ADMM. (c) Timing diagram showing an adaptive event: operating point change detected → RLS convergence (5–8 samples) → parameter significance test → MPC update → bumpless transfer.
 
+__Figure 5.__ Performance comparison across three platforms. (a) Box plots of RMSE for Fixed-PLC vs. Adaptive-PLC under nominal and boundary conditions for dual-tank, five-pool, and 10-pool systems. (b) Adaptive advantage (% RMSE improvement) as a function of system complexity (number of states), showing the increasing benefit of adaptation for larger systems.
+
 __Figure 6.__ Representative five-pool canal flume HiL results (scenario B3: upstream flow step +30%). (a) Water levels in all five pools: adaptive MAS (solid) vs. fixed MPC (dashed). (b) Gate positions G1–G4 showing coordinated response. (c) RLS-estimated $\tau_d$ for each pool over the 1,200-s test, showing convergence within 5–8 samples after the flow change. (d) Area Agent ODD status: NOMINAL throughout, with minimum $\rho = 0.12$.
 
 __Figure 7.__ Ten-pool numerical benchmark cascading disturbance scenario (C15). (a) Water levels in pools 1–10 under adaptive MAS, showing the disturbance propagation and MAS-coordinated recovery. (b) DMPC coordination iterations per time step, increasing from 4 to 7 during the disturbance. (c) Cloud Agent replanning event triggered at $t = 900$ s when the demand pattern shifted beyond the planned envelope.
-
-__Figure 5.__ Performance comparison across three platforms. (a) Box plots of RMSE for Fixed-PLC vs. Adaptive-PLC under nominal and boundary conditions for dual-tank, five-pool, and 10-pool systems. (b) Adaptive advantage (% RMSE improvement) as a function of system complexity (number of states), showing the increasing benefit of adaptation for larger systems.

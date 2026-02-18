@@ -106,13 +106,13 @@ __*Definition 1 \(ODD for Water Systems\)\. *__The Operational Design Domain of 
 
 Within the certified ODD, the HDC controller has been verified—through the X\-in\-the\-Loop \(xIL\) testing framework \(Lei et al\., 2025c\)—to maintain all constraints \(Equation 4\) while achieving performance targets\. Outside the ODD boundary, control authority reverts to human operators or to a predefined safe degradation mode\. The ODD boundary is monitored in real time by a dedicated ODD Monitor module that evaluates:
 
-*ODD\_status\(t\) = ⋀\_\{d ∈ \{flow, level, demand, equip, env, comm\}\} \[state\_d\(t\) ∈ S\_d\]     \(7\)*
+*ODD\_status\(t\) = ⋀\_\{d ∈ \{flow, level, demand, equip, env, comm\}\} \[state\_d\(t\) ∈ S\_d\]     \(6\)*
 
 To prevent oscillation between in\-ODD and out\-of\-ODD states near boundaries, the ODD Monitor implements a hysteresis band: exit is triggered when any dimension exceeds S\_d by a margin δ\_out, and re\-entry is permitted only when all dimensions return within S\_d by a tighter margin δ\_in < δ\_out\. Typical values are δ\_out = 5% of the range and δ\_in = 2%\.
 
 When ODD\_status transitions from TRUE to FALSE, the system executes a Minimum Risk Condition \(MRC\)—the water systems equivalent of 'pulling over to the side of the road' in automotive autonomy\. Formally, the MRC is defined as transition to a predefined safe steady\-state that is reachable from any state within the ODD boundary within a coast time τ\_coast\. The coast time is estimated as:
 
-*τ\_coast ≈ L / c₀ \+ T\_operator     \(8\)*
+*τ\_coast ≈ L / c₀ \+ T\_operator     \(7\)*
 
 where L is the characteristic hydraulic length \(longest propagation path in the controlled subsystem\), c₀ is the relevant wave celerity, and T\_operator is the expected human response time\. For the Shaping cascade \(L ≈ 5 km, c₀ ≈ 20 m/s as pressure wave in penstocks\), τ\_coast ≈ 4 min \+ T\_operator\. For the Jiaodong conveyance \(L ≈ 500 km\), c₀ is taken as the kinematic wave speed \(≈ 1 m/s\) rather than the dynamic gravity wave speed \(≈ 4–5 m/s for typical canal depth\), because MRC planning must account for the slower disturbance propagation that governs operational response; this gives τ\_coast ≈ 6–8 hours \+ T\_operator\. The MRC procedure is case\-specific: for Shaping, ramp turbines to minimum load, open spillway gates to maintain headpond levels, and alert the dispatch center; for Jiaodong, cease upstream pumping, maintain downstream gates at current positions to prevent canal overtopping, and activate emergency storage reservoirs as buffers\. The MRC design must account for the operational singularity: unlike a car that can safely stop, a water system's mass in transit continues moving, so the MRC must ensure that the frozen state remains within safety constraints for a duration exceeding τ\_coast\.
 
@@ -124,9 +124,9 @@ The CI module performs four functions\. First, scenario recognition: classifying
 
 The critical architectural rule governing CI is the propose\-validate interaction loop:
 
-*CI proposes: \{θ\_new, y\_ref\_new, C\_new\} → HDC validates: feasibility\(A, B, θ\_new, C\_new\)     \(9\)*
+*CI proposes: \{θ\_new, y\_ref\_new, C\_new\} → HDC validates: feasibility\(A, B, θ\_new, C\_new\)     \(8\)*
 
-*if feasible: execute;   if infeasible: CI revises or escalates to human operator     \(10\)*
+*if feasible: execute;   if infeasible: CI revises or escalates to human operator     \(9\)*
 
 where θ\_new is a proposed parameter set, y\_ref\_new is a proposed reference trajectory, and C\_new is a proposed constraint set\. Feasibility is defined operationally: HDC solves the constrained optimization \(Equations 2–4\) with the CI\-proposed parameters over a verification horizon N\_v\. The proposal is accepted if and only if the optimizer returns a feasible solution satisfying all hard constraints \(Equation 4\); computational tractability is maintained because the verification reuses the operational MPC solver\. This loop ensures that no CI reasoning error—however sophisticated the underlying AI model—can bypass the physics\-based feasibility checking of HDC\. The propose\-validate architecture represents a design choice grounded in the operational singularity \(OS1\): because water system failures are irreversible, the Cognitive AI engine must never have unilateral authority over actuators\.
 
@@ -396,7 +396,7 @@ __4\.3  The Critical WSAL\-2 to WSAL\-3 Transition__
 
 The transition from WSAL\-2 to WSAL\-3 is identified as the most critical near\-term milestone for the global water sector\. At WSAL\-2, the system provides control recommendations but every action requires human confirmation—the operator remains ‘in the loop’ for every control cycle\. At WSAL\-3, the system operates autonomously within its certified ODD and the operator shifts to ‘on the loop’—monitoring boundary conditions and intervening only when the system approaches ODD limits\. This is the ‘letting go’ moment, analogous to the SAE Level 2→Level 3 transition in autonomous driving that has proven to be the most challenging regulatory and engineering barrier\.
 
-For water systems, the WSAL\-2→3 transition requires three specific capabilities that are absent at WSAL\-2\. First, systematic xIL verification: the HDC controller must be validated through progressive Model\-in\-the\-Loop \(MiL\), Software\-in\-the\-Loop \(SiL\), and Hardware\-in\-the\-Loop \(HiL\) testing across all scenarios within the target ODD \(Lei et al\., 2025c\)\. Second, an ODD monitor with demonstrated reliability: the real\-time ODD boundary assessment \(Equation 7\) must achieve false\-positive rates below 1% and false\-negative rates below 0\.1% under verified conditions\. Third, a tested Minimum Risk Condition \(MRC\): the fallback procedure must be demonstrated to maintain system safety for a duration exceeding the worst\-case human response time\.
+For water systems, the WSAL\-2→3 transition requires three specific capabilities that are absent at WSAL\-2\. First, systematic xIL verification: the HDC controller must be validated through progressive Model\-in\-the\-Loop \(MiL\), Software\-in\-the\-Loop \(SiL\), and Hardware\-in\-the\-Loop \(HiL\) testing across all scenarios within the target ODD \(Lei et al\., 2025c\)\. Second, an ODD monitor with demonstrated reliability: the real\-time ODD boundary assessment \(Equation 6\) must achieve false\-positive rates below 1% and false\-negative rates below 0\.1% under verified conditions\. Third, a tested Minimum Risk Condition \(MRC\): the fallback procedure must be demonstrated to maintain system safety for a duration exceeding the worst\-case human response time\.
 
 __*\[Figure 2 about here\]*__
 
@@ -438,7 +438,7 @@ The distinctive feature of the Jiaodong MAS implementation is its multi\-timesca
 
 Layer 2 \(Area Agents, one per major conveyance segment\) translates ten\-day delivery targets into daily gate and pump schedules through a rolling\-horizon DMPC that accounts for conveyance delays, reservoir storage buffering, and energy tariff optimization\. The DMPC formulation minimizes the weighted sum of delivery shortfall, energy cost, and operational losses:
 
-*min Σ\_t Σ\_j \[α\_j\(Q\_\{del,j\}\(t\) \- Q\_\{target,j\}\(t\)\)^2 \+ β · E\_cost\(t\) \+ γ · Q\_loss\(t\)\]     \(11\)*
+*min Σ\_t Σ\_j \[α\_j\(Q\_\{del,j\}\(t\) \- Q\_\{target,j\}\(t\)\)^2 \+ β · E\_cost\(t\) \+ γ · Q\_loss\(t\)\]     \(10\)*
 
 Layer 1 \(Edge Agents at each gate and pump station\) implements real\-time feedback control at minute\-scale intervals, tracking the water level and flow references generated by Layer 2 while compensating for unmeasured disturbances \(local inflows, demand variations, canal seepage\)\.
 
@@ -478,7 +478,7 @@ __7\.2  Case\-Specific Transition Analysis__
 
 For Shaping, the WSAL\-2→3 transition is technically closer than for Jiaodong, because the point\-type topology has shorter transport delays \(faster feedback\), simpler hydraulic coupling \(cascade connectivity\), and a well\-defined normal\-operation ODD\. The primary barriers are: \(a\) completion of SiL and HiL testing for the production control software; \(b\) formal specification and testing of the MRC procedure \(what happens if all communication to the cascade dispatch center fails?\); and \(c\) institutional acceptance—regulatory approval for automated reservoir operations without real\-time human confirmation\.
 
-__Human Factors\.__ The WSAL\-2→3 transition also introduces human factors challenges well\-documented in aviation and automotive automation \(Parasuraman & Riley, 1997\)\. At WSAL\-2, operators actively confirm every control action, maintaining direct engagement with the physical system\. At WSAL\-3, operators shift to supervisory monitoring, which may induce automation complacency and skill degradation over time\. If the system subsequently exits the ODD and reverts to human control, the operator must re\-engage with a system whose state may have evolved in unfamiliar ways—the phenomenon of 'automation surprise\.'\. To mitigate these risks, the WSAL\-3 operational protocol should include: \(a\) mandatory periodic manual\-mode exercises during which operators resume WSAL\-2 control for routine scenarios; \(b\) transparent system\-status displays designed to maintain situational awareness of ODD boundary proximity, agent health, and control rationale; and \(c\) MRC response time assumptions \(T\_operator in Equation 8\) that account for the cognitive latency of operators transitioning from passive monitoring to active control\.
+__Human Factors\.__ The WSAL\-2→3 transition also introduces human factors challenges well\-documented in aviation and automotive automation \(Parasuraman & Riley, 1997\)\. At WSAL\-2, operators actively confirm every control action, maintaining direct engagement with the physical system\. At WSAL\-3, operators shift to supervisory monitoring, which may induce automation complacency and skill degradation over time\. If the system subsequently exits the ODD and reverts to human control, the operator must re\-engage with a system whose state may have evolved in unfamiliar ways—the phenomenon of 'automation surprise\.'\. To mitigate these risks, the WSAL\-3 operational protocol should include: \(a\) mandatory periodic manual\-mode exercises during which operators resume WSAL\-2 control for routine scenarios; \(b\) transparent system\-status displays designed to maintain situational awareness of ODD boundary proximity, agent health, and control rationale; and \(c\) MRC response time assumptions \(T\_operator in Equation 7\) that account for the cognitive latency of operators transitioning from passive monitoring to active control\.
 
 For Jiaodong, the transition is more complex because the line\-type topology introduces longer transport delays \(hours\), larger ODD dimensionality \(more demand nodes, more equipment failure combinations\), and tighter coupling between planning and control layers\. The specific additional requirements are: \(a\) SiL verification must cover not only normal delivery scenarios but also single\-pump\-failure and drought\-allocation scenarios; \(b\) HiL testing must validate the Area Agent coordination mechanism under communication degradation between pump stations; and \(c\) the multi\-timescale integration requires that Layer 3 plan adjustments propagate correctly to Layer 1 under all ODD conditions\.
 
@@ -553,8 +553,10 @@ Controlled field
 deployment on  
 limited section
 
-Full HiL  
+Full HiL
 must precede
+
+__*\[Figure 5 about here\]*__
 
 __8  Discussion__
 
@@ -570,7 +572,7 @@ __8\.2  Relationship Between Physical AI and Cognitive AI__
 
 The MAS architecture makes an explicit and deliberate allocation of responsibilities between physics\-based computation \(HDC\) and AI\-enhanced reasoning \(CI\)\. At WSAL\-2, CI plays no role—all control is HDC\-based with human confirmation\. At WSAL\-3, CI begins to contribute through ODD monitoring and scenario recognition, but all actions remain within the HDC\-computed feasible set\. The Cognitive AI engine becomes architecturally essential only at WSAL\-4, where it must handle novel scenarios that were not pre\-certified in the ODD\. This graduated introduction mirrors the operational singularity: because water failures are irreversible, AI capabilities must be proven incrementally rather than deployed at once\.
 
-The propose\-validate interaction loop \(Equations 9–10\) is the architectural mechanism that ensures this graduated integration\. It deserves emphasis that this is not merely a ‘check’ that CI outputs are reasonable—it is a hard mathematical feasibility verification\. The HDC engine solves the constrained optimization \(Equations 2–4\) with the CI\-proposed parameters and rejects any proposal that would violate physical constraints\. This architecture provides formal guarantees that no CI error, no matter how subtle, can produce an unsafe actuator command\.
+The propose\-validate interaction loop \(Equations 8–9\) is the architectural mechanism that ensures this graduated integration\. It deserves emphasis that this is not merely a ‘check’ that CI outputs are reasonable—it is a hard mathematical feasibility verification\. The HDC engine solves the constrained optimization \(Equations 2–4\) with the CI\-proposed parameters and rejects any proposal that would violate physical constraints\. This architecture provides formal guarantees that no CI error, no matter how subtle, can produce an unsafe actuator command\.
 
 __8\.3  Implications for Water Sector Governance__
 

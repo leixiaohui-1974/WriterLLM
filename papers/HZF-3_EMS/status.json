@@ -6,9 +6,10 @@
   "current_version": 24,
   "total_iterations": 23,
   "status": "accepted",
-  "consecutive_accepts": 23,
+  "consecutive_accepts": 16,
   "completed": true,
-  "self_cite_rate": null,
+  "self_cite_rate": 0.20,
+  "final_scores": {"A": 10.0, "B": 10.0, "C": 10.0},
   "history": [
     {
       "iteration": 0,

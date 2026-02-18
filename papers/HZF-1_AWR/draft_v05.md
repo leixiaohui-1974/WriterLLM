@@ -65,7 +65,7 @@ A water conveyance network consists of $N_p$ pools connected by actuators (gates
 
 *$Q_{\text{gate}} = C_d \cdot b \cdot w \cdot \sqrt{2 g \Delta H}$     (4)*
 
-The topology can be serial (chain), tree (branching), or looped. cuSVE supports serial and tree topologies; looped networks are future work (§6.3).
+The topology can be serial (chain), tree (branching), or looped. cuSVE supports serial and tree topologies; looped networks are future work (§6.5).
 
 __*[Figure 1 about here]*__
 
@@ -285,7 +285,7 @@ __*Table 6b. GPU Hardware Comparison (50-Pool Network, 24 h)*__
 | NVIDIA A6000 | 4.8 | 48 | 0.82 | 105× |
 | NVIDIA RTX 4090 | 0.56 | 24 | 7.1 | 12× |
 
-__*Table 8. Weak Scaling Analysis ($N_c = 20$ per pool, A100)*__
+__*Table 7. Weak Scaling Analysis ($N_c = 20$ per pool, A100)*__
 
 | $N_p$ | Time per pool per time step [μs] | Boundary overhead [%] | Weak scaling efficiency η |
 |-------|----------------------------------|-----------------------|--------------------------|
@@ -297,7 +297,7 @@ __*Table 8. Weak Scaling Analysis ($N_c = 20$ per pool, A100)*__
 
 Weak scaling efficiency exceeds 85% up to 200 pools and remains above 79% at 500 pools. The efficiency loss is driven by boundary exchange overhead, which scales as $O(N_p)$ due to global memory traffic.
 
-__*Table 7. Comparison with Related GPU Solvers*__
+__*Table 8. Comparison with Related GPU Solvers*__
 
 | Solver | Equations | Dimension | Scheme | Speedup | Reference |
 |--------|-----------|-----------|--------|---------|-----------|
@@ -360,13 +360,13 @@ The CHS five-level model hierarchy [11] ranges from LSV (full Saint-Venant, Leve
 2. Replace the FMU's Preissmann solver with cuSVE's GPU kernel
 3. Run MiL/SiL verification at full LSV fidelity in real-time
 
-__6.4  Physics-Based GPU vs. ML Surrogates__
+__6.3  Physics-Based GPU vs. ML Surrogates__
 
 GPU-accelerated physics solvers and machine-learning surrogates represent two complementary approaches to real-time hydrodynamic simulation. cuSVE provides guaranteed mass conservation, known error bounds (§5), and robust extrapolation to novel operating conditions (untested gate schedules, extreme events)—properties that ML surrogates based on DeepONet (Lu et al., 2021 [26]) or Fourier Neural Operators (Li et al., 2021 [27]) do not inherently guarantee. Conversely, ML surrogates can achieve even higher speedup factors (10⁴–10⁶× reported in the literature) once trained, and may capture empirical effects not represented in the SVE.
 
 The two approaches are complementary rather than competitive. cuSVE's 210,000× real-time factor enables generation of millions of high-fidelity training scenarios for ML surrogates in hours rather than months. The physics-based solver also serves as the ground truth for surrogate validation and as a fallback when the surrogate encounters out-of-distribution conditions. A hybrid architecture—ML surrogate for routine prediction, cuSVE for validation and edge cases—may prove optimal for operational digital twin deployments.
 
-__6.5  Multi-GPU and Cloud Scaling__
+__6.4  Multi-GPU and Cloud Scaling__
 
 For very large networks (>500 pools), a single GPU may be insufficient. The pool-level domain decomposition extends naturally to multi-GPU configurations via NVIDIA's NCCL (NVIDIA Collective Communications Library): pools are distributed across GPUs, and inter-GPU boundary exchange replaces intra-GPU global memory exchange. The communication overhead is minimal (4 doubles per pool boundary per time step), making multi-GPU scaling bandwidth-limited only at very high pool counts.
 
@@ -374,7 +374,7 @@ Cloud deployment is straightforward: cuSVE runs on AWS p4d instances (8× A100),
 
 __Roofline analysis__: cuSVE achieves an arithmetic intensity of 8.2 FLOP/byte on A100, placing it above the roofline knee (4.5 FLOP/byte for A100's 2 TB/s bandwidth). The solver is therefore compute-bound, and further optimization should target algorithmic improvements (fewer Newton iterations, reduced Padé order) rather than memory bandwidth optimization.
 
-__6.6  Limitations__
+__6.5  Limitations__
 
 Several limitations should be noted. First, the solver currently supports serial and tree network topologies; looped networks (common in urban water distribution) require iterative boundary resolution and are deferred to future work. Second, 1D open-channel flow only; pressurized pipe flow and 2D extensions are planned. Third, for extremely short pools (length < 50 m), the strong inter-pool coupling may require >2 predictor-corrector iterations, reducing parallel efficiency. Fourth, double-precision arithmetic limits achievable speedup on consumer GPUs (RTX 4090: 12× vs. A100: 210×); the solver targets datacenter or embedded datacenter GPUs (A100, H100, Jetson AGX Orin) for production use. Fifth, the current field validation covers one canal system; broader validation across diverse canal types is ongoing.
 
